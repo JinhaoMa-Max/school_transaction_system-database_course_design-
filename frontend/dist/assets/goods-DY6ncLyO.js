@@ -1,0 +1,1 @@
+import{s}from"./index-Cqd3zK7d.js";const r=o=>s.get("/goods",{params:o}),d=o=>s.get(`/goods/${o}`),n=o=>s.post("/goods",o),u=(o,t)=>s.put(`/goods/${o}`,t),a=(o,t)=>s.put(`/goods/${o}/audit`,t),g=o=>s.put(`/goods/${o}/offline`);export{d as a,a as b,n as c,r as g,g as o,u};
