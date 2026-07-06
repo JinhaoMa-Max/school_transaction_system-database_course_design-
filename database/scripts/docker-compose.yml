@@ -43,7 +43,7 @@ services:
       # 初始化脚本 - 首次启动自动建用户
       - ../init:/container-entrypoint-initdb.d
       # SQL 脚本映射 - 方便在容器内执行
-      - ../sql:/home/oracle/sql:ro
+      - ../ddl:/home/oracle/ddl:ro
 
     # 资源限制（根据你的电脑内存调整）
     mem_limit: 4g

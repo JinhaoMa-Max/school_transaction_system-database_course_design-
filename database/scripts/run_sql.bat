@@ -38,8 +38,8 @@ echo  正在创建数据库表...
 echo ========================================
 echo.
 echo 使用 Docker 方式执行建表脚本...
-echo docker exec -i campus_trade_db sqlplus CAMPUS/Campus123456@FREEPDB1 ^< ..\sql\001_create_tables_docker.sql
-docker exec -i campus_trade_db sqlplus CAMPUS/Campus123456@FREEPDB1 < ..\sql\001_create_tables_docker.sql
+echo docker exec -i campus_trade_db sqlplus CAMPUS/Campus123456@FREEPDB1 ^< ..\ddl\001_create_tables_docker.sql
+docker exec -i campus_trade_db sqlplus CAMPUS/Campus123456@FREEPDB1 < ..\ddl\001_create_tables_docker.sql
 echo.
 if %errorlevel% equ 0 (
     echo ✅ 建表成功！
@@ -55,7 +55,7 @@ cls
 echo ========================================
 echo  正在验证数据库结构...
 echo ========================================
-docker exec -i campus_trade_db sqlplus CAMPUS/Campus123456@FREEPDB1 < ..\sql\002_verify.sql
+docker exec -i campus_trade_db sqlplus CAMPUS/Campus123456@FREEPDB1 < ..\ddl\002_verify.sql
 echo.
 pause
 goto menu
