@@ -1,0 +1,1 @@
+import{s as e}from"./index-Cqd3zK7d.js";const i=t=>e.get("/admin/audit-logs",{params:t}),o=t=>e.get("/admin/notices",{params:t}),n=t=>e.post("/admin/notices",t),c=t=>e.delete(`/admin/notices/${t}`);export{i as a,n as c,c as d,o as g};
