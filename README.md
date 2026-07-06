@@ -13,10 +13,15 @@ campus-secondhand/
 │   └── CampusSecondHand.Api/           # ASP.NET Core Web API 后端项目
 │
 ├── database/
-│   ├── ddl/                            # 建表 SQL
+│   ├── ddl/                            # 建表 SQL（DDL + 封装层）
 │   │   ├── 001_create_tables.sql       #   原始建表脚本（含 CONNECT 语句）
 │   │   ├── 001_create_tables_docker.sql #   Docker 环境建表脚本
-│   │   └── 002_verify.sql              #   建表后验证脚本
+│   │   ├── 002_verify.sql              #   建表后验证脚本
+│   │   ├── 003_views.sql               #   10个视图（预连表查询）
+│   │   ├── 004_functions.sql           #   10个函数（业务计算/校验）
+│   │   ├── 005_procedures.sql          #   13个存储过程（事务性操作）
+│   │   ├── 006_triggers.sql            #   7个业务触发器
+│   │   └── 007_test.sql                #   完整功能测试脚本
 │   ├── seed/                           # 初始化数据 SQL
 │   ├── migration/                      # 后续变更 SQL
 │   ├── init/                           # Docker 首次启动初始化
@@ -29,7 +34,8 @@ campus-secondhand/
 ├── docs/
 │   ├── 需求分析文档/
 │   ├── 数据库设计文档/
-│   │   └── ER_diagram.md               # ER 图及模块关系说明
+│   │   ├── ER_diagram.md               # ER 图及模块关系说明
+│   │   └── 数据库接口文档.md           # 数据库封装层接口说明（Service 调用指南）
 │   ├── 系统设计与实现文档/
 │   └── 答辩PPT/
 │
