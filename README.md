@@ -22,14 +22,15 @@ campus-secondhand/
 │   │   ├── 005_procedures.sql          #   13个存储过程（事务性操作）
 │   │   ├── 006_triggers.sql            #   7个业务触发器
 │   │   └── 007_test.sql                #   完整功能测试脚本
-│   ├── seed/                           # 初始化数据 SQL
+│   ├── seed/                           # 种子数据（测试用）
+│   │   └── seed_data.sql               #   8用户+15商品+6订单等全覆盖数据
 │   ├── migration/                      # 后续变更 SQL
 │   ├── init/                           # Docker 首次启动初始化
 │   │   └── 01_create_campus_user.sql   #   补充 CAMPUS 用户权限
 │   └── scripts/                        # 运维脚本
 │       ├── docker-compose.yml          #   Oracle 容器一键编排
 │       ├── docker_setup_windows.ps1    #   Windows 环境自动配置
-│       └── run_sql.bat                 #   一键建表/验证菜单
+│       └── run_sql.bat                 #   一键部署菜单（7项）
 │
 ├── docs/
 │   ├── 需求分析文档/
@@ -89,10 +90,43 @@ Get-Content ..\ddl\001_create_tables_docker.sql | docker exec -i campus_trade_db
 docker exec -i campus_trade_db sqlplus CAMPUS/Campus123456@FREEPDB1 < ..\ddl\001_create_tables_docker.sql
 ```
 
-### 3. 验证
+### 3. 执行封装层（视图/函数/存储过程/触发器）
+
+```powershell
+Get-Content ..\ddl\003_views.sql      | docker exec -i campus_trade_db sqlplus CAMPUS/Campus123456@FREEPDB1
+Get-Content ..\ddl\004_functions.sql  | docker exec -i campus_trade_db sqlplus CAMPUS/Campus123456@FREEPDB1
+Get-Content ..\ddl\005_procedures.sql | docker exec -i campus_trade_db sqlplus CAMPUS/Campus123456@FREEPDB1
+Get-Content ..\ddl\006_triggers.sql   | docker exec -i campus_trade_db sqlplus CAMPUS/Campus123456@FREEPDB1
+```
+
+### 4. 验证建表
 
 ```powershell
 Get-Content ..\ddl\002_verify.sql | docker exec -i campus_trade_db sqlplus CAMPUS/Campus123456@FREEPDB1
+```
+
+### 5. 插入种子数据（测试用）
+
+```powershell
+Get-Content ..\seed\seed_data.sql | docker exec -i campus_trade_db sqlplus CAMPUS/Campus123456@FREEPDB1
+```
+
+种子数据包含：
+
+- 8 个用户（1 管理员 + 3 卖家 + 3 买家 + 1 被封禁）
+- 13 个商品分类（两级树）
+- 15 件商品（10 approved + 2 pending + 2 sold + 1 locked）
+- 20 张商品图片、10 条收藏
+- 5 条议价、6 个订单、5 个面交预约
+- 4 个聊天会话、10 条消息
+- 4 条评价、3 条举报、4 条审核日志、3 条公告
+
+> **提示：** 种子数据脚本开头会自动清空旧数据，可安全重复执行。
+
+### 6. 运行完整测试
+
+```powershell
+Get-Content ..\ddl\007_test.sql | docker exec -i campus_trade_db sqlplus CAMPUS/Campus123456@FREEPDB1
 ```
 
 ## 实体关系概览
