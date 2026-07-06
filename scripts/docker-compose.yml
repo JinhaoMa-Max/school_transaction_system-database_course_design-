@@ -1,0 +1,61 @@
+# =============================================================
+# 校园二手交易系统 - Oracle 数据库容器编排
+# =============================================================
+# 使用方式（在 scripts/ 目录下执行）：
+#   docker compose up -d          # 启动
+#   docker compose down           # 停止并删除容器
+#   docker compose logs -f        # 查看日志
+#   docker compose restart        # 重启
+# =============================================================
+#
+# 关于 Oracle 版本：
+#   - 23-slim-faststart → Oracle 23c Free (最新的免费版，功能全)
+#   - 18.4.0-slim        → Oracle 18c XE  (如果课程严格要求18c)
+#   两者 SQL 语法兼容，服务名统一为 FREEPDB1
+#
+# 注意：gvenzl 镜像的 tag 没有 'c' 后缀，23 即 Oracle 23c
+# =============================================================
+
+services:
+  oracle:
+    # 方案一：Oracle 23c Free（默认，推荐）
+    image: gvenzl/oracle-free:23-slim-faststart
+    # 方案二：Oracle 18c XE（课程硬性要求时才启用，注释掉上面那行）
+    # image: gvenzl/oracle-xe:18.4.0-slim
+
+    container_name: campus_trade_db
+    hostname: oracle
+
+    ports:
+      - "1521:1521"    # SQL 连接端口
+      - "5500:5500"    # Oracle Enterprise Manager (https://localhost:5500/em)
+
+    environment:
+      # 管理员密码（SYS / SYSTEM）
+      ORACLE_PASSWORD: "123456"
+      # 自动创建普通用户（仅 gvenzl 镜像支持）
+      APP_USER: "CAMPUS"
+      APP_USER_PASSWORD: "Campus123456"
+
+    volumes:
+      # 持久化数据 - 容器删除后数据不丢
+      - campus_oracle_data:/opt/oracle/oradata
+      # 初始化脚本 - 首次启动自动建用户
+      - ../init:/container-entrypoint-initdb.d
+      # SQL 脚本映射 - 方便在容器内执行
+      - ../sql:/home/oracle/sql:ro
+
+    # 资源限制（根据你的电脑内存调整）
+    mem_limit: 4g
+    memswap_limit: 4g
+
+    healthcheck:
+      test: ["CMD", "sqlplus", "-L", "system/123456@//localhost:1521/FREEPDB1", "AS SYSDBA", "-c", "SELECT 1 FROM DUAL;"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 120s
+
+volumes:
+  campus_oracle_data:
+    name: campus_trade_oracle_data
