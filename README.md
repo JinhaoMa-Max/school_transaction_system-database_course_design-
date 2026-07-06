@@ -43,14 +43,14 @@ campus-secondhand/
 
 ## 数据库信息
 
-| 项目 | 值 |
-|------|-----|
-| 数据库 | Oracle 23c Free (推荐) / 18c XE |
-| 服务名 (23c) | FREEPDB1 |
-| 服务名 (18c) | XEPDB1 |
-| 端口 | 1521 |
-| 管理员用户 | SYSTEM / 123456 |
-| 应用用户 | CAMPUS / Campus123456 |
+| 项目         | 值                              |
+| ------------ | ------------------------------- |
+| 数据库       | Oracle 23c Free (推荐) / 18c XE |
+| 服务名 (23c) | FREEPDB1                        |
+| 服务名 (18c) | XEPDB1                          |
+| 端口         | 1521                            |
+| 管理员用户   | SYSTEM / 123456                 |
+| 应用用户     | CAMPUS / Campus123456           |
 
 ## 快速开始（Docker 方式）
 
@@ -104,23 +104,23 @@ Get-Content ..\ddl\002_verify.sql | docker exec -i campus_trade_db sqlplus CAMPU
 
 ## 表清单
 
-| 表名 | 中文名 | 说明 |
-|------|--------|------|
-| app_user | 用户表 | 买家/卖家/管理员 |
-| student_auth | 学生认证表 | 实名认证信息 |
-| category | 商品分类表 | 支持多级分类 |
-| goods | 商品表 | 核心商品信息 |
-| goods_image | 商品图片表 | 多图片支持 |
-| favorite | 收藏表 | 用户收藏商品 |
-| bargain_offer | 议价表 | 议价记录 |
-| trade_order | 订单表 | 交易订单 |
-| appointment | 面交预约表 | 线下见面安排 |
-| chat_session | 会话表 | 私聊会话 |
-| chat_message | 消息表 | 聊天内容 |
-| review | 评价表 | 交易互评 |
-| report | 举报表 | 统一举报 |
-| audit_log | 审核日志表 | 管理员操作审计 |
-| notice | 公告表 | 系统公告 |
+| 表名          | 中文名     | 说明             |
+| ------------- | ---------- | ---------------- |
+| app_user      | 用户表     | 买家/卖家/管理员 |
+| student_auth  | 学生认证表 | 实名认证信息     |
+| category      | 商品分类表 | 支持多级分类     |
+| goods         | 商品表     | 核心商品信息     |
+| goods_image   | 商品图片表 | 多图片支持       |
+| favorite      | 收藏表     | 用户收藏商品     |
+| bargain_offer | 议价表     | 议价记录         |
+| trade_order   | 订单表     | 交易订单         |
+| appointment   | 面交预约表 | 线下见面安排     |
+| chat_session  | 会话表     | 私聊会话         |
+| chat_message  | 消息表     | 聊天内容         |
+| review        | 评价表     | 交易互评         |
+| report        | 举报表     | 统一举报         |
+| audit_log     | 审核日志表 | 管理员操作审计   |
+| notice        | 公告表     | 系统公告         |
 
 ## 三范式设计说明
 
