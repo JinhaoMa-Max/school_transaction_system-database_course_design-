@@ -1,0 +1,6 @@
+@CampusTrade.Backend_HostAddress = http://localhost:5169
+
+GET {{CampusTrade.Backend_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
