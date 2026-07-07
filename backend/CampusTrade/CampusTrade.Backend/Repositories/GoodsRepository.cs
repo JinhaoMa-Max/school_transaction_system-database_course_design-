@@ -1,341 +1,224 @@
-using System;
 using System.Collections.Generic;
-using System.Data;
-using System.Text;
 using System.Threading.Tasks;
-using CampusSecondHand.Api.Database;
-using CampusSecondHand.Api.Models.Entities;
-using CampusSecondHand.Api.Repositories.Interfaces;
-using Oracle.ManagedDataAccess.Client;
+using CampusTrade.Backend.Models.Entities;
 
-namespace CampusSecondHand.Api.Repositories;
+namespace CampusTrade.Backend.Repositories.Interfaces;
 
-public class GoodsRepository : IGoodsRepository
+/// <summary>
+/// 商品数据仓储接口
+/// 负责所有商品相关表的数据库访问操作（goods + goods_image）
+/// 实现类应使用 Dapper + Oracle
+/// </summary>
+public interface IGoodsRepository
 {
-    private readonly IOracleConnectionFactory _connectionFactory;
+    // ============================================================
+    //  商品主表（goods）操作
+    // ============================================================
 
-    public GoodsRepository(IOracleConnectionFactory connectionFactory)
-    {
-        _connectionFactory = connectionFactory;
-    }
+    /// <summary>
+    /// 根据商品 ID 获取商品完整信息（不含图片列表）
+    /// </summary>
+    /// <param name="id">商品 ID（主键）</param>
+    /// <returns>
+    /// 商品实体 <see cref="Goods"/>，如果不存在则返回 null
+    /// </returns>
+    /// <remarks>
+    /// 仅查询 goods 表，不关联 goods_image。
+    /// 图片列表请调用 <see cref="GetImagesByGoodsIdAsync"/> 单独获取。
+    /// </remarks>
+    Task<Goods?> GetByIdAsync(int id);
 
-    public async Task<Goods?> GetByIdAsync(int id)
-    {
-        const string sql = """
-            SELECT goods_id, seller_id, category_id, title, description, price, condition, goods_status, view_count, created_at, updated_at
-            FROM goods
-            WHERE goods_id = :id
-            """;
+    /// <summary>
+    /// 多条件搜索商品列表（仅返回已审核通过的商品）
+    /// </summary>
+    /// <param name="keyword">搜索关键词，匹配标题和描述（模糊匹配），可为 null 或空</param>
+    /// <param name="categoryId">分类 ID，精确匹配，可为 null</param>
+    /// <param name="minPrice">最低价格，可为 null</param>
+    /// <param name="maxPrice">最高价格，可为 null</param>
+    /// <param name="condition">成色（如 全新、几乎全新、轻微使用、明显痕迹），精确匹配，可为 null</param>
+    /// <param name="sortBy">排序字段：price / view_count / created_at，默认 created_at</param>
+    /// <param name="ascending">true 为升序，false 为降序（默认降序，即最新优先）</param>
+    /// <param name="page">页码，从 1 开始</param>
+    /// <param name="pageSize">每页记录数</param>
+    /// <returns>符合条件的商品列表（不含图片）</returns>
+    /// <remarks>
+    /// 业务约束：
+    /// - 只查询 goods_status = 'approved' 的商品（前台可见）
+    /// - 关键词匹配 LOWER(title) 或 LOWER(description) 包含 LOWER(keyword)
+    /// - 价格区间包含边界值（price BETWEEN minPrice AND maxPrice）
+    /// - 排序字段非法时回退到 created_at
+    /// - 使用 OFFSET / FETCH 实现分页
+    /// </remarks>
+    Task<List<Goods>> SearchAsync(
+        string? keyword,
+        int? categoryId,
+        decimal? minPrice,
+        decimal? maxPrice,
+        string? condition,
+        string? sortBy,
+        bool ascending,
+        int page,
+        int pageSize
+    );
 
-        await using var connection = await _connectionFactory.CreateOpenConnectionAsync();
-        await using var command = CreateCommand(connection, sql);
-        command.Parameters.Add(CreateIntParameter("id", id));
+    /// <summary>
+    /// 统计满足搜索条件的商品总数（用于分页）
+    /// </summary>
+    /// <param name="keyword">同 <see cref="SearchAsync"/></param>
+    /// <param name="categoryId">同 <see cref="SearchAsync"/></param>
+    /// <param name="minPrice">同 <see cref="SearchAsync"/></param>
+    /// <param name="maxPrice">同 <see cref="SearchAsync"/></param>
+    /// <param name="condition">同 <see cref="SearchAsync"/></param>
+    /// <returns>符合条件的记录总数</returns>
+    /// <remarks>
+    /// 查询条件必须与 <see cref="SearchAsync"/> 保持一致，
+    /// 保证前端分页数据准确。
+    /// </remarks>
+    Task<int> CountSearchAsync(
+        string? keyword,
+        int? categoryId,
+        decimal? minPrice,
+        decimal? maxPrice,
+        string? condition
+    );
 
-        await using var reader = await command.ExecuteReaderAsync();
-        if (await reader.ReadAsync())
-        {
-            var goods = MapGoods(reader);
-            goods.Images = await GetImagesByGoodsIdAsync(goods.GoodsId);
-            return goods;
-        }
-        return null;
-    }
+    /// <summary>
+    /// 创建新商品（插入 goods 表）
+    /// </summary>
+    /// <param name="goods">商品实体对象（应包含除 goods_id 外的所有字段）</param>
+    /// <returns>新生成的自增商品 ID（goods_id）</returns>
+    /// <remarks>
+    /// - 使用 RETURNING goods_id INTO :new_id 获取插入后的 ID
+    /// - created_at 和 updated_at 应由数据库自动填充 SYSDATE
+    /// - 调用前需确保 <see cref="Goods.SellerId"/> 和 <see cref="Goods.CategoryId"/> 有效
+    /// - 状态默认由 Service 层设置（通常为 'pending'）
+    /// </remarks>
+    Task<int> CreateAsync(Goods goods);
 
-    public async Task<List<Goods>> SearchAsync(string? keyword, int? categoryId, decimal? minPrice, decimal? maxPrice, string? condition, string? sortBy, bool ascending, int page, int pageSize)
-    {
-        var sqlBuilder = new StringBuilder("""
-            SELECT goods_id, seller_id, category_id, title, description, price, condition, goods_status, view_count, created_at, updated_at
-            FROM goods
-            WHERE goods_status = 'approved'
-            """);
+    /// <summary>
+    /// 更新商品基本信息（不包含状态和浏览量）
+    /// </summary>
+    /// <param name="goods">包含更新数据的商品实体（必须设置 GoodsId）</param>
+    /// <returns>true 表示更新成功（影响行数 > 0），false 表示商品不存在或未发生变更</returns>
+    /// <remarks>
+    /// 更新字段：
+    /// - category_id, title, description, price, condition
+    /// - updated_at 自动更新为 SYSDATE
+    /// 不更新字段：
+    /// - seller_id（卖家不可变更）
+    /// - goods_status（由专门方法 <see cref="UpdateStatusAsync"/> 管理）
+    /// - view_count（由 <see cref="IncrementViewCountAsync"/> 管理）
+    /// - created_at（不变）
+    /// </remarks>
+    Task<bool> UpdateAsync(Goods goods);
 
-        var parameters = new List<OracleParameter>();
+    /// <summary>
+    /// 物理删除商品（硬删除，从 goods 表中移除记录）
+    /// </summary>
+    /// <param name="id">商品 ID</param>
+    /// <returns>true 表示删除成功（影响行数 > 0）</returns>
+    /// <remarks>
+    /// ⚠️ 警告：此操作不可恢复！
+    /// 业务层应确保：
+    /// - 商品状态为 'offline' 或 'rejected' 时才允许删除
+    /// - 确认无关联的有效订单
+    /// - 删除前应先调用 <see cref="DeleteImagesByGoodsIdAsync"/> 清理图片
+    /// </remarks>
+    Task<bool> DeleteAsync(int id);
 
-        if (!string.IsNullOrWhiteSpace(keyword))
-        {
-            sqlBuilder.Append(" AND (LOWER(title) LIKE LOWER(:keyword) OR LOWER(description) LIKE LOWER(:keyword))");
-            parameters.Add(CreateStringParameter("keyword", $"%{keyword}%", 400));
-        }
+    /// <summary>
+    /// 更新商品状态（状态流转管理）
+    /// </summary>
+    /// <param name="goodsId">商品 ID</param>
+    /// <param name="status">新状态，取值范围见 <see cref="Goods.GoodsStatus"/></param>
+    /// <returns>true 表示更新成功（影响行数 > 0）</returns>
+    /// <remarks>
+    /// 状态流转规则（由 Service 层校验）：
+    /// - pending → approved / rejected
+    /// - approved → locked / offline
+    /// - locked → approved / sold
+    /// - offline / rejected → pending（重新提交审核）
+    /// - sold 为终态，不可变更
+    /// 方法本身不校验合法性，仅执行 UPDATE。
+    /// </remarks>
+    Task<bool> UpdateStatusAsync(int goodsId, string status);
 
-        if (categoryId.HasValue)
-        {
-            sqlBuilder.Append(" AND category_id = :category_id");
-            parameters.Add(CreateIntParameter("category_id", categoryId.Value));
-        }
+    /// <summary>
+    /// 检查商品是否存在
+    /// </summary>
+    /// <param name="id">商品 ID</param>
+    /// <returns>true 表示存在，false 表示不存在</returns>
+    /// <remarks>
+    /// 用于 Service 层的快速校验，不区分商品状态。
+    /// </remarks>
+    Task<bool> ExistsAsync(int id);
 
-        if (minPrice.HasValue)
-        {
-            sqlBuilder.Append(" AND price >= :min_price");
-            parameters.Add(CreateDecimalParameter("min_price", minPrice.Value));
-        }
+    /// <summary>
+    /// 增加商品浏览次数（原子操作）
+    /// </summary>
+    /// <param name="goodsId">商品 ID</param>
+    /// <returns>true 表示更新成功（影响行数 > 0）</returns>
+    /// <remarks>
+    /// UPDATE goods SET view_count = view_count + 1 WHERE goods_id = :id
+    /// 无需检查商品是否存在，由调用方保证。
+    /// </remarks>
+    Task<bool> IncrementViewCountAsync(int goodsId);
 
-        if (maxPrice.HasValue)
-        {
-            sqlBuilder.Append(" AND price <= :max_price");
-            parameters.Add(CreateDecimalParameter("max_price", maxPrice.Value));
-        }
+    // ============================================================
+    //  商品图片表（goods_image）操作
+    // ============================================================
 
-        if (!string.IsNullOrWhiteSpace(condition))
-        {
-            sqlBuilder.Append(" AND condition = :condition");
-            parameters.Add(CreateStringParameter("condition", condition, 20));
-        }
+    /// <summary>
+    /// 获取商品的所有图片列表
+    /// </summary>
+    /// <param name="goodsId">商品 ID</param>
+    /// <returns>图片列表（按 sort_order 升序排列），若无图片则返回空集合</returns>
+    /// <remarks>
+    /// 仅查询 goods_image 表，不校验商品是否存在。
+    /// </remarks>
+    Task<List<GoodsImage>> GetImagesByGoodsIdAsync(int goodsId);
 
-        var sortColumn = sortBy?.ToLower() switch
-        {
-            "price" => "price",
-            "view_count" => "view_count",
-            _ => "created_at"
-        };
-        var sortDirection = ascending ? "ASC" : "DESC";
-        sqlBuilder.Append($" ORDER BY {sortColumn} {sortDirection}");
+    /// <summary>
+    /// 添加一张商品图片
+    /// </summary>
+    /// <param name="image">图片实体（必须设置 GoodsId、ImageUrl、SortOrder）</param>
+    /// <returns>无返回值，插入失败直接抛出异常</returns>
+    /// <remarks>
+    /// - image_id 使用自增列，无需手动赋值
+    /// - created_at 自动填充 SYSDATE
+    /// - 若 GoodsId 无效，会触发外键约束错误（业务层应提前校验商品存在）
+    /// </remarks>
+    Task AddImageAsync(GoodsImage image);
 
-        var offset = (page - 1) * pageSize;
-        sqlBuilder.Append($" OFFSET :offset ROWS FETCH NEXT :page_size ROWS ONLY");
-        parameters.Add(CreateIntParameter("offset", offset));
-        parameters.Add(CreateIntParameter("page_size", pageSize));
+    /// <summary>
+    /// 删除商品的所有图片（用于编辑时批量替换）
+    /// </summary>
+    /// <param name="goodsId">商品 ID</param>
+    /// <remarks>
+    /// 执行 DELETE FROM goods_image WHERE goods_id = :goodsId
+    /// 若商品无图片，执行成功但影响行数为 0。
+    /// 通常配合 <see cref="AddImageAsync"/> 批量更新使用。
+    /// </remarks>
+    Task DeleteImagesByGoodsIdAsync(int goodsId);
 
-        var goodsList = new List<Goods>();
-        await using var connection = await _connectionFactory.CreateOpenConnectionAsync();
-        await using var command = CreateCommand(connection, sqlBuilder.ToString());
-        command.Parameters.AddRange(parameters.ToArray());
+    /// <summary>
+    /// 根据图片 ID 获取单张图片信息
+    /// </summary>
+    /// <param name="imageId">图片 ID（主键）</param>
+    /// <returns>图片实体，不存在则返回 null</returns>
+    /// <remarks>
+    /// 用于删除单张图片前校验图片是否存在。
+    /// </remarks>
+    Task<GoodsImage?> GetImageByIdAsync(int imageId);
 
-        await using var reader = await command.ExecuteReaderAsync();
-        while (await reader.ReadAsync())
-        {
-            goodsList.Add(MapGoods(reader));
-        }
-        return goodsList;
-    }
-
-    public async Task<int> CountSearchAsync(string? keyword, int? categoryId, decimal? minPrice, decimal? maxPrice, string? condition)
-    {
-        var sqlBuilder = new StringBuilder("""
-            SELECT COUNT(1)
-            FROM goods
-            WHERE goods_status = 'approved'
-            """);
-
-        var parameters = new List<OracleParameter>();
-
-        if (!string.IsNullOrWhiteSpace(keyword))
-        {
-            sqlBuilder.Append(" AND (LOWER(title) LIKE LOWER(:keyword) OR LOWER(description) LIKE LOWER(:keyword))");
-            parameters.Add(CreateStringParameter("keyword", $"%{keyword}%", 400));
-        }
-
-        if (categoryId.HasValue)
-        {
-            sqlBuilder.Append(" AND category_id = :category_id");
-            parameters.Add(CreateIntParameter("category_id", categoryId.Value));
-        }
-
-        if (minPrice.HasValue)
-        {
-            sqlBuilder.Append(" AND price >= :min_price");
-            parameters.Add(CreateDecimalParameter("min_price", minPrice.Value));
-        }
-
-        if (maxPrice.HasValue)
-        {
-            sqlBuilder.Append(" AND price <= :max_price");
-            parameters.Add(CreateDecimalParameter("max_price", maxPrice.Value));
-        }
-
-        if (!string.IsNullOrWhiteSpace(condition))
-        {
-            sqlBuilder.Append(" AND condition = :condition");
-            parameters.Add(CreateStringParameter("condition", condition, 20));
-        }
-
-        await using var connection = await _connectionFactory.CreateOpenConnectionAsync();
-        await using var command = CreateCommand(connection, sqlBuilder.ToString());
-        command.Parameters.AddRange(parameters.ToArray());
-
-        var result = await command.ExecuteScalarAsync();
-        return Convert.ToInt32(result);
-    }
-
-    public async Task<int> CreateAsync(Goods goods)
-    {
-        const string sql = """
-            INSERT INTO goods (seller_id, category_id, title, description, price, condition, goods_status, view_count, created_at, updated_at)
-            VALUES (:seller_id, :category_id, :title, :description, :price, :condition, :goods_status, :view_count, SYSDATE, SYSDATE)
-            RETURNING goods_id INTO :new_id
-            """;
-
-        await using var connection = await _connectionFactory.CreateOpenConnectionAsync();
-        await using var command = CreateCommand(connection, sql);
-
-        command.Parameters.Add(CreateIntParameter("seller_id", goods.SellerId));
-        command.Parameters.Add(CreateIntParameter("category_id", goods.CategoryId));
-        command.Parameters.Add(CreateStringParameter("title", goods.Title, 200));
-        command.Parameters.Add(CreateStringParameter("description", goods.Description ?? string.Empty, 4000));
-        command.Parameters.Add(CreateDecimalParameter("price", goods.Price));
-        command.Parameters.Add(CreateStringParameter("condition", goods.Condition, 20));
-        command.Parameters.Add(CreateStringParameter("goods_status", goods.GoodsStatus, 20));
-        command.Parameters.Add(CreateIntParameter("view_count", 0));
-
-        var newIdParam = new OracleParameter("new_id", OracleDbType.Int32)
-        {
-            Direction = ParameterDirection.Output
-        };
-        command.Parameters.Add(newIdParam);
-
-        await command.ExecuteNonQueryAsync();
-        return Convert.ToInt32(newIdParam.Value?.ToString());
-    }
-
-    public async Task<bool> UpdateAsync(Goods goods)
-    {
-        const string sql = """
-            UPDATE goods
-            SET category_id = :category_id,
-                title = :title,
-                description = :description,
-                price = :price,
-                condition = :condition,
-                updated_at = SYSDATE
-            WHERE goods_id = :goods_id
-            """;
-
-        await using var connection = await _connectionFactory.CreateOpenConnectionAsync();
-        await using var command = CreateCommand(connection, sql);
-
-        command.Parameters.Add(CreateIntParameter("category_id", goods.CategoryId));
-        command.Parameters.Add(CreateStringParameter("title", goods.Title, 200));
-        command.Parameters.Add(CreateStringParameter("description", goods.Description ?? string.Empty, 4000));
-        command.Parameters.Add(CreateDecimalParameter("price", goods.Price));
-        command.Parameters.Add(CreateStringParameter("condition", goods.Condition, 20));
-        command.Parameters.Add(CreateIntParameter("goods_id", goods.GoodsId));
-
-        var rows = await command.ExecuteNonQueryAsync();
-        return rows > 0;
-    }
-
-    public async Task<bool> DeleteAsync(int id)
-    {
-        const string sql = "DELETE FROM goods WHERE goods_id = :id";
-        await using var connection = await _connectionFactory.CreateOpenConnectionAsync();
-        await using var command = CreateCommand(connection, sql);
-        command.Parameters.Add(CreateIntParameter("id", id));
-
-        var rows = await command.ExecuteNonQueryAsync();
-        return rows > 0;
-    }
-
-    public async Task<bool> UpdateStatusAsync(int goodsId, string status)
-    {
-        const string sql = """
-            UPDATE goods
-            SET goods_status = :status,
-                updated_at = SYSDATE
-            WHERE goods_id = :goods_id
-            """;
-
-        await using var connection = await _connectionFactory.CreateOpenConnectionAsync();
-        await using var command = CreateCommand(connection, sql);
-        command.Parameters.Add(CreateStringParameter("status", status, 20));
-        command.Parameters.Add(CreateIntParameter("goods_id", goodsId));
-
-        var rows = await command.ExecuteNonQueryAsync();
-        return rows > 0;
-    }
-
-    public async Task<List<GoodsImage>> GetImagesByGoodsIdAsync(int goodsId)
-    {
-        const string sql = """
-            SELECT image_id, goods_id, image_url, sort_order, created_at
-            FROM goods_image
-            WHERE goods_id = :goods_id
-            ORDER BY sort_order
-            """;
-
-        var images = new List<GoodsImage>();
-        await using var connection = await _connectionFactory.CreateOpenConnectionAsync();
-        await using var command = CreateCommand(connection, sql);
-        command.Parameters.Add(CreateIntParameter("goods_id", goodsId));
-
-        await using var reader = await command.ExecuteReaderAsync();
-        while (await reader.ReadAsync())
-        {
-            images.Add(new GoodsImage
-            {
-                ImageId = Convert.ToInt32(reader["image_id"]),
-                GoodsId = Convert.ToInt32(reader["goods_id"]),
-                ImageUrl = Convert.ToString(reader["image_url"]) ?? string.Empty,
-                SortOrder = Convert.ToInt32(reader["sort_order"]),
-                CreatedAt = Convert.ToDateTime(reader["created_at"])
-            });
-        }
-        return images;
-    }
-
-    public async Task AddImageAsync(GoodsImage image)
-    {
-        const string sql = """
-            INSERT INTO goods_image (goods_id, image_url, sort_order, created_at)
-            VALUES (:goods_id, :image_url, :sort_order, SYSDATE)
-            """;
-
-        await using var connection = await _connectionFactory.CreateOpenConnectionAsync();
-        await using var command = CreateCommand(connection, sql);
-        command.Parameters.Add(CreateIntParameter("goods_id", image.GoodsId));
-        command.Parameters.Add(CreateStringParameter("image_url", image.ImageUrl, 255));
-        command.Parameters.Add(CreateIntParameter("sort_order", image.SortOrder));
-
-        await command.ExecuteNonQueryAsync();
-    }
-
-    public async Task DeleteImagesByGoodsIdAsync(int goodsId)
-    {
-        const string sql = "DELETE FROM goods_image WHERE goods_id = :goods_id";
-        await using var connection = await _connectionFactory.CreateOpenConnectionAsync();
-        await using var command = CreateCommand(connection, sql);
-        command.Parameters.Add(CreateIntParameter("goods_id", goodsId));
-        await command.ExecuteNonQueryAsync();
-    }
-
-    public async Task<bool> ExistsAsync(int id)
-    {
-        const string sql = "SELECT COUNT(1) FROM goods WHERE goods_id = :id";
-        await using var connection = await _connectionFactory.CreateOpenConnectionAsync();
-        await using var command = CreateCommand(connection, sql);
-        command.Parameters.Add(CreateIntParameter("id", id));
-        var result = await command.ExecuteScalarAsync();
-        return Convert.ToInt32(result) > 0;
-    }
-
-    // ---- Helper Methods ----
-    private static OracleCommand CreateCommand(OracleConnection connection, string sql)
-    {
-        return new OracleCommand(sql, connection) { BindByName = true };
-    }
-
-    private static OracleParameter CreateIntParameter(string name, int value) =>
-        new(name, OracleDbType.Int32) { Value = value };
-
-    private static OracleParameter CreateDecimalParameter(string name, decimal value) =>
-        new(name, OracleDbType.Decimal) { Value = value };
-
-    private static OracleParameter CreateStringParameter(string name, string value, int size) =>
-        new(name, OracleDbType.Varchar2, size) { Value = value };
-
-    private static Goods MapGoods(IDataRecord record)
-    {
-        return new Goods
-        {
-            GoodsId = Convert.ToInt32(record["goods_id"]),
-            SellerId = Convert.ToInt32(record["seller_id"]),
-            CategoryId = Convert.ToInt32(record["category_id"]),
-            Title = Convert.ToString(record["title"]) ?? string.Empty,
-            Description = Convert.ToString(record["description"]),
-            Price = Convert.ToDecimal(record["price"]),
-            Condition = Convert.ToString(record["condition"]) ?? string.Empty,
-            GoodsStatus = Convert.ToString(record["goods_status"]) ?? "pending",
-            ViewCount = Convert.ToInt32(record["view_count"]),
-            CreatedAt = Convert.ToDateTime(record["created_at"]),
-            UpdatedAt = Convert.ToDateTime(record["updated_at"])
-        };
-    }
+    /// <summary>
+    /// 删除单张图片（通过图片 ID）
+    /// </summary>
+    /// <param name="imageId">图片 ID</param>
+    /// <returns>true 表示删除成功（影响行数 > 0）</returns>
+    /// <remarks>
+    /// 业务层调用前应通过 <see cref="GetImageByIdAsync"/> 校验图片存在，
+    /// 并确认操作者有权删除（商品卖家）。
+    /// </remarks>
+    Task<bool> DeleteImageAsync(int imageId);
 }
