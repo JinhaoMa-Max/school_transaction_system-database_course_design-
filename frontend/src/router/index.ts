@@ -157,10 +157,17 @@ const router = createRouter({
 
 router.beforeEach(async (to, _from, next) => {
   const userStore = useUserStore()
+
+    // 新增：已登录用户访问登录/注册页 → 跳首页
+  if (userStore.isLoggedIn && (to.path === '/login' || to.path === '/register')) {
+    next('/')
+    return
+  }
+
   const requiresAuth = to.meta.requiresAuth
 
   if (requiresAuth && !userStore.isLoggedIn) {
-    next('/login')
+     next(`/login?redirect=${encodeURIComponent(to.fullPath)}`)
     return
   }
 
