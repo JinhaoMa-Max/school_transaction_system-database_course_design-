@@ -9,7 +9,7 @@ const goods = ref<Goods[]>([])
 
 onMounted(async () => {
   const res = await getGoodsList()
-  goods.value = res.data.list
+  goods.value = res.data.data.list
 })
 
 const goToDetail = (id: number) => {
