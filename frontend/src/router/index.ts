@@ -191,12 +191,18 @@ const router = createRouter({
 router.beforeEach(async (to, _from, next) => {
   // 获取用户状态管理store实例
   const userStore = useUserStore()
-  // 获取目标路由是否需要认证
+
+    // 新增：已登录用户访问登录/注册页 → 跳首页
+  if (userStore.isLoggedIn && (to.path === '/login' || to.path === '/register')) {
+    next('/')
+    return
+  }
+
   const requiresAuth = to.meta.requiresAuth
 
   // 如果目标路由需要认证但用户未登录，重定向到登录页
   if (requiresAuth && !userStore.isLoggedIn) {
-    next('/login')
+     next(`/login?redirect=${encodeURIComponent(to.fullPath)}`)
     return
   }
 
