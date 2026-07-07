@@ -13,6 +13,9 @@ builder.Services.AddSingleton<IDbConnectionFactory, OracleConnectionFactory>();
 
 builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
 builder.Services.AddScoped<ICategoryService, CategoryService>();
+// 登记你的用户仓储和登录服务
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IAuthService, AuthService>();
 
 builder.Services.AddScoped<IGoodsRepository, GoodsRepository>();
 builder.Services.AddScoped<IGoodsService, GoodsService>();
