@@ -1,5 +1,10 @@
+// 导入所有需要的类型定义
 import type { User, Goods, Category, TradeOrder, BargainOffer, ChatSession, ChatMessage, Review, Report, Notice, AuditLog, StudentAuth, Appointment, Favorite, GoodsImage } from '@/types'
 
+/**
+ * 模拟用户数据
+ * 包含管理员、卖家、买家三种角色的示例用户
+ */
 export const mockUsers: User[] = [
   {
     userId: 1,
@@ -42,6 +47,10 @@ export const mockUsers: User[] = [
   }
 ]
 
+/**
+ * 模拟分类数据
+ * 包含顶级分类和子分类（如数码产品下的手机、电脑）
+ */
 export const mockCategories: Category[] = [
   { categoryId: 1, categoryName: '数码产品', parentId: null, sortOrder: 1 },
   { categoryId: 2, categoryName: '书籍文具', parentId: null, sortOrder: 2 },
@@ -51,6 +60,10 @@ export const mockCategories: Category[] = [
   { categoryId: 6, categoryName: '电脑', parentId: 1, sortOrder: 2 }
 ]
 
+/**
+ * 模拟商品数据
+ * 包含不同状态的商品示例（已审核通过、待审核）
+ */
 export const mockGoods: Goods[] = [
   {
     goodsId: 1,
@@ -90,17 +103,26 @@ export const mockGoods: Goods[] = [
   }
 ]
 
+/**
+ * 模拟商品图片数据
+ */
 export const mockGoodsImages: GoodsImage[] = [
   { imageId: 1, goodsId: 1, imageUrl: 'https://via.placeholder.com/400', sortOrder: 1 },
   { imageId: 2, goodsId: 2, imageUrl: 'https://via.placeholder.com/400', sortOrder: 1 },
   { imageId: 3, goodsId: 3, imageUrl: 'https://via.placeholder.com/400', sortOrder: 1 }
 ]
 
+/**
+ * 模拟收藏数据
+ */
 export const mockFavorites: Favorite[] = [
   { favoriteId: 1, userId: 3, goodsId: 1, favoriteTime: '2024-01-11 10:00:00' },
   { favoriteId: 2, userId: 3, goodsId: 2, favoriteTime: '2024-01-12 14:00:00' }
 ]
 
+/**
+ * 模拟议价数据
+ */
 export const mockBargains: BargainOffer[] = [
   {
     bargainId: 1,
@@ -114,6 +136,9 @@ export const mockBargains: BargainOffer[] = [
   }
 ]
 
+/**
+ * 模拟订单数据
+ */
 export const mockOrders: TradeOrder[] = [
   {
     orderId: 1,
@@ -126,6 +151,9 @@ export const mockOrders: TradeOrder[] = [
   }
 ]
 
+/**
+ * 模拟预约数据
+ */
 export const mockAppointments: Appointment[] = [
   {
     appointmentId: 1,
@@ -138,20 +166,35 @@ export const mockAppointments: Appointment[] = [
   }
 ]
 
+/**
+ * 模拟聊天会话数据
+ */
 export const mockChatSessions: ChatSession[] = [
   { sessionId: 1, goodsId: 1, buyerId: 3, sellerId: 2, createTime: '2024-01-11 10:00:00' }
 ]
 
+/**
+ * 模拟聊天消息数据
+ */
 export const mockChatMessages: ChatMessage[] = [
   { messageId: 1, sessionId: 1, senderId: 3, content: '你好，这个手机最低多少钱？', readStatus: 1, sendTime: '2024-01-11 10:00:00' },
   { messageId: 2, sessionId: 1, senderId: 2, content: '最低5500元', readStatus: 1, sendTime: '2024-01-11 10:05:00' },
   { messageId: 3, sessionId: 1, senderId: 3, content: '可以便宜一点吗？', readStatus: 1, sendTime: '2024-01-11 10:10:00' }
 ]
 
+/**
+ * 模拟评价数据（空数组）
+ */
 export const mockReviews: Review[] = []
 
+/**
+ * 模拟举报数据（空数组）
+ */
 export const mockReports: Report[] = []
 
+/**
+ * 模拟审计日志数据
+ */
 export const mockAuditLogs: AuditLog[] = [
   {
     logId: 1,
@@ -165,6 +208,9 @@ export const mockAuditLogs: AuditLog[] = [
   }
 ]
 
+/**
+ * 模拟通知数据
+ */
 export const mockNotices: Notice[] = [
   {
     noticeId: 1,
@@ -176,6 +222,9 @@ export const mockNotices: Notice[] = [
   }
 ]
 
+/**
+ * 模拟学生认证数据
+ */
 export const mockStudentAuths: StudentAuth[] = [
   {
     authId: 1,
@@ -188,10 +237,24 @@ export const mockStudentAuths: StudentAuth[] = [
   }
 ]
 
+/**
+ * 生成模拟API响应对象
+ * @param data 响应数据
+ * @param code 响应码（默认200）
+ * @param message 响应消息（默认success）
+ * @returns API响应对象
+ */
 export const getMockResponse = <T>(data: T, code = 200, message = 'success') => {
   return { code, message, data }
 }
 
+/**
+ * 生成模拟分页响应对象
+ * @param list 数据列表
+ * @param page 当前页码（默认1）
+ * @param size 每页数量（默认10）
+ * @returns API分页响应对象
+ */
 export const getMockPageResult = <T>(list: T[], page = 1, size = 10) => {
   return getMockResponse({
     list,
