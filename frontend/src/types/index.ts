@@ -1,7 +1,3 @@
-/**
- * 用户信息接口
- * 定义用户的基本信息和状态
- */
 export interface User {
   userId: number
   username: string
@@ -16,10 +12,6 @@ export interface User {
   registerTime: string
 }
 
-/**
- * 学生认证信息接口
- * 定义用户的学生认证相关信息
- */
 export interface StudentAuth {
   authId: number
   userId: number
@@ -30,10 +22,6 @@ export interface StudentAuth {
   authTime: string
 }
 
-/**
- * 商品分类接口
- * 定义商品分类的层级结构
- */
 export interface Category {
   categoryId: number
   categoryName: string
@@ -42,10 +30,6 @@ export interface Category {
   children?: Category[]
 }
 
-/**
- * 商品信息接口
- * 定义商品的基本信息和状态
- */
 export interface Goods {
   goodsId: number
   sellerId: number
@@ -61,10 +45,6 @@ export interface Goods {
   sellerNickname?: string
 }
 
-/**
- * 商品图片接口
- * 定义商品图片的信息
- */
 export interface GoodsImage {
   imageId: number
   goodsId: number
@@ -72,10 +52,6 @@ export interface GoodsImage {
   sortOrder: number
 }
 
-/**
- * 收藏记录接口
- * 定义用户收藏商品的记录
- */
 export interface Favorite {
   favoriteId: number
   userId: number
@@ -83,10 +59,6 @@ export interface Favorite {
   favoriteTime: string
 }
 
-/**
- * 议价申请接口
- * 定义用户议价的相关信息
- */
 export interface BargainOffer {
   bargainId: number
   goodsId: number
@@ -98,10 +70,6 @@ export interface BargainOffer {
   createTime: string
 }
 
-/**
- * 交易订单接口
- * 定义订单的基本信息和状态
- */
 export interface TradeOrder {
   orderId: number
   goodsId: number
@@ -112,10 +80,6 @@ export interface TradeOrder {
   createTime: string
 }
 
-/**
- * 面交预约接口
- * 定义订单面交预约的相关信息
- */
 export interface Appointment {
   appointmentId: number
   orderId: number
@@ -126,10 +90,6 @@ export interface Appointment {
   createTime: string
 }
 
-/**
- * 聊天会话接口
- * 定义聊天会话的基本信息
- */
 export interface ChatSession {
   sessionId: number
   goodsId: number
@@ -138,10 +98,6 @@ export interface ChatSession {
   createTime: string
 }
 
-/**
- * 聊天消息接口
- * 定义聊天消息的内容和状态
- */
 export interface ChatMessage {
   messageId: number
   sessionId: number
@@ -151,10 +107,6 @@ export interface ChatMessage {
   sendTime: string
 }
 
-/**
- * 评价接口
- * 定义用户对订单的评价信息
- */
 export interface Review {
   reviewId: number
   orderId: number
@@ -165,10 +117,6 @@ export interface Review {
   reviewTime: string
 }
 
-/**
- * 举报接口
- * 定义用户举报的相关信息
- */
 export interface Report {
   reportId: number
   reporterId: number
@@ -181,10 +129,6 @@ export interface Report {
   reportTime: string
 }
 
-/**
- * 审计日志接口
- * 定义管理员操作的审计记录
- */
 export interface AuditLog {
   logId: number
   adminId: number
@@ -196,10 +140,6 @@ export interface AuditLog {
   handleTime: string
 }
 
-/**
- * 通知接口
- * 定义系统通知的相关信息
- */
 export interface Notice {
   noticeId: number
   title: string
@@ -209,29 +149,28 @@ export interface Notice {
   publishTime: string
 }
 
-/**
- * 登录参数接口
- * 定义用户登录时需要的参数
- */
 export interface LoginParams {
-  username: string
+  //修改：把username改为account，方便登录时使用学号或账号名登录
+  account: string
   password: string
 }
 
-/**
- * 登录结果接口
- * 定义用户登录成功后返回的信息
- */
+//新增：增加了一个接口，用于注册时把学号也搞进去
+export interface RegisterParams {
+  username: string
+  password: string
+  studentId: string
+  nickname: string
+  phone: string
+  email: string
+}
+
+
 export interface LoginResult {
   token: string
   user: User
 }
 
-/**
- * 分页结果接口
- * 定义分页查询返回的通用结构
- * @template T 数据列表的类型
- */
 export interface PageResult<T> {
   list: T[]
   total: number
@@ -239,10 +178,6 @@ export interface PageResult<T> {
   size: number
 }
 
-/**
- * 商品查询参数接口
- * 定义商品列表查询时可用的筛选条件
- */
 export interface GoodsQuery {
   keyword?: string
   categoryId?: number
@@ -254,10 +189,6 @@ export interface GoodsQuery {
   size?: number
 }
 
-/**
- * 订单查询参数接口
- * 定义订单列表查询时可用的筛选条件
- */
 export interface OrderQuery {
   status?: string
   page?: number

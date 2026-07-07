@@ -10,6 +10,7 @@ const loading = ref(false)
 
 //用form对象表示各个值
 const form = reactive({
+  studentId: '',
   username: '',
   password: '',
   confirmPassword: '',
@@ -22,10 +23,19 @@ const form = reactive({
 //校验规则
 const rules = {
 
+studentId: [
+  { required: true, message: '请输入学号' },
+  { match: /^\d{6,20}$/, message: '学号应为6-20位数字' }
+],
+
   username: [
     { required: true, message: '请输入用户名(3-20个字符)' },
     { minLength: 3, message: '用户名长度不能小于3位' },
-    { maxLength: 20, message: '用户名长度不能大于20位' }
+    { maxLength: 20, message: '用户名长度不能大于20位' },
+    {
+      match: /^(?!\d+$)[A-Za-z0-9_]{3,20}$/,
+      message: '用户名可包含字母、数字和下划线，但不能为纯数字'
+    }
   ],
 
   password: [
@@ -55,7 +65,7 @@ confirmPassword: [
   ],
 
   email: [
-     { message: '请输入正确的邮箱格式' }
+     {message: '请输入正确的邮箱格式' }
   ],
 
   phone: [
@@ -74,17 +84,20 @@ const handleRegister = async () => {
   try {
         loading.value = true
         await register({
-          username: form.username,
+          studentId: form.studentId.trim(),
+          username: form.username.trim(),
           password: form.password,
-          nickname: form.nickname,
-          email: form.email,
-          phone: form.phone
+          nickname: form.nickname.trim(),
+          email: form.email.trim(),
+          phone: form.phone.trim()
         })  
       Message.success('注册成功！')
       router.push('/login')
  } catch (error: any) {
   const msg = error?.response?.data?.message || error?.message || ''
-  if (msg.includes('用户名') && msg.includes('已存在')) {
+  if (msg.includes('学号') && msg.includes('已存在')) {
+  Message.error('该学号已被绑定，请检查后重新填写')
+}else if (msg.includes('用户名') && msg.includes('已存在')) {
     Message.error('该用户名已被注册，请更换')
   } else if (msg.includes('网络') || msg.includes('timeout')) {
     Message.error('网络连接失败，请稍后重试')
@@ -116,6 +129,16 @@ const goToLogin = () => {
           :rules="rules"
           layout="vertical"   
         >
+
+        <!-- 学号 -->
+        <a-form-item field="studentId" label="学号">
+          <a-input
+            v-model="form.studentId"
+            placeholder="请输入学号"
+            allow-clear
+          />
+        </a-form-item>
+
          <!-- 用户名 -->
           <a-form-item  field="username"   label="用户名">
           <a-input v-model="form.username" 
