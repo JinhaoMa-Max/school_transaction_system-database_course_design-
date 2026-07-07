@@ -1,5 +1,5 @@
 import request from '@/utils/request'
-import type { LoginParams, LoginResult, User, StudentAuth } from '@/types'
+import type { LoginParams,RegisterParams, LoginResult, User, StudentAuth } from '@/types'
 
 export const login = (params: LoginParams) => {
   return request.post<LoginResult>('/auth/login', params)
@@ -13,7 +13,7 @@ export const getCurrentUser = () => {
   return request.get<User>('/auth/current')
 }
 
-export const register = (params: Partial<User>) => {
+export const register = (params: RegisterParams) => {
   return request.post<User>('/auth/register', params)
 }
 

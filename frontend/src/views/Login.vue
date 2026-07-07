@@ -1,31 +1,29 @@
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter,useRoute } from 'vue-router'
 import { useUserStore } from '@/stores'
 import{Message} from '@arco-design/web-vue'
-import { useRoute } from 'vue-router'
 
 const router = useRouter()
 const userStore = useUserStore()
 const route = useRoute()
 
-//用form对象表示username和password的值
+//用form对象表示account和password的值
 const form = reactive({
-  username: '',
+  account: '',
   password: ''
 })
 
 //组件：保持状态
-const rememberMe = ref(true)
+const rememberMe = ref(false)
 
 //校验规则
 const  formRef = ref()
 
 const rules = {
-  username: [
-      { required: true, message: '请输入用户名(3-20个字符)' },
-      { minLength: 3, message: '用户名长度不能小于3位' },
-      { maxLength: 20, message: '用户名长度不能大于20位' }
+  account: [
+      { required: true, message: '请输入账号(少于20个字符)' },
+      { maxLength: 20, message: '账号长度不能大于20位' }
   ],
   password: [
     { required: true, message: '请输入密码(6-20个字符)' },
@@ -44,14 +42,14 @@ const handleLogin = async () => {
   }
   loading.value = true
   try {
-   await userStore.login(form.username, form.password, rememberMe.value)
+   await userStore.login(form.account.trim(), form.password, rememberMe.value)
     Message.success('登录成功')
     const redirect = route.query.redirect as string
     router.push(redirect || '/')
   } catch (error: any) {
   const msg = error?.response?.data?.message || error?.message || ''
-  if (msg.includes('密码') || msg.includes('用户名') || msg.includes('账号')) {
-    Message.error('用户名或密码错误')
+  if (msg.includes('密码') || msg.includes('账户') || msg.includes('账号')) {
+    Message.error('账户或密码错误')
   } else if (msg.includes('网络') || msg.includes('timeout')) {
     Message.error('网络连接失败，请稍后重试')
   } else {
@@ -83,10 +81,10 @@ const goToRegister = () => {
            :rules="rules"
             layout="vertical"
         >
-         <!-- 用户名 -->
-          <a-form-item  field="username"   label="用户名">
-          <a-input v-model="form.username" 
-        placeholder="请输入用户名"
+         <!-- 账号 -->
+          <a-form-item  field="account"   label="用户名/学号">
+          <a-input v-model="form.account" 
+        placeholder="请输入用户名或学号"
         allow-clear 
         />
          </a-form-item>

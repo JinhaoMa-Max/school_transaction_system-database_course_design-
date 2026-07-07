@@ -17,8 +17,8 @@ const token = ref(
   const isBuyer = computed(() => user.value?.role === 'buyer')
 
   // 登录方法，增加了一个rememberMe参数
-const login = async (username: string, password: string, rememberMe = true) => {
-  const res = await loginApi({ username, password })
+const login = async (account: string, password: string, rememberMe = true) => {
+  const res = await loginApi({ account, password })
   token.value = res.data.token
   user.value = res.data.user
   const storage = rememberMe ? localStorage : sessionStorage
