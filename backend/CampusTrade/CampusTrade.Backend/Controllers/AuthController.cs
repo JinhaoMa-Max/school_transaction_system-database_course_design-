@@ -1,4 +1,4 @@
-using CampusTrade.Backend.Models; // 里面包含 ApiResponse 结构
+﻿using CampusTrade.Backend.Models;
 using CampusTrade.Backend.Models.DTOs;
 using CampusTrade.Backend.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -6,8 +6,6 @@ using Microsoft.AspNetCore.Mvc;
 namespace CampusTrade.Backend.Controllers;
 
 [ApiController]
-// 如果前端没有加 api 前缀，就写 [Route("auth")]；如果加了就写 [Route("api/auth")]
-// 结合之前的逻辑，我们采用最标准的 [Route("api/auth")]。如果前端报错404，可以去掉 "api/"
 [Route("api/auth")]
 public class AuthController : ControllerBase
 {
@@ -18,50 +16,155 @@ public class AuthController : ControllerBase
         _authService = authService;
     }
 
-    /// <summary>
-    /// POST /api/auth/login -> 用户登录接口
-    /// </summary>
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginRequestDto request)
     {
         try
         {
             var result = await _authService.LoginAsync(request);
-            if (result == null)
-            {
-                // 密码错误或用户不存在，返回 400 错误
-                return BadRequest(ApiResponse<object>.Error(400, "学号或密码错误"));
-            }
-
-            // 登录成功，包裹你们统一的 ApiResponse
-            return Ok(ApiResponse<AuthResponseDto>.Success(result));
+            return Ok(LoginHttpResponseDto.Success(result, "登录成功"));
         }
-        catch (Exception ex)
+        catch (AuthException ex)
         {
-            // 捕捉例如“账号被封禁”等业务异常
-            return BadRequest(ApiResponse<object>.Error(400, ex.Message));
+            return ToErrorResult(ex);
+        }
+        catch
+        {
+            return StatusCode(500, ApiResponse<object>.Fail(500, "服务器内部错误"));
         }
     }
 
-    /// <summary>
-    /// POST /api/auth/register -> 用户注册接口
-    /// </summary>
+    [HttpPost("logout")]
+    public IActionResult Logout()
+    {
+        return Ok(ApiResponse<object>.Success(new { success = true }, "退出登录成功"));
+    }
+
+    [HttpGet("current")]
+    public async Task<IActionResult> Current()
+    {
+        try
+        {
+            var user = await _authService.GetCurrentUserAsync(ReadBearerToken());
+            return Ok(UserHttpResponseDto.Success(user));
+        }
+        catch (AuthException ex)
+        {
+            return ToErrorResult(ex);
+        }
+        catch
+        {
+            return StatusCode(500, ApiResponse<object>.Fail(500, "服务器内部错误"));
+        }
+    }
+
     [HttpPost("register")]
     public async Task<IActionResult> Register([FromBody] RegisterRequestDto request)
     {
         try
         {
-            var isSuccess = await _authService.RegisterAsync(request);
-            if (!isSuccess)
+            var user = await _authService.RegisterAsync(request);
+            return Ok(UserHttpResponseDto.Success(user, "注册成功"));
+        }
+        catch (AuthException ex)
+        {
+            return ToErrorResult(ex);
+        }
+        catch
+        {
+            return StatusCode(500, ApiResponse<object>.Fail(500, "服务器内部错误"));
+        }
+    }
+
+    [HttpPost("student-auth")]
+    public async Task<IActionResult> SubmitStudentAuth([FromBody] StudentAuthRequestDto request)
+    {
+        try
+        {
+            var auth = await _authService.SubmitStudentAuthAsync(request, ResolveCurrentUserId());
+            return Ok(StudentAuthHttpResponseDto.Success(auth, "认证信息已提交"));
+        }
+        catch (AuthException ex)
+        {
+            return ToErrorResult(ex);
+        }
+        catch
+        {
+            return StatusCode(500, ApiResponse<object>.Fail(500, "服务器内部错误"));
+        }
+    }
+
+    [HttpGet("student-auth/{userId:int}")]
+    public async Task<IActionResult> GetStudentAuth(int userId)
+    {
+        try
+        {
+            var auth = await _authService.GetStudentAuthByUserIdAsync(userId);
+            if (auth == null)
             {
-                return BadRequest(ApiResponse<object>.Error(400, "注册失败，该学号已被占用"));
+                return NotFound(ApiResponse<object>.Fail(404, "认证记录不存在"));
             }
 
-            return Ok(ApiResponse<string>.Success("注册成功"));
+            return Ok(StudentAuthHttpResponseDto.Success(auth));
         }
-        catch (Exception ex)
+        catch (AuthException ex)
         {
-            return BadRequest(ApiResponse<object>.Error(400, ex.Message));
+            return ToErrorResult(ex);
         }
+        catch
+        {
+            return StatusCode(500, ApiResponse<object>.Fail(500, "服务器内部错误"));
+        }
+    }
+
+    [HttpPut("student-auth/{authId:int}")]
+    public async Task<IActionResult> UpdateStudentAuth(int authId, [FromBody] StudentAuthRequestDto request)
+    {
+        try
+        {
+            var auth = await _authService.UpdateStudentAuthAsync(authId, request);
+            return Ok(StudentAuthHttpResponseDto.Success(auth, "认证信息已更新"));
+        }
+        catch (AuthException ex)
+        {
+            return ToErrorResult(ex);
+        }
+        catch
+        {
+            return StatusCode(500, ApiResponse<object>.Fail(500, "服务器内部错误"));
+        }
+    }
+
+    private int? ResolveCurrentUserId()
+    {
+        var token = ReadBearerToken();
+        return _authService.TryGetUserIdFromToken(token);
+    }
+
+    private string? ReadBearerToken()
+    {
+        var value = Request.Headers.Authorization.ToString();
+        const string prefix = "Bearer ";
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        return value.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
+            ? value[prefix.Length..].Trim()
+            : value.Trim();
+    }
+
+    private IActionResult ToErrorResult(AuthException ex)
+    {
+        var response = ApiResponse<object>.Fail(ex.Code, ex.Message);
+        return ex.Code switch
+        {
+            401 => Unauthorized(response),
+            403 => StatusCode(403, response),
+            404 => NotFound(response),
+            409 => StatusCode(409, response),
+            _ => BadRequest(response)
+        };
     }
 }
