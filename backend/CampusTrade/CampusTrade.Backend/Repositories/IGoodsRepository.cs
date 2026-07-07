@@ -4,7 +4,6 @@ namespace CampusTrade.Backend.Repositories;
 
 /// <summary>
 /// 商品模块数据访问层接口（Repository 契约）
-/// 实现者：数据库负责人（使用 Dapper + Oracle 编写 SQL）
 /// 注意：所有方法参数中的时间字段在 Oracle 中对应 DATE 类型，金额对应 NUMBER(10,2)
 /// </summary>
 public interface IGoodsRepository
