@@ -150,9 +150,21 @@ export interface Notice {
 }
 
 export interface LoginParams {
-  username: string
+  //修改：把username改为account，方便登录时使用学号或账号名登录
+  account: string
   password: string
 }
+
+//新增：增加了一个接口，用于注册时把学号也搞进去
+export interface RegisterParams {
+  username: string
+  password: string
+  studentId: string
+  nickname: string
+  phone: string
+  email: string
+}
+
 
 export interface LoginResult {
   token: string

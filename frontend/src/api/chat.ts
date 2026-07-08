@@ -1,30 +1,79 @@
+// 导入请求工具
 import request from '@/utils/request'
+// 导入聊天会话、聊天消息和分页结果的类型定义
 import type { ChatSession, ChatMessage, PageResult } from '@/types'
 
+/**
+ * 获取聊天会话列表
+ * @returns 聊天会话列表
+ */
 export const getSessionList = () => {
+  // 发送GET请求获取聊天会话列表
   return request.get<ChatSession[]>('/chat/sessions')
 }
 
+/**
+ * 根据ID获取聊天会话详情
+ * @param sessionId 会话ID
+ * @returns 聊天会话详情
+ */
 export const getSessionById = (sessionId: number) => {
+  // 发送GET请求获取单个会话
   return request.get<ChatSession>(`/chat/sessions/${sessionId}`)
 }
 
+/**
+ * 创建聊天会话
+ * @param params 会话参数
+ * @param params.goodsId 商品ID
+ * @param params.sellerId 卖家ID
+ * @returns 创建的会话信息
+ */
 export const createSession = (params: { goodsId: number; sellerId: number }) => {
+  // 发送POST请求创建会话
   return request.post<ChatSession>('/chat/sessions', params)
 }
 
+/**
+ * 获取会话消息列表
+ * @param sessionId 会话ID
+ * @param params 查询参数（可选）
+ * @param params.page 页码（可选）
+ * @param params.size 每页数量（可选）
+ * @returns 消息分页结果
+ */
 export const getMessages = (sessionId: number, params?: { page?: number; size?: number }) => {
+  // 发送GET请求获取会话消息
   return request.get<PageResult<ChatMessage>>(`/chat/sessions/${sessionId}/messages`, { params })
 }
 
+/**
+ * 发送消息
+ * @param params 消息参数
+ * @param params.sessionId 会话ID
+ * @param params.content 消息内容
+ * @returns 发送的消息信息
+ */
 export const sendMessage = (params: { sessionId: number; content: string }) => {
+  // 发送POST请求发送消息
   return request.post<ChatMessage>('/chat/messages', params)
 }
 
+/**
+ * 标记会话为已读
+ * @param sessionId 会话ID
+ * @returns 更新结果
+ */
 export const markAsRead = (sessionId: number) => {
+  // 发送PUT请求标记已读
   return request.put(`/chat/sessions/${sessionId}/read`)
 }
 
+/**
+ * 获取未读消息数量
+ * @returns 未读消息数量
+ */
 export const getUnreadCount = () => {
+  // 发送GET请求获取未读消息数
   return request.get('/chat/unread-count')
 }

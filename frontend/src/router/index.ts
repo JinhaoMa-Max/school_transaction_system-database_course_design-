@@ -2,6 +2,16 @@ import { createRouter, createWebHistory } from 'vue-router'
 import type { RouteRecordRaw } from 'vue-router'
 import { useUserStore } from '@/stores'
 
+//为了开发前端页面的神秘小代码（绕过登录验证），在开发环境下可以设置 VITE_BYPASS_AUTH=true 来启用，常态关闭！
+import { mockUsers} from '@/utils/mock'
+
+const DEV_BYPASS_AUTH =
+  import.meta.env.DEV && import.meta.env.VITE_BYPASS_AUTH === 'true'
+
+const USE_MOCK_USER =
+  import.meta.env.DEV && import.meta.env.VITE_USE_MOCK_USER === 'true'
+
+
 const routes: RouteRecordRaw[] = [
   {
     path: '/login',
@@ -157,10 +167,32 @@ const router = createRouter({
 
 router.beforeEach(async (to, _from, next) => {
   const userStore = useUserStore()
+
+  // 本地开发临时绕过登录校验
+  if (DEV_BYPASS_AUTH) {
+    if (USE_MOCK_USER && !userStore.user) {
+      userStore.setUser(mockUsers[0])
+
+      // 如果store 里 token 是可以直接赋值(还没看)
+      userStore.token = 'mock-token'
+
+      localStorage.setItem('accessToken', 'mock-token')
+    }
+
+    next()
+    return
+  }
+
+    // 新增：已登录用户访问登录/注册页 → 跳首页
+  if (userStore.isLoggedIn && (to.path === '/login' || to.path === '/register')) {
+    next('/')
+    return
+  }
+
   const requiresAuth = to.meta.requiresAuth
 
   if (requiresAuth && !userStore.isLoggedIn) {
-    next('/login')
+     next(`/login?redirect=${encodeURIComponent(to.fullPath)}`)
     return
   }
 
