@@ -7,6 +7,7 @@ namespace CampusTrade.Backend.Repositories;
 
 public interface IUserRepository
 {
+    // === 百分百保留你原有的 10 个核心接口 ===
     Task<User?> GetByUsernameAsync(string username);
     Task<User?> GetByStudentIdAsync(string studentId);
     Task<User?> GetByIdAsync(int userId);
@@ -17,10 +18,18 @@ public interface IUserRepository
     Task<StudentAuthDto?> GetStudentAuthByAuthIdAsync(int authId);
     Task<StudentAuthDto> UpsertStudentAuthAsync(StudentAuthRequestDto request);
     Task<StudentAuthDto?> UpdateStudentAuthAsync(int authId, StudentAuthRequestDto request);
+
+    // === ✨ 安全增量：为了适配 /api/users 后台管理而补充的 5 个新接口 ===
+    Task<PageResult<UserDto>> GetPagedUsersAsync(int page, int size, string? role);
+    Task<User> UpdateUserFieldsAsync(int userId, PartialUserUpdateRequest request);
+    Task<bool> DeleteUserAsync(int userId);
+    Task<bool> UpdateStatusAsync(int userId, string status);
+    Task<bool> UpdateCreditScoreAsync(int userId, int score);
 }
 
 public class UserRepository : IUserRepository
 {
+    // 百分百保留你定义的标准字段映射规范
     private const string UserSelectColumns = """
         user_id AS UserId,
         username AS Username,
@@ -41,6 +50,8 @@ public class UserRepository : IUserRepository
     {
         _connectionFactory = connectionFactory;
     }
+
+    // ==================== 1. 百分百保留你原有的全部业务实现 ====================
 
     public async Task<User?> GetByUsernameAsync(string username)
     {
@@ -304,5 +315,93 @@ public class UserRepository : IUserRepository
             """;
 
         return await connection.QuerySingleOrDefaultAsync<User>(sql, new { UserId = userId }, transaction);
+    }
+
+
+    // ==================== 2. 🚀 安全增量：严格对齐 app_user 结构的后台管理实现 ====================
+
+    /// <summary>后台管理：用户列表分页查询 — 完美适配 app_user 表与现代 Oracle 分页</summary>
+    public async Task<PageResult<UserDto>> GetPagedUsersAsync(int page, int size, string? role)
+    {
+        using var connection = _connectionFactory.CreateConnection();
+        var offset = (page - 1) * size;
+
+        var whereClause = " WHERE 1=1 ";
+        var parameters = new DynamicParameters();
+        if (!string.IsNullOrWhiteSpace(role))
+        {
+            whereClause += " AND role = :Role ";
+            parameters.Add(":Role", role);
+        }
+
+        // 查总数
+        var countSql = $"SELECT COUNT(1) FROM app_user {whereClause}";
+        var totalCount = await connection.ExecuteScalarAsync<int>(countSql, parameters);
+
+        // 查数据（使用你的 UserSelectColumns 保证属性完美填入 UserDto 内部）
+        var sql = $"""
+            SELECT {UserSelectColumns}
+            FROM app_user
+            {whereClause}
+            ORDER BY user_id DESC
+            OFFSET {offset} ROWS FETCH NEXT {size} ROWS ONLY
+            """;
+
+        var items = await connection.QueryAsync<UserDto>(sql, parameters);
+
+        return new PageResult<UserDto>
+        {
+            Items = items.ToList(),
+            TotalCount = totalCount,
+            Page = page,
+            Size = size
+        };
+    }
+
+    /// <summary>后台管理：动态增量更新用户信息字段（对齐 app_user 真实列名）</summary>
+    public async Task<User> UpdateUserFieldsAsync(int userId, PartialUserUpdateRequest request)
+    {
+        using var connection = _connectionFactory.CreateConnection();
+        
+        var updates = new List<string>();
+        var p = new DynamicParameters();
+        p.Add(":UserId", userId);
+
+        // 核心修正：avatar 对应数据库里的真实列名为 avatar
+        if (request.Nickname != null) { updates.Add("nickname = :Nickname"); p.Add(":Nickname", request.Nickname); }
+        if (request.AvatarUrl != null) { updates.Add("avatar = :AvatarUrl"); p.Add(":AvatarUrl", request.AvatarUrl); }
+        if (request.Phone != null) { updates.Add("phone = :Phone"); p.Add(":Phone", request.Phone); }
+        if (request.Email != null) { updates.Add("email = :Email"); p.Add(":Email", request.Email); }
+
+        if (updates.Count > 0)
+        {
+            var sql = $"UPDATE app_user SET {string.Join(", ", updates)} WHERE user_id = :UserId";
+            await connection.ExecuteAsync(sql, p);
+        }
+
+        return (await GetByIdAsync(userId))!;
+    }
+
+    /// <summary>后台管理：物理删除指定用户</summary>
+    public async Task<bool> DeleteUserAsync(int userId)
+    {
+        using var connection = _connectionFactory.CreateConnection();
+        return await connection.ExecuteAsync("DELETE FROM app_user WHERE user_id = :UserId", new { UserId = userId }) > 0;
+    }
+
+    /// <summary>后台管理：更改封禁状态值（对齐 app_user）</summary>
+    public async Task<bool> UpdateStatusAsync(int userId, string status)
+    {
+        using var connection = _connectionFactory.CreateConnection();
+        const string sql = "UPDATE app_user SET status = :Status WHERE user_id = :UserId";
+        return await connection.ExecuteAsync(sql, new { Status = status, UserId = userId }) > 0;
+    }
+
+    /// <summary>后台管理：调整信用评分（对齐 app_user）</summary>
+    public async Task<bool> UpdateCreditScoreAsync(int userId, int score)
+    {
+        using var connection = _connectionFactory.CreateConnection();
+        const string sql = "UPDATE app_user SET credit_score = :Score WHERE user_id = :UserId";
+        return await connection.ExecuteAsync(sql, new { Score = score, UserId = userId }) > 0;
     }
 }

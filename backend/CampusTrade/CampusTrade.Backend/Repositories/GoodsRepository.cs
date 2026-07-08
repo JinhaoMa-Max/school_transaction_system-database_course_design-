@@ -1,6 +1,8 @@
 using CampusTrade.Backend.Infrastructure;
+using CampusTrade.Backend.Models;
 using CampusTrade.Backend.Models.DTOs;
 using Dapper;
+using System.Data;
 
 namespace CampusTrade.Backend.Repositories;
 
@@ -81,8 +83,10 @@ public class GoodsRepository : IGoodsRepository
             """;
 
         var items = await connection.QueryAsync<GoodsDto>(listSql, parameters);
+        var list = items.ToList();
+        GoodsConditionMapper.TranslateListToApi(list);
 
-        return (items.ToList(), total);
+        return (list, total);
     }
 
     /// <summary>
@@ -104,13 +108,17 @@ public class GoodsRepository : IGoodsRepository
                    goods_condition AS Condition,
                    goods_status   AS Status,
                    view_count     AS ViewCount,
-                   created_at     AS CreatedAt,
-                   cover_image    AS ImageUrl
+                   created_at     AS CreatedAt
             FROM v_goods_detail
             WHERE goods_id = :GoodsId
             """;
 
-        return await connection.QueryFirstOrDefaultAsync<GoodsDto>(sql, new { GoodsId = goodsId });
+        var dto = await connection.QueryFirstOrDefaultAsync<GoodsDto>(sql, new { GoodsId = goodsId });
+        if (dto != null)
+        {
+            dto.Condition = GoodsConditionMapper.ToApi(dto.Condition);
+        }
+        return dto;
     }
 
     /// <summary>
@@ -132,7 +140,7 @@ public class GoodsRepository : IGoodsRepository
         parameters.Add(":Title", request.Title);
         parameters.Add(":Description", request.Description ?? (object)DBNull.Value);
         parameters.Add(":Price", request.Price);
-        parameters.Add(":Condition", request.Condition);
+        parameters.Add(":Condition", GoodsConditionMapper.ToDatabase(request.Condition));
         parameters.Add(":NewId", dbType: System.Data.DbType.Int32, direction: System.Data.ParameterDirection.Output);
 
         await connection.ExecuteAsync(sql, parameters);
@@ -155,7 +163,7 @@ public class GoodsRepository : IGoodsRepository
         if (request.Title != null) { sets.Add("title = :Title"); parameters.Add(":Title", request.Title); }
         if (request.Description != null) { sets.Add("description = :Description"); parameters.Add(":Description", request.Description); }
         if (request.Price.HasValue) { sets.Add("price = :Price"); parameters.Add(":Price", request.Price.Value); }
-        if (request.Condition != null) { sets.Add("goods_condition = :Condition"); parameters.Add(":Condition", request.Condition); }
+        if (request.Condition != null) { sets.Add("goods_condition = :Condition"); parameters.Add(":Condition", GoodsConditionMapper.ToDatabase(request.Condition)); }
 
         if (sets.Count == 1) return true; // 没东西更新
 
@@ -197,8 +205,9 @@ public class GoodsRepository : IGoodsRepository
     {
         using var connection = _connectionFactory.CreateConnection();
         const string sql = "SELECT fn_increment_view(:GoodsId) FROM DUAL";
-        await connection.ExecuteAsync(sql, new { GoodsId = goodsId });
-        return true; // 函数内部 UPDATE，不会失败
+        var newCount = await connection.ExecuteScalarAsync<int?>(sql, new { GoodsId = goodsId });
+        // 如果返回 null 或 0，说明商品不存在或更新失败
+        return newCount.HasValue && newCount.Value > 0;
     }
 
     // ==================== 商品图片管理 ====================

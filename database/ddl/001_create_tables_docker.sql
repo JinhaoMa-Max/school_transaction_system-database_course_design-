@@ -117,7 +117,7 @@ CREATE TABLE goods_image (
 
     CONSTRAINT pk_goods_image PRIMARY KEY (image_id),
     CONSTRAINT fk_goods_image_goods FOREIGN KEY (goods_id)
-        REFERENCES goods(goods_id)
+        REFERENCES goods(goods_id) ON DELETE CASCADE
 );
 
 CREATE TABLE favorite (

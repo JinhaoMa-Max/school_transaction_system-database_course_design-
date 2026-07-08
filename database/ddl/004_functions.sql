@@ -306,12 +306,16 @@ CREATE OR REPLACE FUNCTION fn_increment_view(
     p_goods_id IN NUMBER
 ) RETURN NUMBER
 IS
+
+    PRAGMA AUTONOMOUS_TRANSACTION;
     v_new_count NUMBER;
 BEGIN
     UPDATE goods
     SET view_count = view_count + 1
     WHERE goods_id = p_goods_id
     RETURNING view_count INTO v_new_count;
+
+    COMMIT;
 
     RETURN v_new_count;
 EXCEPTION
