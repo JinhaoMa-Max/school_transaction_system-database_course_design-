@@ -86,6 +86,12 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: true }
   },
   {
+    path: '/appointment/:orderId',
+    name: 'AppointmentCreate',
+    component: () => import('@/views/appointment/Index.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
     path: '/chat',
     name: 'Chat',
     component: () => import('@/views/Chat.vue'),
@@ -98,10 +104,28 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: true }
   },
   {
+    path: '/review/:orderId',
+    name: 'ReviewCreate',
+    component: () => import('@/views/review/Index.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/report',
+    name: 'ReportCreate',
+    component: () => import('@/views/Report.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
     path: '/reports',
     name: 'ReportList',
     component: () => import('@/views/Report.vue'),
     meta: { requiresAuth: true }
+  },
+  {
+    path: '/my/goods',
+    name: 'MyGoods',
+    component: () => import('@/views/my/Goods.vue'),
+    meta: { requiresAuth: true, roles: ['seller'] }
   },
   {
     path: '/profile',
