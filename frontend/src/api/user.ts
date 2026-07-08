@@ -1,7 +1,7 @@
 // 导入请求工具
 import request from '@/utils/request'
 // 导入用户和分页结果的类型定义
-import type { User, PageResult } from '@/types'
+import type { User, PageResult ,UpdateUserParams} from '@/types'
 
 /**
  * 获取用户列表
@@ -31,8 +31,9 @@ export const getUserById = (userId: number) => {
  * @param userId 用户ID
  * @param params 更新参数
  * @returns 更新后的用户信息
+ * 修改：限制了一下修改范围，用于安全性保证
  */
-export const updateUser = (userId: number, params: Partial<User>) => {
+export const updateUser = (userId: number, params: UpdateUserParams) => {
   // 发送PUT请求更新用户
   return request.put<User>(`/users/${userId}`, params)
 }
