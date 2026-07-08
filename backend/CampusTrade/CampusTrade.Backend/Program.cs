@@ -1,4 +1,4 @@
-﻿using CampusTrade.Backend.Infrastructure;
+using CampusTrade.Backend.Infrastructure;
 using CampusTrade.Backend.Repositories;
 using CampusTrade.Backend.Services;
 
@@ -20,6 +20,8 @@ builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IGoodsRepository, GoodsRepository>();
 builder.Services.AddScoped<IGoodsService, GoodsService>();
+builder.Services.AddScoped<IBargainRepository, BargainRepository>();
+builder.Services.AddScoped<IBargainService, BargainService>();
 
 var app = builder.Build();
 

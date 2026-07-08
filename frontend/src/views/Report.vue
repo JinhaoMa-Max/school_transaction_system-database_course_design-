@@ -1,161 +1,266 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { getReportList, createReport } from '@/api'
-import type { Report } from '@/types'
+import { ref, reactive, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { Message } from '@arco-design/web-vue'
+import { createReport } from '@/api'
 
-const reports = ref<Report[]>([])
-const newReport = ref({
+const route = useRoute()
+const router = useRouter()
+
+const loading = ref(false)
+const submitLoading = ref(false)
+
+const form = reactive({
   reportType: 'goods' as 'goods' | 'user' | 'order',
-  reportedGoodsId: 0,
-  reportedUserId: 0,
-  reportedOrderId: 0,
+  reportedGoodsId: undefined as number | undefined,
+  reportedUserId: undefined as number | undefined,
+  reportedOrderId: undefined as number | undefined,
   reason: ''
 })
 
-onMounted(async () => {
-  const res = await getReportList()
-  reports.value = res.data.list
-})
+const formRef = ref()
 
-const handleCreate = async () => {
-  await createReport(newReport.value)
+const reportTypeOptions = [
+  { label: '商品', value: 'goods' },
+  { label: '用户', value: 'user' },
+  { label: '订单', value: 'order' }
+]
+
+const typeLabelMap: Record<string, string> = {
+  goods: '商品ID',
+  user: '用户ID',
+  order: '订单ID'
 }
 
-const getStatusText = (status: string) => {
-  const map: Record<string, string> = {
-    pending: '待处理',
-    processing: '处理中',
-    resolved: '已处理',
-    rejected: '已驳回'
+const initFormFromQuery = () => {
+  const type = route.query.type as string
+  const id = route.query.id as string
+
+  if (type && ['goods', 'user', 'order'].includes(type)) {
+    form.reportType = type as 'goods' | 'user' | 'order'
   }
-  return map[status] || status
+
+  if (id) {
+    const idNum = Number(id)
+    if (!isNaN(idNum)) {
+      switch (form.reportType) {
+        case 'goods':
+          form.reportedGoodsId = idNum
+          break
+        case 'user':
+          form.reportedUserId = idNum
+          break
+        case 'order':
+          form.reportedOrderId = idNum
+          break
+      }
+    }
+  }
 }
+
+const handleTypeChange = () => {
+  form.reportedGoodsId = undefined
+  form.reportedUserId = undefined
+  form.reportedOrderId = undefined
+}
+
+const handleSubmit = async ({ values }: { values: Record<string, any> }) => {
+  submitLoading.value = true
+  try {
+    const params: {
+      reportType: 'goods' | 'user' | 'order'
+      reportedGoodsId?: number
+      reportedUserId?: number
+      reportedOrderId?: number
+      reason: string
+    } = {
+      reportType: values.reportType,
+      reason: values.reason
+    }
+
+    switch (values.reportType) {
+      case 'goods':
+        params.reportedGoodsId = values.reportedGoodsId
+        break
+      case 'user':
+        params.reportedUserId = values.reportedUserId
+        break
+      case 'order':
+        params.reportedOrderId = values.reportedOrderId
+        break
+    }
+
+    await createReport(params)
+    Message.success('举报提交成功，我们会尽快处理')
+    setTimeout(() => {
+      router.back()
+    }, 1500)
+  } catch {
+  } finally {
+    submitLoading.value = false
+  }
+}
+
+const handleBack = () => {
+  router.back()
+}
+
+const validateReportedId = (value: any, callback: (error?: string) => void) => {
+  if (value === undefined || value === null || isNaN(value)) {
+    callback(`请输入${typeLabelMap[form.reportType]}`)
+  } else if (value <= 0) {
+    callback('ID必须大于0')
+  } else {
+    callback()
+  }
+}
+
+onMounted(() => {
+  initFormFromQuery()
+})
 </script>
 
 <template>
   <div class="report-page">
-    <h2>我的举报</h2>
-    <div class="report-list">
-      <div 
-        v-for="item in reports" 
-        :key="item.reportId" 
-        class="report-item"
-      >
-        <div class="report-info">
-          <h3>举报ID: {{ item.reportId }}</h3>
-          <p>举报类型: {{ item.reportType }}</p>
-          <p>被举报商品ID: {{ item.reportedGoodsId || '-' }}</p>
-          <p>被举报用户ID: {{ item.reportedUserId || '-' }}</p>
-          <p>被举报订单ID: {{ item.reportedOrderId || '-' }}</p>
-          <p>举报原因: {{ item.reason }}</p>
-          <p>举报状态: {{ getStatusText(item.status) }}</p>
-          <p>举报时间: {{ item.reportTime }}</p>
+    <a-spin :loading="loading" dot>
+      <div class="report-container">
+        <div class="page-header">
+          <a-button type="text" @click="handleBack">
+            <icon-left />
+            返回
+          </a-button>
+          <h2 class="page-title">发起举报</h2>
         </div>
+
+        <a-card>
+          <a-alert type="warning" style="margin-bottom: 24px">
+            <template #content>
+              <p>请如实填写举报信息，恶意举报将被扣除信用分。</p>
+            </template>
+          </a-alert>
+
+          <a-form
+            ref="formRef"
+            :model="form"
+            layout="vertical"
+            @submit="handleSubmit"
+          >
+            <a-form-item
+              field="reportType"
+              label="举报类型"
+              :rules="[{ required: true, message: '请选择举报类型' }]"
+            >
+              <a-select
+                v-model="form.reportType"
+                placeholder="请选择举报类型"
+                style="width: 100%"
+                @change="handleTypeChange"
+              >
+                <a-option
+                  v-for="item in reportTypeOptions"
+                  :key="item.value"
+                  :value="item.value"
+                >
+                  {{ item.label }}
+                </a-option>
+              </a-select>
+            </a-form-item>
+
+            <a-form-item
+              v-if="form.reportType === 'goods'"
+              field="reportedGoodsId"
+              :label="typeLabelMap[form.reportType]"
+              :rules="[{ validator: validateReportedId }]"
+            >
+              <a-input-number
+                v-model="form.reportedGoodsId"
+                :placeholder="`请输入${typeLabelMap[form.reportType]}`"
+                style="width: 100%"
+                :min="1"
+                size="large"
+              />
+            </a-form-item>
+
+            <a-form-item
+              v-if="form.reportType === 'user'"
+              field="reportedUserId"
+              :label="typeLabelMap[form.reportType]"
+              :rules="[{ validator: validateReportedId }]"
+            >
+              <a-input-number
+                v-model="form.reportedUserId"
+                :placeholder="`请输入${typeLabelMap[form.reportType]}`"
+                style="width: 100%"
+                :min="1"
+                size="large"
+              />
+            </a-form-item>
+
+            <a-form-item
+              v-if="form.reportType === 'order'"
+              field="reportedOrderId"
+              :label="typeLabelMap[form.reportType]"
+              :rules="[{ validator: validateReportedId }]"
+            >
+              <a-input-number
+                v-model="form.reportedOrderId"
+                :placeholder="`请输入${typeLabelMap[form.reportType]}`"
+                style="width: 100%"
+                :min="1"
+                size="large"
+              />
+            </a-form-item>
+
+            <a-form-item
+              field="reason"
+              label="举报原因"
+              :rules="[{ required: true, message: '请输入举报原因' }]"
+            >
+              <a-textarea
+                v-model="form.reason"
+                placeholder="请详细描述举报原因（最多500字）"
+                :max-length="500"
+                show-word-limit
+                :auto-size="{ minRows: 5, maxRows: 10 }"
+              />
+            </a-form-item>
+
+            <div class="form-actions">
+              <a-button size="large" @click="handleBack">
+                取消
+              </a-button>
+              <a-button type="primary" status="danger" html-type="submit" size="large" :loading="submitLoading">
+                提交举报
+              </a-button>
+            </div>
+          </a-form>
+        </a-card>
       </div>
-    </div>
-    <div v-if="reports.length === 0" class="empty">
-      <p>暂无举报记录</p>
-    </div>
-    <div class="create-report">
-      <h3>发起举报</h3>
-      <div class="form-item">
-        <label>举报类型</label>
-        <select v-model="newReport.reportType">
-          <option value="goods">商品</option>
-          <option value="user">用户</option>
-          <option value="order">订单</option>
-        </select>
-      </div>
-      <div v-if="newReport.reportType === 'goods'" class="form-item">
-        <label>被举报商品ID</label>
-        <input v-model.number="newReport.reportedGoodsId" type="number" />
-      </div>
-      <div v-if="newReport.reportType === 'user'" class="form-item">
-        <label>被举报用户ID</label>
-        <input v-model.number="newReport.reportedUserId" type="number" />
-      </div>
-      <div v-if="newReport.reportType === 'order'" class="form-item">
-        <label>被举报订单ID</label>
-        <input v-model.number="newReport.reportedOrderId" type="number" />
-      </div>
-      <div class="form-item">
-        <label>举报原因</label>
-        <textarea v-model="newReport.reason" rows="3"></textarea>
-      </div>
-      <button @click="handleCreate">发起举报</button>
-    </div>
+    </a-spin>
   </div>
 </template>
 
 <style scoped>
 .report-page {
-  padding: 20px;
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 24px;
 }
 
-.report-list {
+.page-header {
+  margin-bottom: 24px;
+}
+
+.page-title {
+  margin: 16px 0 0 0;
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.form-actions {
   display: flex;
-  flex-direction: column;
+  justify-content: flex-end;
   gap: 12px;
-}
-
-.report-item {
-  padding: 16px;
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-}
-
-.report-info h3 {
-  margin: 0 0 8px 0;
-}
-
-.report-info p {
-  margin: 0 0 4px 0;
-  font-size: 14px;
-}
-
-.empty {
-  text-align: center;
-  padding: 40px;
-  color: #999;
-}
-
-.create-report {
   margin-top: 24px;
-  padding: 20px;
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-}
-
-.create-report h3 {
-  margin: 0 0 16px 0;
-}
-
-.form-item {
-  margin-bottom: 16px;
-}
-
-.form-item label {
-  display: block;
-  margin-bottom: 8px;
-}
-
-.form-item input,
-.form-item select,
-.form-item textarea {
-  width: 100%;
-  padding: 10px;
-  border: 1px solid #e5e5e5;
-  border-radius: 4px;
-}
-
-button {
-  padding: 12px 24px;
-  background: #165dff;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
 }
 </style>

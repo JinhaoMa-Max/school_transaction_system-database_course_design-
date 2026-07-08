@@ -1,126 +1,379 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { getBargainList, handleBargain } from '@/api'
+import { Message, Modal } from '@arco-design/web-vue'
+import { getBargainList, handleBargain, closeBargain } from '@/api'
+import { useUserStore } from '@/stores'
 import type { BargainOffer } from '@/types'
 
 const router = useRouter()
-const bargains = ref<BargainOffer[]>([])
+const userStore = useUserStore()
 
-onMounted(async () => {
-  const res = await getBargainList()
-  bargains.value = res.data.list
-})
+const loading = ref(false)
+const bargainList = ref<BargainOffer[]>([])
+const total = ref(0)
+const page = ref(1)
+const pageSize = ref(10)
+const activeTab = ref('buyer')
 
-const goToGoods = (goodsId: number) => {
+const counterVisible = ref(false)
+const counterPrice = ref(0)
+const currentBargainId = ref<number | null>(null)
+const counterLoading = ref(false)
+
+const sellerResultMap: Record<string, { text: string; color: string }> = {
+  pending: { text: '待处理', color: 'orange' },
+  accepted: { text: '已接受', color: 'green' },
+  rejected: { text: '已拒绝', color: 'red' },
+  countered: { text: '已还价', color: 'blue' }
+}
+
+const bargainStatusMap: Record<string, { text: string; color: string }> = {
+  active: { text: '进行中', color: 'blue' },
+  accepted: { text: '已达成', color: 'green' },
+  rejected: { text: '已拒绝', color: 'red' },
+  closed: { text: '已关闭', color: 'gray' }
+}
+
+const columns = [
+  { title: '商品信息', dataIndex: 'goodsId', width: 280 },
+  { title: '出价金额', dataIndex: 'offerPrice', width: 120 },
+  { title: '卖家处理', dataIndex: 'sellerResult', width: 100 },
+  { title: '还价金额', dataIndex: 'counterPrice', width: 120 },
+  { title: '议价状态', dataIndex: 'status', width: 100 },
+  { title: '发起时间', dataIndex: 'createTime', width: 170 },
+  { title: '操作', dataIndex: 'actions', width: 200 }
+]
+
+const fetchBargainList = async () => {
+  if (!userStore.user?.userId) return
+
+  loading.value = true
+  try {
+    const params: Record<string, any> = {
+      page: page.value,
+      size: pageSize.value
+    }
+    if (activeTab.value === 'buyer') {
+      params.buyerId = userStore.user.userId
+    } else {
+      params.sellerId = userStore.user.userId
+    }
+    const res = await getBargainList(params)
+    bargainList.value = res.data.list
+    total.value = res.data.total
+  } catch {
+    // 错误已由全局拦截器处理
+  } finally {
+    loading.value = false
+  }
+}
+
+const handleTabChange = (key: string | number) => {
+  activeTab.value = String(key)
+  page.value = 1
+  fetchBargainList()
+}
+
+const handlePageChange = (pageNum: number) => {
+  page.value = pageNum
+  fetchBargainList()
+}
+
+const handlePageSizeChange = (size: number) => {
+  pageSize.value = size
+  page.value = 1
+  fetchBargainList()
+}
+
+const goToGoodsDetail = (goodsId: number) => {
   router.push(`/goods/${goodsId}`)
 }
 
-const handleAccept = async (bargainId: number) => {
-  await handleBargain(bargainId, { sellerResult: 'accepted' })
+const openCounter = (bargainId: number) => {
+  currentBargainId.value = bargainId
+  counterPrice.value = 0
+  counterVisible.value = true
 }
 
-const handleReject = async (bargainId: number) => {
-  await handleBargain(bargainId, { sellerResult: 'rejected' })
+const handleAccept = (bargainId: number) => {
+  Modal.confirm({
+    title: '确认接受',
+    content: '确定接受该议价吗？接受后将生成订单。',
+    okText: '确认接受',
+    cancelText: '取消',
+    onOk: async () => {
+      try {
+        await handleBargain(bargainId, { sellerResult: 'accepted' })
+        Message.success('已接受议价')
+        fetchBargainList()
+      } catch {
+        // 错误已由全局拦截器处理
+      }
+    }
+  })
 }
 
-const handleCounter = async (bargainId: number) => {
-  const counterPrice = prompt('请输入还价金额')
-  if (counterPrice) {
-    await handleBargain(bargainId, { sellerResult: 'countered', counterPrice: Number(counterPrice) })
+const handleReject = (bargainId: number) => {
+  Modal.confirm({
+    title: '确认拒绝',
+    content: '确定拒绝该议价吗？',
+    okText: '确认拒绝',
+    cancelText: '取消',
+    onOk: async () => {
+      try {
+        await handleBargain(bargainId, { sellerResult: 'rejected' })
+        Message.success('已拒绝议价')
+        fetchBargainList()
+      } catch {
+        // 错误已由全局拦截器处理
+      }
+    }
+  })
+}
+
+const handleCounter = async () => {
+  if (!currentBargainId.value || counterPrice.value <= 0) {
+    Message.warning('请输入有效的还价金额')
+    return
+  }
+  counterLoading.value = true
+  try {
+    await handleBargain(currentBargainId.value, {
+      sellerResult: 'countered',
+      counterPrice: counterPrice.value
+    })
+    Message.success('还价已发送')
+    counterVisible.value = false
+    fetchBargainList()
+  } catch {
+    // 错误已由全局拦截器处理
+  } finally {
+    counterLoading.value = false
   }
 }
+
+const handleClose = (bargainId: number) => {
+  Modal.confirm({
+    title: '关闭议价',
+    content: '确定关闭该议价吗？关闭后无法恢复。',
+    okText: '确认关闭',
+    cancelText: '取消',
+    onOk: async () => {
+      try {
+        await closeBargain(bargainId)
+        Message.success('议价已关闭')
+        fetchBargainList()
+      } catch {
+        // 错误已由全局拦截器处理
+      }
+    }
+  })
+}
+
+onMounted(() => {
+  fetchBargainList()
+})
 </script>
 
 <template>
   <div class="bargain-page">
-    <h2>我的议价</h2>
-    <div class="bargain-list">
-      <div 
-        v-for="item in bargains" 
-        :key="item.bargainId" 
-        class="bargain-item"
-      >
-        <div class="bargain-info">
-          <h3 @click="goToGoods(item.goodsId)">商品ID: {{ item.goodsId }}</h3>
-          <p>出价金额: ¥{{ item.offerPrice }}</p>
-          <p>处理结果: {{ item.sellerResult }}</p>
-          <p>还价金额: {{ item.counterPrice ? '¥' + item.counterPrice : '-' }}</p>
-          <p>议价状态: {{ item.status }}</p>
-          <p>发起时间: {{ item.createTime }}</p>
-        </div>
-        <div class="actions">
-          <button v-if="item.status === 'active'" @click="handleAccept(item.bargainId)">接受</button>
-          <button v-if="item.status === 'active'" @click="handleReject(item.bargainId)">拒绝</button>
-          <button v-if="item.status === 'active'" @click="handleCounter(item.bargainId)">还价</button>
-        </div>
+    <a-card class="content-card">
+      <div class="page-header">
+        <h2>议价管理</h2>
       </div>
-    </div>
-    <div v-if="bargains.length === 0" class="empty">
-      <p>暂无议价记录</p>
-    </div>
+
+      <a-tabs
+        v-model:active-key="activeTab"
+        type="rounded"
+        @change="handleTabChange"
+      >
+        <a-tab-pane key="buyer" title="我发起的" />
+        <a-tab-pane key="seller" title="我收到的" />
+      </a-tabs>
+
+      <div class="table-container">
+        <a-spin :loading="loading" style="width: 100%">
+          <a-empty v-if="!loading && bargainList.length === 0" description="暂无议价记录" />
+
+          <a-table
+            v-else
+            :data="bargainList"
+            :columns="columns"
+            :pagination="false"
+            :bordered="false"
+            size="medium"
+            row-key="bargainId"
+          >
+            <template #goodsId="{ record }">
+              <div class="goods-info" @click="goToGoodsDetail(record.goodsId)">
+                <div class="goods-name">商品 #{{ record.goodsId }}</div>
+                <div class="goods-hint">点击查看详情</div>
+              </div>
+            </template>
+
+            <template #offerPrice="{ record }">
+              <span class="price-text">¥{{ record.offerPrice.toFixed(2) }}</span>
+            </template>
+
+            <template #sellerResult="{ record }">
+              <a-tag :color="sellerResultMap[record.sellerResult]?.color || 'gray'">
+                {{ sellerResultMap[record.sellerResult]?.text || record.sellerResult }}
+              </a-tag>
+            </template>
+
+            <template #counterPrice="{ record }">
+              <span v-if="record.counterPrice" class="counter-price">
+                ¥{{ record.counterPrice.toFixed(2) }}
+              </span>
+              <span v-else class="text-gray">-</span>
+            </template>
+
+            <template #status="{ record }">
+              <a-tag :color="bargainStatusMap[record.status]?.color || 'gray'">
+                {{ bargainStatusMap[record.status]?.text || record.status }}
+              </a-tag>
+            </template>
+
+            <template #createTime="{ record }">
+              {{ record.createTime }}
+            </template>
+
+            <template #actions="{ record }">
+              <a-space size="small">
+                <template v-if="activeTab === 'seller' && record.status === 'active' && record.sellerResult === 'pending'">
+                  <a-button type="primary" size="small" @click="handleAccept(record.bargainId)">
+                    接受
+                  </a-button>
+                  <a-button type="outline" status="danger" size="small" @click="handleReject(record.bargainId)">
+                    拒绝
+                  </a-button>
+                  <a-button type="outline" status="warning" size="small" @click="openCounter(record.bargainId)">
+                    还价
+                  </a-button>
+                </template>
+                <template v-else-if="activeTab === 'buyer' && record.status === 'active'">
+                  <a-button type="text" size="small" status="danger" @click="handleClose(record.bargainId)">
+                    关闭议价
+                  </a-button>
+                </template>
+                <a-button type="text" size="small" @click="goToGoodsDetail(record.goodsId)">
+                  查看商品
+                </a-button>
+              </a-space>
+            </template>
+          </a-table>
+
+          <div v-if="bargainList.length > 0" class="pagination-container">
+            <a-pagination
+              :total="total"
+              :current="page"
+              :page-size="pageSize"
+              :page-size-options="[10, 20, 50]"
+              show-total
+              show-jumper
+              show-page-size
+              @change="handlePageChange"
+              @page-size-change="handlePageSizeChange"
+            />
+          </div>
+        </a-spin>
+      </div>
+    </a-card>
+
+    <a-modal
+      v-model:visible="counterVisible"
+      title="发起还价"
+      @ok="handleCounter"
+      @cancel="counterVisible = false"
+      :confirm-loading="counterLoading"
+      ok-text="发送还价"
+    >
+      <div class="counter-form">
+        <a-form layout="vertical">
+          <a-form-item label="还价金额">
+            <a-input-number
+              v-model="counterPrice"
+              :min="0.01"
+              :precision="2"
+              placeholder="请输入还价金额"
+              style="width: 100%"
+            >
+              <template #prepend>¥</template>
+            </a-input-number>
+          </a-form-item>
+        </a-form>
+      </div>
+    </a-modal>
   </div>
 </template>
 
 <style scoped>
 .bargain-page {
-  padding: 20px;
+  padding: 24px;
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
-.bargain-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.bargain-item {
-  padding: 16px;
-  background: white;
+.content-card {
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
-.bargain-info h3 {
-  margin: 0 0 8px 0;
+.page-header {
+  margin-bottom: 20px;
+}
+
+.page-header h2 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.table-container {
+  margin-top: 20px;
+}
+
+.goods-info {
   cursor: pointer;
+}
+
+.goods-name {
+  font-size: 14px;
+  color: #1d2129;
+  margin-bottom: 4px;
+  transition: color 0.2s;
+}
+
+.goods-info:hover .goods-name {
   color: #165dff;
 }
 
-.bargain-info p {
-  margin: 0 0 4px 0;
-  font-size: 14px;
+.goods-hint {
+  font-size: 12px;
+  color: #86909c;
 }
 
-.actions {
-  margin-top: 12px;
+.price-text {
+  color: #f53f3f;
+  font-weight: 600;
 }
 
-.actions button {
-  padding: 8px 16px;
-  margin-right: 8px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
+.counter-price {
+  color: #fa9841;
+  font-weight: 500;
 }
 
-.actions button:nth-child(1) {
-  background: #52c41a;
-  color: white;
+.text-gray {
+  color: #c9cdd4;
 }
 
-.actions button:nth-child(2) {
-  background: #ff4d4f;
-  color: white;
+.pagination-container {
+  margin-top: 20px;
+  display: flex;
+  justify-content: flex-end;
 }
 
-.actions button:nth-child(3) {
-  background: #faad14;
-  color: white;
-}
-
-.empty {
-  text-align: center;
-  padding: 40px;
-  color: #999;
+.counter-form {
+  padding: 8px 0;
 }
 </style>
