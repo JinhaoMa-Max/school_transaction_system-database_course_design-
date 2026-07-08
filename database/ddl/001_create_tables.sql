@@ -33,7 +33,7 @@ CREATE TABLE app_user (
     avatar VARCHAR2(255),
     phone VARCHAR2(20),
     email VARCHAR2(100),
-    role VARCHAR2(20) DEFAULT 'buyer' NOT NULL,
+    role VARCHAR2(20) DEFAULT 'user' NOT NULL,
     status VARCHAR2(20) DEFAULT 'normal' NOT NULL,
     credit_score NUMBER(11) DEFAULT 100 NOT NULL,
     created_at TIMESTAMP DEFAULT SYSTIMESTAMP NOT NULL,
@@ -41,7 +41,7 @@ CREATE TABLE app_user (
 
     CONSTRAINT pk_app_user PRIMARY KEY (user_id),
     CONSTRAINT uq_app_user_username UNIQUE (username),
-    CONSTRAINT ck_app_user_role CHECK (role IN ('buyer', 'seller', 'admin')),
+    CONSTRAINT ck_app_user_role CHECK (role IN ('user', 'admin')),
     CONSTRAINT ck_app_user_status CHECK (status IN ('normal', 'banned')),
     CONSTRAINT ck_app_user_credit_score CHECK (credit_score >= 0)
 );
