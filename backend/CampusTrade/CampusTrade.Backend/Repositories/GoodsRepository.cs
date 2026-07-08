@@ -1,4 +1,5 @@
 using CampusTrade.Backend.Infrastructure;
+using CampusTrade.Backend.Models;
 using CampusTrade.Backend.Models.DTOs;
 using Dapper;
 
@@ -81,8 +82,10 @@ public class GoodsRepository : IGoodsRepository
             """;
 
         var items = await connection.QueryAsync<GoodsDto>(listSql, parameters);
+        var list = items.ToList();
+        GoodsConditionMapper.TranslateListToApi(list);
 
-        return (items.ToList(), total);
+        return (list, total);
     }
 
     /// <summary>
@@ -110,7 +113,12 @@ public class GoodsRepository : IGoodsRepository
             WHERE goods_id = :GoodsId
             """;
 
-        return await connection.QueryFirstOrDefaultAsync<GoodsDto>(sql, new { GoodsId = goodsId });
+        var dto = await connection.QueryFirstOrDefaultAsync<GoodsDto>(sql, new { GoodsId = goodsId });
+        if (dto != null)
+        {
+            dto.Condition = GoodsConditionMapper.ToApi(dto.Condition);
+        }
+        return dto;
     }
 
     /// <summary>
@@ -132,7 +140,7 @@ public class GoodsRepository : IGoodsRepository
         parameters.Add(":Title", request.Title);
         parameters.Add(":Description", request.Description ?? (object)DBNull.Value);
         parameters.Add(":Price", request.Price);
-        parameters.Add(":Condition", request.Condition);
+        parameters.Add(":Condition", GoodsConditionMapper.ToDatabase(request.Condition));
         parameters.Add(":NewId", dbType: System.Data.DbType.Int32, direction: System.Data.ParameterDirection.Output);
 
         await connection.ExecuteAsync(sql, parameters);
@@ -155,7 +163,7 @@ public class GoodsRepository : IGoodsRepository
         if (request.Title != null) { sets.Add("title = :Title"); parameters.Add(":Title", request.Title); }
         if (request.Description != null) { sets.Add("description = :Description"); parameters.Add(":Description", request.Description); }
         if (request.Price.HasValue) { sets.Add("price = :Price"); parameters.Add(":Price", request.Price.Value); }
-        if (request.Condition != null) { sets.Add("goods_condition = :Condition"); parameters.Add(":Condition", request.Condition); }
+        if (request.Condition != null) { sets.Add("goods_condition = :Condition"); parameters.Add(":Condition", GoodsConditionMapper.ToDatabase(request.Condition)); }
 
         if (sets.Count == 1) return true; // 没东西更新
 
