@@ -2,6 +2,7 @@ using CampusTrade.Backend.Infrastructure;
 using CampusTrade.Backend.Models;
 using CampusTrade.Backend.Models.DTOs;
 using Dapper;
+using System.Data;
 
 namespace CampusTrade.Backend.Repositories;
 
@@ -107,8 +108,7 @@ public class GoodsRepository : IGoodsRepository
                    goods_condition AS Condition,
                    goods_status   AS Status,
                    view_count     AS ViewCount,
-                   created_at     AS CreatedAt,
-                   cover_image    AS ImageUrl
+                   created_at     AS CreatedAt
             FROM v_goods_detail
             WHERE goods_id = :GoodsId
             """;
@@ -205,8 +205,9 @@ public class GoodsRepository : IGoodsRepository
     {
         using var connection = _connectionFactory.CreateConnection();
         const string sql = "SELECT fn_increment_view(:GoodsId) FROM DUAL";
-        await connection.ExecuteAsync(sql, new { GoodsId = goodsId });
-        return true; // 函数内部 UPDATE，不会失败
+        var newCount = await connection.ExecuteScalarAsync<int?>(sql, new { GoodsId = goodsId });
+        // 如果返回 null 或 0，说明商品不存在或更新失败
+        return newCount.HasValue && newCount.Value > 0;
     }
 
     // ==================== 商品图片管理 ====================

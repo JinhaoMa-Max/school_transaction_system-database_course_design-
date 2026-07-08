@@ -21,7 +21,7 @@ services:
     # 方案一：Oracle 23c Free（默认，推荐）
     image: gvenzl/oracle-free:23-slim-faststart
     # 方案二：Oracle 18c XE（课程硬性要求时才启用，注释掉上面那行）
-    # image: gvenzl/oracle-xe:18.4.0-slim
+    #image: gvenzl/oracle-xe:18.4.0-slim
 
     container_name: campus_trade_db
     hostname: oracle

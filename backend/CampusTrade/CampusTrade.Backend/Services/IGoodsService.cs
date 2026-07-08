@@ -17,7 +17,6 @@ public interface IGoodsService
     Task<bool> OfflineAsync(int goodsId, int currentUserId, bool isAdmin);
     Task<bool> IncrementViewCountAsync(int goodsId);
 
-    // 图片
     Task<IEnumerable<GoodsImageDto>> GetImagesAsync(int goodsId);
     Task<int> AddImageAsync(int goodsId, string imageUrl, int sortOrder);
     Task<bool> DeleteImageAsync(int imageId);
