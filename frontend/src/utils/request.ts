@@ -208,6 +208,9 @@ const getMockData = (url: string, method: string, params: any, data: any): any =
 
   if (path === '/bargains' && method === 'get') {
     let list = [...mockBargains]
+    if (params?.goodsId) {
+      list = list.filter(b => b.goodsId === params.goodsId)
+    }
     if (params?.buyerId) {
       list = list.filter(b => b.buyerId === params.buyerId)
     }
@@ -258,6 +261,29 @@ const getMockData = (url: string, method: string, params: any, data: any): any =
         bargain.status = 'accepted'
       } else if (data?.sellerResult === 'rejected') {
         bargain.status = 'rejected'
+      }
+    }
+    return getMockResponse<BargainOffer>(bargain || mockBargains[0])
+  }
+
+  if (path.match(/^\/bargains\/\d+\/buyer-handle$/) && method === 'put') {
+    const id = Number(path.split('/')[2])
+    const bargain = mockBargains.find(b => b.bargainId === id)
+    if (bargain) {
+      // buyerResult 是中间传递值，不存入 bargain 记录；
+      // 根据 buyerResult 更新对应字段
+      const buyerResult = data?.buyerResult || 'pending'
+      if (buyerResult === 'accepted') {
+        bargain.status = 'accepted'
+        // 达成协议时，dealPrice 取卖家的 counterPrice
+      } else if (buyerResult === 'rejected') {
+        bargain.status = 'rejected'
+      } else if (buyerResult === 'countered') {
+        // 买家继续还价：更新 offerPrice，重置 sellerResult
+        bargain.offerPrice = data?.offerPrice || bargain.offerPrice
+        bargain.sellerResult = 'pending'
+        bargain.counterPrice = null
+        bargain.status = 'active'
       }
     }
     return getMockResponse<BargainOffer>(bargain || mockBargains[0])

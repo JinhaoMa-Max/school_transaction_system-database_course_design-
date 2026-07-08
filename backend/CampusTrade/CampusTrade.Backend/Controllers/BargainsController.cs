@@ -87,6 +87,23 @@ public class BargainsController : ControllerBase
         }
     }
 
+    // PUT /api/bargains/{bargainId}/buyer-handle
+    // 买家对卖家还价做出回应（buyerResult 为中间传递值，不存入数据库）
+    [HttpPut("{bargainId:int}/buyer-handle")]
+    public async Task<IActionResult> BuyerHandle(int bargainId, [FromBody] BuyerHandleBargainRequest request)
+    {
+        try
+        {
+            var currentUserId = ResolveCurrentUserId();
+            var dto = await _bargainService.BuyerHandleAsync(bargainId, request, currentUserId);
+            return Ok(ApiResponse<BargainOfferDto>.Success(dto, "买家处理成功"));
+        }
+        catch (Exception ex)
+        {
+            return ToErrorResult(ex);
+        }
+    }
+
     // PUT /api/bargains/{bargainId}/close
     [HttpPut("{bargainId:int}/close")]
     public async Task<IActionResult> Close(int bargainId)

@@ -68,6 +68,8 @@ export interface BargainOffer {
   counterPrice: number | null
   status: 'active' | 'accepted' | 'rejected' | 'closed'
   createTime: string
+  /** 买家处理结果（中间传递值，对称于 sellerResult，不存入数据库表） */
+  buyerResult?: 'pending' | 'accepted' | 'rejected' | 'countered'
 }
 
 export interface TradeOrder {

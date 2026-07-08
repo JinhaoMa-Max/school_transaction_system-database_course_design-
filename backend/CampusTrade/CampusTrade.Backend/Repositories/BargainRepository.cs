@@ -40,6 +40,11 @@ public class BargainRepository : IBargainRepository
         throw new NotImplementedException("由数据库同学实现：卖家回复议价（推荐调用 sp_respond_bargain，并返回更新后的 BargainOfferDto）");
     }
 
+    public Task<BargainOfferDto> BuyerRespondAsync(int bargainId, string buyerResult, decimal? offerPrice)
+    {
+        throw new NotImplementedException("由数据库同学实现：买家回应议价（根据 buyerResult 更新 offer_status/offer_price/seller_response，buyerResult 不直接入库）");
+    }
+
     public Task<bool> CloseAsync(int bargainId)
     {
         throw new NotImplementedException("由数据库同学实现：关闭议价（更新 offer_status 为 closed 或约定状态）");

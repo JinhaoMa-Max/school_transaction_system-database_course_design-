@@ -35,3 +35,11 @@ public class HandleBargainRequest
     public string SellerResult { get; set; } = string.Empty;
     public decimal? CounterPrice { get; set; }
 }
+
+// 买家处理议价入参：PUT /api/bargains/{bargainId}/buyer-handle
+// buyerResult 为中间传递值，对称于 sellerResult，不存入数据库表
+public class BuyerHandleBargainRequest
+{
+    public string BuyerResult { get; set; } = string.Empty;
+    public decimal? OfferPrice { get; set; }
+}
