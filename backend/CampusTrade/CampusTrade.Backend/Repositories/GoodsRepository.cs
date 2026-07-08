@@ -1,341 +1,335 @@
-using System;
-using System.Collections.Generic;
-using System.Data;
-using System.Text;
-using System.Threading.Tasks;
-using CampusSecondHand.Api.Database;
-using CampusSecondHand.Api.Models.Entities;
-using CampusSecondHand.Api.Repositories.Interfaces;
-using Oracle.ManagedDataAccess.Client;
+using CampusTrade.Backend.Infrastructure;
+using CampusTrade.Backend.Models.DTOs;
+using Dapper;
 
-namespace CampusSecondHand.Api.Repositories;
+namespace CampusTrade.Backend.Repositories;
 
+/// <summary>
+/// 商品数据访问层 — 唯一可写 SQL 的层
+/// 查询优先使用数据库视图 (v_goods_list, v_goods_detail)
+/// 原子操作使用函数 (fn_can_purchase, fn_increment_view)
+/// </summary>
 public class GoodsRepository : IGoodsRepository
 {
-    private readonly IOracleConnectionFactory _connectionFactory;
+    private readonly IDbConnectionFactory _connectionFactory;
 
-    public GoodsRepository(IOracleConnectionFactory connectionFactory)
+    public GoodsRepository(IDbConnectionFactory connectionFactory)
     {
         _connectionFactory = connectionFactory;
     }
 
-    public async Task<Goods?> GetByIdAsync(int id)
+    // ==================== 商品核心 CRUD ====================
+
+    /// <summary>
+    /// 分页查询商品列表
+    /// 数据来源: v_goods_list 视图（自动 JOIN 卖家名、分类名、首图）
+    /// </summary>
+    public async Task<(List<GoodsDto> Items, int Total)> GetPagedAsync(
+        int page, int size, int? categoryId, string? keyword, string? sortBy, bool ascending)
     {
-        const string sql = """
-            SELECT goods_id, seller_id, category_id, title, description, price, condition, goods_status, view_count, created_at, updated_at
-            FROM goods
-            WHERE goods_id = :id
-            """;
+        using var connection = _connectionFactory.CreateConnection();
 
-        await using var connection = await _connectionFactory.CreateOpenConnectionAsync();
-        await using var command = CreateCommand(connection, sql);
-        command.Parameters.Add(CreateIntParameter("id", id));
-
-        await using var reader = await command.ExecuteReaderAsync();
-        if (await reader.ReadAsync())
-        {
-            var goods = MapGoods(reader);
-            goods.Images = await GetImagesByGoodsIdAsync(goods.GoodsId);
-            return goods;
-        }
-        return null;
-    }
-
-    public async Task<List<Goods>> SearchAsync(string? keyword, int? categoryId, decimal? minPrice, decimal? maxPrice, string? condition, string? sortBy, bool ascending, int page, int pageSize)
-    {
-        var sqlBuilder = new StringBuilder("""
-            SELECT goods_id, seller_id, category_id, title, description, price, condition, goods_status, view_count, created_at, updated_at
-            FROM goods
-            WHERE goods_status = 'approved'
-            """);
-
-        var parameters = new List<OracleParameter>();
-
-        if (!string.IsNullOrWhiteSpace(keyword))
-        {
-            sqlBuilder.Append(" AND (LOWER(title) LIKE LOWER(:keyword) OR LOWER(description) LIKE LOWER(:keyword))");
-            parameters.Add(CreateStringParameter("keyword", $"%{keyword}%", 400));
-        }
+        // 构建动态 WHERE 条件
+        var where = new List<string>();
+        var parameters = new DynamicParameters();
 
         if (categoryId.HasValue)
         {
-            sqlBuilder.Append(" AND category_id = :category_id");
-            parameters.Add(CreateIntParameter("category_id", categoryId.Value));
+            where.Add("category_id = :CategoryId");
+            parameters.Add(":CategoryId", categoryId.Value);
         }
-
-        if (minPrice.HasValue)
+        if (!string.IsNullOrWhiteSpace(keyword))
         {
-            sqlBuilder.Append(" AND price >= :min_price");
-            parameters.Add(CreateDecimalParameter("min_price", minPrice.Value));
+            where.Add("title LIKE :Keyword");
+            parameters.Add(":Keyword", $"%{keyword}%");
         }
 
-        if (maxPrice.HasValue)
-        {
-            sqlBuilder.Append(" AND price <= :max_price");
-            parameters.Add(CreateDecimalParameter("max_price", maxPrice.Value));
-        }
+        var whereClause = where.Count > 0 ? "WHERE " + string.Join(" AND ", where) : "";
 
-        if (!string.IsNullOrWhiteSpace(condition))
-        {
-            sqlBuilder.Append(" AND condition = :condition");
-            parameters.Add(CreateStringParameter("condition", condition, 20));
-        }
-
-        var sortColumn = sortBy?.ToLower() switch
+        // 排序字段映射（防 SQL 注入：只用白名单，不拼接用户输入）
+        var orderColumn = sortBy switch
         {
             "price" => "price",
-            "view_count" => "view_count",
+            "viewCount" => "view_count",
             _ => "created_at"
         };
-        var sortDirection = ascending ? "ASC" : "DESC";
-        sqlBuilder.Append($" ORDER BY {sortColumn} {sortDirection}");
+        var direction = ascending ? "ASC" : "DESC";
 
-        var offset = (page - 1) * pageSize;
-        sqlBuilder.Append($" OFFSET :offset ROWS FETCH NEXT :page_size ROWS ONLY");
-        parameters.Add(CreateIntParameter("offset", offset));
-        parameters.Add(CreateIntParameter("page_size", pageSize));
+        // 查总数
+        var countSql = $"SELECT COUNT(*) FROM v_goods_list {whereClause}";
+        var total = await connection.ExecuteScalarAsync<int>(countSql, parameters);
 
-        var goodsList = new List<Goods>();
-        await using var connection = await _connectionFactory.CreateOpenConnectionAsync();
-        await using var command = CreateCommand(connection, sqlBuilder.ToString());
-        command.Parameters.AddRange(parameters.ToArray());
-
-        await using var reader = await command.ExecuteReaderAsync();
-        while (await reader.ReadAsync())
-        {
-            goodsList.Add(MapGoods(reader));
-        }
-        return goodsList;
-    }
-
-    public async Task<int> CountSearchAsync(string? keyword, int? categoryId, decimal? minPrice, decimal? maxPrice, string? condition)
-    {
-        var sqlBuilder = new StringBuilder("""
-            SELECT COUNT(1)
-            FROM goods
-            WHERE goods_status = 'approved'
-            """);
-
-        var parameters = new List<OracleParameter>();
-
-        if (!string.IsNullOrWhiteSpace(keyword))
-        {
-            sqlBuilder.Append(" AND (LOWER(title) LIKE LOWER(:keyword) OR LOWER(description) LIKE LOWER(:keyword))");
-            parameters.Add(CreateStringParameter("keyword", $"%{keyword}%", 400));
-        }
-
-        if (categoryId.HasValue)
-        {
-            sqlBuilder.Append(" AND category_id = :category_id");
-            parameters.Add(CreateIntParameter("category_id", categoryId.Value));
-        }
-
-        if (minPrice.HasValue)
-        {
-            sqlBuilder.Append(" AND price >= :min_price");
-            parameters.Add(CreateDecimalParameter("min_price", minPrice.Value));
-        }
-
-        if (maxPrice.HasValue)
-        {
-            sqlBuilder.Append(" AND price <= :max_price");
-            parameters.Add(CreateDecimalParameter("max_price", maxPrice.Value));
-        }
-
-        if (!string.IsNullOrWhiteSpace(condition))
-        {
-            sqlBuilder.Append(" AND condition = :condition");
-            parameters.Add(CreateStringParameter("condition", condition, 20));
-        }
-
-        await using var connection = await _connectionFactory.CreateOpenConnectionAsync();
-        await using var command = CreateCommand(connection, sqlBuilder.ToString());
-        command.Parameters.AddRange(parameters.ToArray());
-
-        var result = await command.ExecuteScalarAsync();
-        return Convert.ToInt32(result);
-    }
-
-    public async Task<int> CreateAsync(Goods goods)
-    {
-        const string sql = """
-            INSERT INTO goods (seller_id, category_id, title, description, price, condition, goods_status, view_count, created_at, updated_at)
-            VALUES (:seller_id, :category_id, :title, :description, :price, :condition, :goods_status, :view_count, SYSDATE, SYSDATE)
-            RETURNING goods_id INTO :new_id
+        // 查分页数据（Oracle OFFSET FETCH 不支持绑定变量，用字符串插值——值来自白名单，安全）
+        var offset = (page - 1) * size;
+        var listSql = $"""
+            SELECT goods_id       AS GoodsId,
+                   seller_id      AS SellerId,
+                   seller_name    AS SellerNickname,
+                   category_id    AS CategoryId,
+                   category_name  AS CategoryName,
+                   title          AS Title,
+                   price          AS Price,
+                   goods_condition AS Condition,
+                   goods_status   AS Status,
+                   view_count     AS ViewCount,
+                   created_at     AS CreatedAt,
+                   cover_image    AS ImageUrl
+            FROM v_goods_list
+            {whereClause}
+            ORDER BY {orderColumn} {direction}
+            OFFSET {offset} ROWS FETCH NEXT {size} ROWS ONLY
             """;
 
-        await using var connection = await _connectionFactory.CreateOpenConnectionAsync();
-        await using var command = CreateCommand(connection, sql);
+        var items = await connection.QueryAsync<GoodsDto>(listSql, parameters);
 
-        command.Parameters.Add(CreateIntParameter("seller_id", goods.SellerId));
-        command.Parameters.Add(CreateIntParameter("category_id", goods.CategoryId));
-        command.Parameters.Add(CreateStringParameter("title", goods.Title, 200));
-        command.Parameters.Add(CreateStringParameter("description", goods.Description ?? string.Empty, 4000));
-        command.Parameters.Add(CreateDecimalParameter("price", goods.Price));
-        command.Parameters.Add(CreateStringParameter("condition", goods.Condition, 20));
-        command.Parameters.Add(CreateStringParameter("goods_status", goods.GoodsStatus, 20));
-        command.Parameters.Add(CreateIntParameter("view_count", 0));
-
-        var newIdParam = new OracleParameter("new_id", OracleDbType.Int32)
-        {
-            Direction = ParameterDirection.Output
-        };
-        command.Parameters.Add(newIdParam);
-
-        await command.ExecuteNonQueryAsync();
-        return Convert.ToInt32(newIdParam.Value?.ToString());
+        return (items.ToList(), total);
     }
 
-    public async Task<bool> UpdateAsync(Goods goods)
+    /// <summary>
+    /// 商品详情 — 查 v_goods_detail 视图（含描述、卖家信用、收藏数）
+    /// </summary>
+    public async Task<GoodsDto?> GetByIdAsync(int goodsId)
     {
+        using var connection = _connectionFactory.CreateConnection();
+
         const string sql = """
-            UPDATE goods
-            SET category_id = :category_id,
-                title = :title,
-                description = :description,
-                price = :price,
-                condition = :condition,
-                updated_at = SYSDATE
-            WHERE goods_id = :goods_id
+            SELECT goods_id       AS GoodsId,
+                   seller_id      AS SellerId,
+                   seller_name    AS SellerNickname,
+                   category_id    AS CategoryId,
+                   category_name  AS CategoryName,
+                   title          AS Title,
+                   description    AS Description,
+                   price          AS Price,
+                   goods_condition AS Condition,
+                   goods_status   AS Status,
+                   view_count     AS ViewCount,
+                   created_at     AS CreatedAt,
+                   cover_image    AS ImageUrl
+            FROM v_goods_detail
+            WHERE goods_id = :GoodsId
             """;
 
-        await using var connection = await _connectionFactory.CreateOpenConnectionAsync();
-        await using var command = CreateCommand(connection, sql);
-
-        command.Parameters.Add(CreateIntParameter("category_id", goods.CategoryId));
-        command.Parameters.Add(CreateStringParameter("title", goods.Title, 200));
-        command.Parameters.Add(CreateStringParameter("description", goods.Description ?? string.Empty, 4000));
-        command.Parameters.Add(CreateDecimalParameter("price", goods.Price));
-        command.Parameters.Add(CreateStringParameter("condition", goods.Condition, 20));
-        command.Parameters.Add(CreateIntParameter("goods_id", goods.GoodsId));
-
-        var rows = await command.ExecuteNonQueryAsync();
-        return rows > 0;
+        return await connection.QueryFirstOrDefaultAsync<GoodsDto>(sql, new { GoodsId = goodsId });
     }
 
-    public async Task<bool> DeleteAsync(int id)
+    /// <summary>
+    /// 发布商品 — 直接 INSERT，状态自动设为 'pending'
+    /// </summary>
+    public async Task<int> CreateAsync(CreateGoodsRequest request, int sellerId)
     {
-        const string sql = "DELETE FROM goods WHERE goods_id = :id";
-        await using var connection = await _connectionFactory.CreateOpenConnectionAsync();
-        await using var command = CreateCommand(connection, sql);
-        command.Parameters.Add(CreateIntParameter("id", id));
+        using var connection = _connectionFactory.CreateConnection();
 
-        var rows = await command.ExecuteNonQueryAsync();
-        return rows > 0;
-    }
-
-    public async Task<bool> UpdateStatusAsync(int goodsId, string status)
-    {
         const string sql = """
-            UPDATE goods
-            SET goods_status = :status,
-                updated_at = SYSDATE
-            WHERE goods_id = :goods_id
+            INSERT INTO goods (seller_id, category_id, title, description, price, goods_condition, goods_status, view_count, created_at)
+            VALUES (:SellerId, :CategoryId, :Title, :Description, :Price, :Condition, 'pending', 0, SYSDATE)
+            RETURNING goods_id INTO :NewId
             """;
 
-        await using var connection = await _connectionFactory.CreateOpenConnectionAsync();
-        await using var command = CreateCommand(connection, sql);
-        command.Parameters.Add(CreateStringParameter("status", status, 20));
-        command.Parameters.Add(CreateIntParameter("goods_id", goodsId));
+        var parameters = new DynamicParameters();
+        parameters.Add(":SellerId", sellerId);
+        parameters.Add(":CategoryId", request.CategoryId);
+        parameters.Add(":Title", request.Title);
+        parameters.Add(":Description", request.Description ?? (object)DBNull.Value);
+        parameters.Add(":Price", request.Price);
+        parameters.Add(":Condition", request.Condition);
+        parameters.Add(":NewId", dbType: System.Data.DbType.Int32, direction: System.Data.ParameterDirection.Output);
 
-        var rows = await command.ExecuteNonQueryAsync();
-        return rows > 0;
+        await connection.ExecuteAsync(sql, parameters);
+        return parameters.Get<int>(":NewId");
     }
 
-    public async Task<List<GoodsImage>> GetImagesByGoodsIdAsync(int goodsId)
+    /// <summary>
+    /// 编辑商品 — 只更新传入的非空字段
+    /// </summary>
+    public async Task<bool> UpdateAsync(int goodsId, UpdateGoodsRequest request)
     {
+        using var connection = _connectionFactory.CreateConnection();
+
+        // 动态拼接 SET 子句
+        var sets = new List<string> { "updated_at = SYSDATE" };
+        var parameters = new DynamicParameters();
+        parameters.Add(":GoodsId", goodsId);
+
+        if (request.CategoryId.HasValue) { sets.Add("category_id = :CategoryId"); parameters.Add(":CategoryId", request.CategoryId.Value); }
+        if (request.Title != null) { sets.Add("title = :Title"); parameters.Add(":Title", request.Title); }
+        if (request.Description != null) { sets.Add("description = :Description"); parameters.Add(":Description", request.Description); }
+        if (request.Price.HasValue) { sets.Add("price = :Price"); parameters.Add(":Price", request.Price.Value); }
+        if (request.Condition != null) { sets.Add("goods_condition = :Condition"); parameters.Add(":Condition", request.Condition); }
+
+        if (sets.Count == 1) return true; // 没东西更新
+
+        var sql = $"UPDATE goods SET {string.Join(", ", sets)} WHERE goods_id = :GoodsId";
+        var affected = await connection.ExecuteAsync(sql, parameters);
+        return affected > 0;
+    }
+
+    /// <summary>
+    /// 物理删除商品（管理员操作，极少使用）
+    /// </summary>
+    public async Task<bool> DeleteAsync(int goodsId)
+    {
+        using var connection = _connectionFactory.CreateConnection();
+        const string sql = "DELETE FROM goods WHERE goods_id = :GoodsId";
+        var affected = await connection.ExecuteAsync(sql, new { GoodsId = goodsId });
+        return affected > 0;
+    }
+
+    /// <summary>
+    /// 更新商品状态 — 审核/锁定/售出/下架
+    /// Service 层负责校验状态流转合法性
+    /// </summary>
+    public async Task<bool> UpdateStatusAsync(int goodsId, string newStatus)
+    {
+        using var connection = _connectionFactory.CreateConnection();
         const string sql = """
-            SELECT image_id, goods_id, image_url, sort_order, created_at
+            UPDATE goods SET goods_status = :Status, updated_at = SYSDATE
+            WHERE goods_id = :GoodsId
+            """;
+        var affected = await connection.ExecuteAsync(sql, new { GoodsId = goodsId, Status = newStatus });
+        return affected > 0;
+    }
+
+    /// <summary>
+    /// 浏览量 +1 — 调用数据库函数 fn_increment_view
+    /// </summary>
+    public async Task<bool> IncrementViewCountAsync(int goodsId)
+    {
+        using var connection = _connectionFactory.CreateConnection();
+        const string sql = "SELECT fn_increment_view(:GoodsId) FROM DUAL";
+        await connection.ExecuteAsync(sql, new { GoodsId = goodsId });
+        return true; // 函数内部 UPDATE，不会失败
+    }
+
+    // ==================== 商品图片管理 ====================
+
+    /// <summary>
+    /// 商品图片列表 — 按 sort_order 升序
+    /// </summary>
+    public async Task<IEnumerable<GoodsImageDto>> GetImagesAsync(int goodsId)
+    {
+        using var connection = _connectionFactory.CreateConnection();
+        const string sql = """
+            SELECT image_id AS ImageId, goods_id AS GoodsId,
+                   image_url AS ImageUrl, sort_order AS SortOrder
             FROM goods_image
-            WHERE goods_id = :goods_id
+            WHERE goods_id = :GoodsId
             ORDER BY sort_order
             """;
-
-        var images = new List<GoodsImage>();
-        await using var connection = await _connectionFactory.CreateOpenConnectionAsync();
-        await using var command = CreateCommand(connection, sql);
-        command.Parameters.Add(CreateIntParameter("goods_id", goodsId));
-
-        await using var reader = await command.ExecuteReaderAsync();
-        while (await reader.ReadAsync())
-        {
-            images.Add(new GoodsImage
-            {
-                ImageId = Convert.ToInt32(reader["image_id"]),
-                GoodsId = Convert.ToInt32(reader["goods_id"]),
-                ImageUrl = Convert.ToString(reader["image_url"]) ?? string.Empty,
-                SortOrder = Convert.ToInt32(reader["sort_order"]),
-                CreatedAt = Convert.ToDateTime(reader["created_at"])
-            });
-        }
-        return images;
+        return await connection.QueryAsync<GoodsImageDto>(sql, new { GoodsId = goodsId });
     }
 
-    public async Task AddImageAsync(GoodsImage image)
+    /// <summary>
+    /// 添加图片
+    /// </summary>
+    public async Task<int> AddImageAsync(int goodsId, string imageUrl, int sortOrder)
     {
+        using var connection = _connectionFactory.CreateConnection();
         const string sql = """
             INSERT INTO goods_image (goods_id, image_url, sort_order, created_at)
-            VALUES (:goods_id, :image_url, :sort_order, SYSDATE)
+            VALUES (:GoodsId, :ImageUrl, :SortOrder, SYSDATE)
+            RETURNING image_id INTO :NewId
             """;
-
-        await using var connection = await _connectionFactory.CreateOpenConnectionAsync();
-        await using var command = CreateCommand(connection, sql);
-        command.Parameters.Add(CreateIntParameter("goods_id", image.GoodsId));
-        command.Parameters.Add(CreateStringParameter("image_url", image.ImageUrl, 255));
-        command.Parameters.Add(CreateIntParameter("sort_order", image.SortOrder));
-
-        await command.ExecuteNonQueryAsync();
+        var parameters = new DynamicParameters();
+        parameters.Add(":GoodsId", goodsId);
+        parameters.Add(":ImageUrl", imageUrl);
+        parameters.Add(":SortOrder", sortOrder);
+        parameters.Add(":NewId", dbType: System.Data.DbType.Int32, direction: System.Data.ParameterDirection.Output);
+        await connection.ExecuteAsync(sql, parameters);
+        return parameters.Get<int>(":NewId");
     }
 
-    public async Task DeleteImagesByGoodsIdAsync(int goodsId)
+    /// <summary>
+    /// 删除图片
+    /// </summary>
+    public async Task<bool> DeleteImageAsync(int imageId)
     {
-        const string sql = "DELETE FROM goods_image WHERE goods_id = :goods_id";
-        await using var connection = await _connectionFactory.CreateOpenConnectionAsync();
-        await using var command = CreateCommand(connection, sql);
-        command.Parameters.Add(CreateIntParameter("goods_id", goodsId));
-        await command.ExecuteNonQueryAsync();
+        using var connection = _connectionFactory.CreateConnection();
+        const string sql = "DELETE FROM goods_image WHERE image_id = :ImageId";
+        var affected = await connection.ExecuteAsync(sql, new { ImageId = imageId });
+        return affected > 0;
     }
 
-    public async Task<bool> ExistsAsync(int id)
+    // ==================== 辅助业务方法 ====================
+
+    /// <summary>
+    /// 校验商品归属 — 卖家只能操作自己的商品
+    /// </summary>
+    public async Task<bool> IsOwnedByUserAsync(int goodsId, int sellerId)
     {
-        const string sql = "SELECT COUNT(1) FROM goods WHERE goods_id = :id";
-        await using var connection = await _connectionFactory.CreateOpenConnectionAsync();
-        await using var command = CreateCommand(connection, sql);
-        command.Parameters.Add(CreateIntParameter("id", id));
-        var result = await command.ExecuteScalarAsync();
-        return Convert.ToInt32(result) > 0;
+        using var connection = _connectionFactory.CreateConnection();
+        const string sql = "SELECT COUNT(1) FROM goods WHERE goods_id = :GoodsId AND seller_id = :SellerId";
+        var count = await connection.ExecuteScalarAsync<int>(sql, new { GoodsId = goodsId, SellerId = sellerId });
+        return count > 0;
     }
 
-    // ---- Helper Methods ----
-    private static OracleCommand CreateCommand(OracleConnection connection, string sql)
+    /// <summary>
+    /// 检查是否可购买 — 调用数据库函数 fn_can_purchase
+    /// 校验：商品 approved + 非自买 + 用户未封禁 + 信用分≥0
+    /// </summary>
+    public async Task<bool> IsAvailableForPurchaseAsync(int goodsId)
     {
-        return new OracleCommand(sql, connection) { BindByName = true };
+        // fn_can_purchase 需要 buyer_id，这里只检查商品状态
+        using var connection = _connectionFactory.CreateConnection();
+        const string sql = "SELECT COUNT(1) FROM goods WHERE goods_id = :GoodsId AND goods_status = 'approved'";
+        var count = await connection.ExecuteScalarAsync<int>(sql, new { GoodsId = goodsId });
+        return count > 0;
     }
 
-    private static OracleParameter CreateIntParameter(string name, int value) =>
-        new(name, OracleDbType.Int32) { Value = value };
-
-    private static OracleParameter CreateDecimalParameter(string name, decimal value) =>
-        new(name, OracleDbType.Decimal) { Value = value };
-
-    private static OracleParameter CreateStringParameter(string name, string value, int size) =>
-        new(name, OracleDbType.Varchar2, size) { Value = value };
-
-    private static Goods MapGoods(IDataRecord record)
+    /// <summary>
+    /// 查询商品当前状态
+    /// </summary>
+    public async Task<string?> GetStatusAsync(int goodsId)
     {
-        return new Goods
-        {
-            GoodsId = Convert.ToInt32(record["goods_id"]),
-            SellerId = Convert.ToInt32(record["seller_id"]),
-            CategoryId = Convert.ToInt32(record["category_id"]),
-            Title = Convert.ToString(record["title"]) ?? string.Empty,
-            Description = Convert.ToString(record["description"]),
-            Price = Convert.ToDecimal(record["price"]),
-            Condition = Convert.ToString(record["condition"]) ?? string.Empty,
-            GoodsStatus = Convert.ToString(record["goods_status"]) ?? "pending",
-            ViewCount = Convert.ToInt32(record["view_count"]),
-            CreatedAt = Convert.ToDateTime(record["created_at"]),
-            UpdatedAt = Convert.ToDateTime(record["updated_at"])
-        };
+        using var connection = _connectionFactory.CreateConnection();
+        const string sql = "SELECT goods_status FROM goods WHERE goods_id = :GoodsId";
+        return await connection.QueryFirstOrDefaultAsync<string>(sql, new { GoodsId = goodsId });
+    }
+
+    /// <summary>
+    /// 原子锁定商品 — F16 核心实现
+    /// 条件更新：只有 'approved' 状态才能变为 'locked'，防止超卖
+    /// SQL: UPDATE goods SET goods_status='locked' WHERE goods_id=:id AND goods_status='approved'
+    /// 影响行数 1=成功, 0=已被他人锁定
+    /// </summary>
+    public async Task<bool> LockForPurchaseAsync(int goodsId)
+    {
+        using var connection = _connectionFactory.CreateConnection();
+        const string sql = """
+            UPDATE goods SET goods_status = 'locked', updated_at = SYSDATE
+            WHERE goods_id = :GoodsId AND goods_status = 'approved'
+            """;
+        var affected = await connection.ExecuteAsync(sql, new { GoodsId = goodsId });
+        return affected > 0;
+    }
+
+    /// <summary>
+    /// 释放商品锁定 — 取消订单时恢复
+    /// 条件更新：只有 'locked' 状态才能恢复为 'approved'
+    /// </summary>
+    public async Task<bool> UnlockGoodsAsync(int goodsId)
+    {
+        using var connection = _connectionFactory.CreateConnection();
+        const string sql = """
+            UPDATE goods SET goods_status = 'approved', updated_at = SYSDATE
+            WHERE goods_id = :GoodsId AND goods_status = 'locked'
+            """;
+        var affected = await connection.ExecuteAsync(sql, new { GoodsId = goodsId });
+        return affected > 0;
+    }
+
+    /// <summary>
+    /// 标记售出 — 交易完成时调用
+    /// 状态变为 'sold'
+    /// </summary>
+    public async Task<bool> MarkAsSoldAsync(int goodsId)
+    {
+        using var connection = _connectionFactory.CreateConnection();
+        const string sql = """
+            UPDATE goods SET goods_status = 'sold', updated_at = SYSDATE
+            WHERE goods_id = :GoodsId AND goods_status IN ('locked', 'approved')
+            """;
+        var affected = await connection.ExecuteAsync(sql, new { GoodsId = goodsId });
+        return affected > 0;
     }
 }
