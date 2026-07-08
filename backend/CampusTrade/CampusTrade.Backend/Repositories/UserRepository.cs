@@ -1,4 +1,4 @@
-﻿using CampusTrade.Backend.Infrastructure;
+using CampusTrade.Backend.Infrastructure;
 using CampusTrade.Backend.Models;
 using CampusTrade.Backend.Models.DTOs;
 using Dapper;
@@ -17,6 +17,7 @@ public interface IUserRepository
     Task<StudentAuthDto?> GetStudentAuthByAuthIdAsync(int authId);
     Task<StudentAuthDto> UpsertStudentAuthAsync(StudentAuthRequestDto request);
     Task<StudentAuthDto?> UpdateStudentAuthAsync(int authId, StudentAuthRequestDto request);
+    Task<bool> UpdateAvatarAsync(int userId, string avatarUrl);
 }
 
 public class UserRepository : IUserRepository
@@ -304,5 +305,17 @@ public class UserRepository : IUserRepository
             """;
 
         return await connection.QuerySingleOrDefaultAsync<User>(sql, new { UserId = userId }, transaction);
+    }
+
+    public async Task<bool> UpdateAvatarAsync(int userId, string avatarUrl)
+    {
+        using var connection = _connectionFactory.CreateConnection();
+        const string sql = """
+            UPDATE app_user
+            SET avatar = :AvatarUrl, updated_at = SYSDATE
+            WHERE user_id = :UserId
+            """;
+        var affected = await connection.ExecuteAsync(sql, new { UserId = userId, AvatarUrl = avatarUrl });
+        return affected > 0;
     }
 }

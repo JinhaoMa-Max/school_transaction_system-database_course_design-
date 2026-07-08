@@ -1,4 +1,4 @@
-﻿using CampusTrade.Backend.Models.DTOs;
+using CampusTrade.Backend.Models.DTOs;
 
 namespace CampusTrade.Backend.Services;
 
@@ -11,4 +11,5 @@ public interface IAuthService
     Task<StudentAuthDto?> GetStudentAuthByUserIdAsync(int userId);
     Task<StudentAuthDto> SubmitStudentAuthAsync(StudentAuthRequestDto request, int? currentUserId);
     Task<StudentAuthDto> UpdateStudentAuthAsync(int authId, StudentAuthRequestDto request);
+    Task<UserDto> UpdateAvatarAsync(string? token, string avatarUrl);
 }

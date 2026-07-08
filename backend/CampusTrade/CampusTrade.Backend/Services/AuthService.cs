@@ -209,6 +209,31 @@ public class AuthService : IAuthService
             && string.Equals(auth.College, "待完善", StringComparison.Ordinal);
     }
 
+    public async Task<UserDto> UpdateAvatarAsync(string? token, string avatarUrl)
+    {
+        var userId = TryGetUserIdFromToken(token);
+        if (!userId.HasValue)
+        {
+            throw new AuthException(401, "未登录或登录已过期");
+        }
+
+        var user = await _userRepository.GetByIdAsync(userId.Value);
+        if (user == null)
+        {
+            throw new AuthException(404, "用户不存在");
+        }
+
+        await _userRepository.UpdateAvatarAsync(userId.Value, avatarUrl);
+        
+        var updatedUser = await _userRepository.GetByIdAsync(userId.Value);
+        if (updatedUser == null)
+        {
+            throw new InvalidOperationException("更新头像后未能读取用户信息");
+        }
+
+        return ToDto(updatedUser);
+    }
+
     private static UserDto ToDto(User user)
     {
         return new UserDto

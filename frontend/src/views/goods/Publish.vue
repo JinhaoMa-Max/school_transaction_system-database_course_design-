@@ -3,7 +3,7 @@ import { ref, onMounted, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { Message } from '@arco-design/web-vue'
 import { useUserStore } from '@/stores'
-import { getCategoryList, createGoods, uploadGoodsImage } from '@/api'
+import { getCategoryList, createGoods, uploadGoodsImage, uploadImage } from '@/api'
 import type { Category } from '@/types'
 
 const router = useRouter()
@@ -12,7 +12,7 @@ const userStore = useUserStore()
 const formRef = ref()
 const loading = ref(false)
 const categories = ref<Category[]>([])
-const imageList = ref<{ url: string; file?: File }[]>([])
+const imageList = ref<{ url: string; uploadedUrl?: string; file?: File }[]>([])
 
 const form = reactive({
   title: '',
@@ -112,14 +112,29 @@ const handleSubmit = async () => {
     })
 
     const goodsId = res.data.goodsId
+
     for (let i = 0; i < imageList.value.length; i++) {
+      const item = imageList.value[i]
+      let imageUrl = item.uploadedUrl
+
+      if (!imageUrl && item.file) {
+        try {
+          const uploadRes = await uploadImage(item.file)
+          imageUrl = uploadRes.data.url
+          item.uploadedUrl = imageUrl
+        } catch {
+          Message.warning(`第${i + 1}张图片上传失败，已跳过`)
+          continue
+        }
+      }
+
       try {
         await uploadGoodsImage(goodsId, {
-          imageUrl: imageList.value[i].url,
+          imageUrl: imageUrl!,
           sortOrder: i + 1
         })
       } catch {
-        // 忽略单张图片上传失败
+        Message.warning(`第${i + 1}张图片保存失败`)
       }
     }
 

@@ -1,12 +1,15 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { Message } from '@arco-design/web-vue'
 import { useUserStore } from '@/stores'
+import { uploadAvatar } from '@/api'
 
 const router = useRouter()
 const userStore = useUserStore()
 
 const user = computed(() => userStore.user)
+const loading = ref(false)
 
 const goToStudentAuth = () => {
   router.push('/student-auth')
@@ -32,15 +35,54 @@ const getStatusText = (status: string) => {
   }
   return map[status] || status
 }
+
+const handleAvatarUpload = async (e: Event) => {
+  const target = e.target as HTMLInputElement
+  const file = target.files?.[0]
+  if (!file) return
+
+  if (file.size > 5 * 1024 * 1024) {
+    Message.warning('头像大小不能超过5MB')
+    return
+  }
+
+  const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/gif', 'image/webp']
+  if (!allowedTypes.includes(file.type)) {
+    Message.warning('只允许上传JPG、PNG、GIF、WebP格式的图片')
+    return
+  }
+
+  loading.value = true
+  try {
+    const res = await uploadAvatar(file)
+    userStore.user = res.data
+    Message.success('头像上传成功')
+  } catch {
+    Message.error('头像上传失败')
+  } finally {
+    loading.value = false
+    target.value = ''
+  }
+}
 </script>
 
 <template>
   <div class="profile-page">
     <h2>个人中心</h2>
     <div v-if="user" class="profile-info">
-      <div class="avatar">
+      <div class="avatar" @click="() => document.getElementById('avatar-input')?.click()">
         <img :src="user.avatarUrl || 'https://via.placeholder.com/100'" alt="头像" />
+        <div class="avatar-overlay">
+          <span>{{ loading ? '上传中...' : '更换头像' }}</span>
+        </div>
       </div>
+      <input
+        id="avatar-input"
+        type="file"
+        accept="image/jpeg,image/png,image/jpg,image/gif,image/webp"
+        style="display: none"
+        @change="handleAvatarUpload"
+      />
       <div class="info">
         <h3>{{ user.nickname }}</h3>
         <p>用户名: {{ user.username }}</p>
@@ -70,11 +112,40 @@ const getStatusText = (status: string) => {
   gap: 24px;
 }
 
+.avatar {
+  position: relative;
+  cursor: pointer;
+}
+
 .avatar img {
   width: 100px;
   height: 100px;
   border-radius: 50%;
   object-fit: cover;
+}
+
+.avatar-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 30px;
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: 0 0 50% 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.avatar:hover .avatar-overlay {
+  opacity: 1;
+}
+
+.avatar-overlay span {
+  color: white;
+  font-size: 12px;
 }
 
 .info h3 {

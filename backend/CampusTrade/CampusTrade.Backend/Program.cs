@@ -20,12 +20,16 @@ builder.Services.AddScoped<IGoodsService, GoodsService>();
 builder.Services.AddScoped<IBargainRepository, BargainRepository>();
 builder.Services.AddScoped<IBargainService, BargainService>();
 
+builder.Services.AddScoped<IUploadService, UploadService>();
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
 }
+
+app.UseStaticFiles();
 
 app.MapControllers();
 

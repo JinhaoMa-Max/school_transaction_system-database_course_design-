@@ -1,4 +1,4 @@
-﻿using CampusTrade.Backend.Models;
+using CampusTrade.Backend.Models;
 using CampusTrade.Backend.Models.DTOs;
 using CampusTrade.Backend.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -10,10 +10,12 @@ namespace CampusTrade.Backend.Controllers;
 public class AuthController : ControllerBase
 {
     private readonly IAuthService _authService;
+    private readonly IUploadService _uploadService;
 
-    public AuthController(IAuthService authService)
+    public AuthController(IAuthService authService, IUploadService uploadService)
     {
         _authService = authService;
+        _uploadService = uploadService;
     }
 
     [HttpPost("login")]
@@ -132,6 +134,31 @@ public class AuthController : ControllerBase
         catch
         {
             return StatusCode(500, ApiResponse<object>.Fail(500, "服务器内部错误"));
+        }
+    }
+
+    [HttpPost("avatar")]
+    public async Task<IActionResult> UploadAvatar([FromForm] IFormFile file)
+    {
+        try
+        {
+            var fileName = await _uploadService.UploadImageAsync(file);
+            var avatarUrl = _uploadService.GetImageUrl(fileName);
+            
+            var user = await _authService.UpdateAvatarAsync(ReadBearerToken(), avatarUrl);
+            return Ok(UserHttpResponseDto.Success(user, "头像上传成功"));
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ApiResponse<object>.Fail(400, ex.Message));
+        }
+        catch (AuthException ex)
+        {
+            return ToErrorResult(ex);
+        }
+        catch
+        {
+            return StatusCode(500, ApiResponse<object>.Fail(500, "头像上传失败"));
         }
     }
 
