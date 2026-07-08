@@ -15,11 +15,11 @@ public class GoodsService : IGoodsService
     public async Task<GoodsListResult> GetPagedAsync(
         int page, int size,
         int? categoryId, string? keyword,
+        decimal? minPrice, decimal? maxPrice,
         string? sortBy, bool ascending)
     {
-        // 可添加额外业务逻辑（如默认排序、过滤敏感词等）
         var (items, total) = await _goodsRepository.GetPagedAsync(
-            page, size, categoryId, keyword, sortBy, ascending);
+            page, size, categoryId, keyword, minPrice, maxPrice, sortBy, ascending);
         return new GoodsListResult
         {
             List = items,
@@ -28,6 +28,7 @@ public class GoodsService : IGoodsService
             Size = size
         };
     }
+
 
     public async Task<GoodsDto?> GetByIdAsync(int goodsId)
     {

@@ -27,7 +27,10 @@ public class GoodsRepository : IGoodsRepository
     /// 数据来源: v_goods_list 视图（自动 JOIN 卖家名、分类名、首图）
     /// </summary>
     public async Task<(List<GoodsDto> Items, int Total)> GetPagedAsync(
-        int page, int size, int? categoryId, string? keyword, string? sortBy, bool ascending)
+        int page, int size,
+        int? categoryId, string? keyword,
+        decimal? minPrice, decimal? maxPrice,
+        string? sortBy, bool ascending)
     {
         using var connection = _connectionFactory.CreateConnection();
 
@@ -45,14 +48,25 @@ public class GoodsRepository : IGoodsRepository
             where.Add("title LIKE :Keyword");
             parameters.Add(":Keyword", $"%{keyword}%");
         }
+        if (minPrice.HasValue)
+        {
+            where.Add("price >= :MinPrice");
+            parameters.Add(":MinPrice", minPrice.Value);
+        }
+        if (maxPrice.HasValue)
+        {
+            where.Add("price <= :MaxPrice");
+            parameters.Add(":MaxPrice", maxPrice.Value);
+        }
 
         var whereClause = where.Count > 0 ? "WHERE " + string.Join(" AND ", where) : "";
 
-        // 排序字段映射（防 SQL 注入：只用白名单，不拼接用户输入）
-        var orderColumn = sortBy switch
+        // 排序映射
+        var orderColumn = sortBy?.ToLower() switch
         {
             "price" => "price",
-            "viewCount" => "view_count",
+            "viewcount" or "view_count" or "view" or "views" => "view_count", 
+            "createdat" => "created_at",
             _ => "created_at"
         };
         var direction = ascending ? "ASC" : "DESC";
