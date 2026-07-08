@@ -74,6 +74,22 @@ public class BargainRepository : IBargainRepository
     }
 
     /// <summary>
+    /// 买家响应卖家还价（接受/拒绝/再次出价）
+    /// </summary>
+    /// <remarks>
+    /// 待补充实现要点：
+    /// 1. buyerResult=accepted 时，将当前议价状态更新为 accepted。
+    /// 2. buyerResult=rejected 时，将当前议价状态更新为 rejected（或你们约定的终态）。
+    /// 3. buyerResult=countered 时，更新 offer_price 为新的买家报价，并将 seller_response 重置为 pending，
+    ///    counter_price 清空，状态恢复为 active，等待卖家再次处理。
+    /// 4. 返回更新后的完整 BargainOfferDto。
+    /// </remarks>
+    public Task<BargainOfferDto> BuyerHandleAsync(int bargainId, string buyerResult, decimal? offerPrice)
+    {
+        throw new NotImplementedException();
+    }
+
+    /// <summary>
     /// 关闭议价
     /// </summary>
     /// <remarks>

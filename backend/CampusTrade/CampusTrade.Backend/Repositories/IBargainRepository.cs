@@ -81,6 +81,23 @@ public interface IBargainRepository
     Task<BargainOfferDto> RespondAsync(int bargainId, string sellerResult, decimal? counterPrice);
 
     /// <summary>
+    /// 买家响应卖家还价（接受/拒绝/再次出价）
+    /// </summary>
+    /// <param name="bargainId">议价 ID</param>
+    /// <param name="buyerResult">买家处理结果：accepted / rejected / countered</param>
+    /// <param name="offerPrice">买家新的出价金额（当 buyerResult=countered 时需要写入）</param>
+    /// <returns>处理后的议价记录</returns>
+    /// <remarks>
+    /// 数据库实现注意事项：
+    /// 1. 当 buyerResult=accepted 时，建议直接将 offer_status 更新为 'accepted'，表示买家接受卖家还价。
+    /// 2. 当 buyerResult=rejected 时，建议将 offer_status 更新为 'rejected' 或你们约定的终态值。
+    /// 3. 当 buyerResult=countered 时，建议将 offer_price 更新为新的买家报价，并将 seller_response 重置为 'pending'，
+    ///    counter_price 置空，offer_status 回到 'active'，等待卖家再次处理。
+    /// 4. 方法返回值需为更新后的完整记录（BargainOfferDto 全字段），供前端刷新展示。
+    /// </remarks>
+    Task<BargainOfferDto> BuyerHandleAsync(int bargainId, string buyerResult, decimal? offerPrice);
+
+    /// <summary>
     /// 关闭议价（前端 closeBargain）
     /// </summary>
     /// <param name="bargainId">议价 ID</param>

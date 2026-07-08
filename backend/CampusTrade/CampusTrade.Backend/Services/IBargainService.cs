@@ -21,6 +21,9 @@ public interface IBargainService
     // 卖家处理议价（accepted/rejected/countered）
     Task<BargainOfferDto> HandleAsync(int bargainId, HandleBargainRequest request, int? currentUserId);
 
+    // 买家响应卖家还价（accepted/rejected/countered）
+    Task<BargainOfferDto> BuyerHandleAsync(int bargainId, BuyerHandleBargainRequest request, int? currentUserId);
+
     // 关闭议价（买家/卖家均可触发，具体权限在实现中校验）
     Task<bool> CloseAsync(int bargainId, int? currentUserId);
 }

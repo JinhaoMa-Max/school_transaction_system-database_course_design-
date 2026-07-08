@@ -35,3 +35,10 @@ public class HandleBargainRequest
     public string SellerResult { get; set; } = string.Empty;
     public decimal? CounterPrice { get; set; }
 }
+
+// 买家响应卖家还价入参：PUT /api/bargains/{bargainId}/buyer-handle
+public class BuyerHandleBargainRequest
+{
+    public string BuyerResult { get; set; } = string.Empty;
+    public decimal? OfferPrice { get; set; }
+}
