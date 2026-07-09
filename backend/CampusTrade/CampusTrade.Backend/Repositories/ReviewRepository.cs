@@ -16,27 +16,28 @@ public class ReviewRepository : IReviewRepository
     public ReviewRepository(IDbConnectionFactory connectionFactory) { _connectionFactory = connectionFactory; }
 
     /// <summary>评价列表 — 查 v_review_detail（含评价者/被评者昵称、商品名）</summary>
-    public async Task<(List<ReviewDto> Items, int Total)> GetPagedAsync(int page, int size, int? reviewedUserId, int? orderId)
-    {
-        using var connection = _connectionFactory.CreateConnection();
-        var where = new List<string>();
-        var p = new DynamicParameters();
-        if (reviewedUserId.HasValue) { where.Add("reviewed_user_id = :Ruid"); p.Add(":Ruid", reviewedUserId.Value); }
-        if (orderId.HasValue) { where.Add("order_id = :Oid"); p.Add(":Oid", orderId.Value); }
-        var w = where.Count > 0 ? "WHERE " + string.Join(" AND ", where) : "";
-        var total = await connection.ExecuteScalarAsync<int>($"SELECT COUNT(*) FROM v_review_detail {w}", p);
-        var off = (page - 1) * size;
-        var sql = $"""
-            SELECT review_id AS ReviewId, order_id AS OrderId, reviewer_id AS ReviewerId,
-                   reviewer_name AS ReviewerName, reviewed_user_id AS ReviewedUserId,
-                   reviewed_user_name AS ReviewedUserName, rating AS Rating, content AS Content,
-                   created_at AS CreateTime, goods_id AS GoodsId, goods_title AS GoodsTitle
-            FROM v_review_detail {w} ORDER BY created_at DESC
-            OFFSET {off} ROWS FETCH NEXT {size} ROWS ONLY
-            """;
-        var items = await connection.QueryAsync<ReviewDto>(sql, p);
-        return (items.ToList(), total);
-    }
+public async Task<(List<ReviewDto> Items, int Total)> GetPagedAsync(int page, int size, int? reviewerId, int? reviewedUserId, int? orderId)
+{
+    using var connection = _connectionFactory.CreateConnection();
+    var where = new List<string>();
+    var p = new DynamicParameters();
+    if (reviewerId.HasValue) { where.Add("reviewer_id = :Rid"); p.Add(":Rid", reviewerId.Value); }
+    if (reviewedUserId.HasValue) { where.Add("reviewed_user_id = :Ruid"); p.Add(":Ruid", reviewedUserId.Value); }
+    if (orderId.HasValue) { where.Add("order_id = :Oid"); p.Add(":Oid", orderId.Value); }
+    var w = where.Count > 0 ? "WHERE " + string.Join(" AND ", where) : "";
+    var total = await connection.ExecuteScalarAsync<int>($"SELECT COUNT(*) FROM v_review_detail {w}", p);
+    var off = (page - 1) * size;
+    var sql = $"""
+        SELECT review_id AS ReviewId, order_id AS OrderId, reviewer_id AS ReviewerId,
+               reviewer_name AS ReviewerName, reviewed_user_id AS ReviewedUserId,
+               reviewed_user_name AS ReviewedUserName, rating AS Rating, content AS Content,
+               created_at AS CreateTime, goods_id AS GoodsId, goods_title AS GoodsTitle
+        FROM v_review_detail {w} ORDER BY created_at DESC
+        OFFSET {off} ROWS FETCH NEXT {size} ROWS ONLY
+        """;
+    var items = await connection.QueryAsync<ReviewDto>(sql, p);
+    return (items.ToList(), total);
+}
 
     public async Task<ReviewDto?> GetByIdAsync(int reviewId)
     {
@@ -84,9 +85,24 @@ public class ReviewRepository : IReviewRepository
     }
 
     public async Task<int> RecalcCreditAsync(int userId)
-    {
-        using var connection = _connectionFactory.CreateConnection();
-        // fn_calc_credit 计算: 基准100 + 好评×5 - 差评×10 + 成交×2
-        return await connection.ExecuteScalarAsync<int>("SELECT fn_calc_credit(:u) FROM DUAL", new { u = userId });
-    }
+{
+    using var connection = _connectionFactory.CreateConnection();
+    return await connection.ExecuteScalarAsync<int>("SELECT fn_calc_credit(:u) FROM DUAL", new { u = userId });
+}
+
+public async Task<bool> UpdateAsync(int reviewId, int rating, string? content)
+{
+    using var connection = _connectionFactory.CreateConnection();
+    const string sql = "UPDATE review SET rating=:r, content=:c, updated_at=SYSTIMESTAMP WHERE review_id=:id";
+    var rows = await connection.ExecuteAsync(sql, new { r = rating, c = content ?? (object)DBNull.Value, id = reviewId });
+    return rows > 0;
+}
+
+public async Task<bool> DeleteAsync(int reviewId)
+{
+    using var connection = _connectionFactory.CreateConnection();
+    const string sql = "DELETE FROM review WHERE review_id=:id";
+    var rows = await connection.ExecuteAsync(sql, new { id = reviewId });
+    return rows > 0;
+}
 }

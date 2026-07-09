@@ -26,3 +26,12 @@ public class ChatMessageDto
 
 /// <summary>发送消息请求</summary>
 public class SendMessageRequest { public int SessionId { get; set; } public string Content { get; set; } = string.Empty; }
+
+public class CreateSessionRequest//新增
+{
+    public int GoodsId { get; set; }
+    public int SellerId { get; set; }
+}
+
+
+
