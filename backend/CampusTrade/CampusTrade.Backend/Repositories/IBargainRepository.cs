@@ -33,6 +33,7 @@ public interface IBargainRepository
         int size,
         int? goodsId,
         int? buyerId,
+        int? sellerId,
         string? status);
 
     /// <summary>

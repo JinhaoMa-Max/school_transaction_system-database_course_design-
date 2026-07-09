@@ -3,7 +3,7 @@ import type { User, Goods, Category, TradeOrder, BargainOffer, ChatSession, Chat
 
 /**
  * 模拟用户数据
- * 包含管理员、卖家、买家三种角色的示例用户
+ * 包含管理员和普通用户两种角色的示例用户
  */
 export const mockUsers: User[] = [
   {
@@ -21,26 +21,26 @@ export const mockUsers: User[] = [
   },
   {
     userId: 2,
-    username: 'seller001',
-    password: 'seller123',
-    nickname: '卖家小王',
+    username: 'user001',
+    password: 'user123',
+    nickname: '用户小王',
     avatarUrl: '',
     phone: '13800138001',
-    email: 'seller001@example.com',
-    role: 'seller',
+    email: 'user001@example.com',
+    role: 'user',
     status: 'normal',
     creditScore: 98,
     registerTime: '2024-01-02 00:00:00'
   },
   {
     userId: 3,
-    username: 'buyer001',
-    password: 'buyer123',
-    nickname: '买家小李',
+    username: 'user002',
+    password: 'user123',
+    nickname: '用户小李',
     avatarUrl: '',
     phone: '13800138002',
-    email: 'buyer001@example.com',
-    role: 'buyer',
+    email: 'user002@example.com',
+    role: 'user',
     status: 'normal',
     creditScore: 100,
     registerTime: '2024-01-03 00:00:00'

@@ -47,13 +47,13 @@ const routes: RouteRecordRaw[] = [
     path: '/goods/publish',
     name: 'GoodsPublish',
     component: () => import('@/views/goods/Publish.vue'),
-    meta: { requiresAuth: true, roles: ['seller'] }
+    meta: { requiresAuth: true }
   },
   {
     path: '/goods/:id/edit',
     name: 'GoodsEdit',
     component: () => import('@/views/goods/Edit.vue'),
-    meta: { requiresAuth: true, roles: ['seller'] }
+    meta: { requiresAuth: true }
   },
   {
     path: '/favorites',
@@ -125,7 +125,7 @@ const routes: RouteRecordRaw[] = [
     path: '/my/goods',
     name: 'MyGoods',
     component: () => import('@/views/my/Goods.vue'),
-    meta: { requiresAuth: true, roles: ['seller'] }
+    meta: { requiresAuth: true }
   },
   {
     path: '/profile',

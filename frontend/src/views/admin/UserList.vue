@@ -20,8 +20,7 @@ const handleUnban = async (userId: number) => {
 
 const getRoleText = (role: string) => {
   const map: Record<string, string> = {
-    buyer: '买家',
-    seller: '卖家',
+    user: '普通用户',
     admin: '管理员'
   }
   return map[role] || role

@@ -10,6 +10,7 @@ public interface IBargainService
         int size,
         int? goodsId,
         int? buyerId,
+        int? sellerId,
         string? status);
 
     // 议价详情
