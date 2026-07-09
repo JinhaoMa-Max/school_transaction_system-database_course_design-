@@ -89,30 +89,34 @@ public class BargainRepository : IBargainRepository
         return await connection.ExecuteAsync("UPDATE bargain_offer SET offer_status='closed', updated_at=SYSDATE WHERE offer_id=:id AND offer_status='active'", new { id = bargainId }) > 0;
     }
 
-    /// <summary>Buyer handles seller counter offer.</summary>
+    /// <summary>买家回应卖家还价 — sp_buyer_handle_bargain: 校验买家身份+议价状态+卖家已还价→原子更新</summary>
     public async Task<BargainOfferDto> BuyerHandleAsync(int bargainId, string buyerResult, decimal? offerPrice)
     {
-        using var connection = _connectionFactory.CreateConnection();
-
-        var rows = buyerResult switch
-        {
-            "accepted" => await connection.ExecuteAsync(
-                "UPDATE bargain_offer SET offer_status='accepted', updated_at=SYSDATE WHERE offer_id=:id",
-                new { id = bargainId }),
-            "rejected" => await connection.ExecuteAsync(
-                "UPDATE bargain_offer SET offer_status='rejected', updated_at=SYSDATE WHERE offer_id=:id",
-                new { id = bargainId }),
-            "countered" => await connection.ExecuteAsync(
-                "UPDATE bargain_offer SET offer_price=:op, seller_response='pending', counter_price=NULL, offer_status='active', updated_at=SYSDATE WHERE offer_id=:id",
-                new { id = bargainId, op = offerPrice ?? throw new ArgumentException("offerPrice is required when buyerResult is countered") }),
-            _ => throw new ArgumentException($"Invalid buyer result: {buyerResult}")
-        };
-
-        if (rows <= 0)
-        {
-            throw new InvalidOperationException("Bargain update failed");
-        }
-
+        // buyerResult 由前端定义：accepted=接受卖家还价 / rejected=拒绝 / countered=继续还价
+        // countered 时必须传 offerPrice，否则存储过程抛 ORA-20053
+        await CallBuyerHandleSp(bargainId, buyerResult, offerPrice);
         return (await GetByIdAsync(bargainId))!;
+    }
+
+    /// <summary>调用 sp_buyer_handle_bargain 存储过程</summary>
+    private async Task CallBuyerHandleSp(int bargainId, string buyerResult, decimal? offerPrice)
+    {
+        using var connection = _connectionFactory.CreateConnection();
+        if (connection is not OracleConnection oc) throw new InvalidOperationException("Expected OracleConnection");
+        await oc.OpenAsync();
+
+        // 接口未传 buyer_id，先从 bargain_offer 查出 buyer_id，保证存储过程校验能通过
+        var buyerId = await connection.QueryFirstOrDefaultAsync<int?>(
+            "SELECT buyer_id FROM bargain_offer WHERE offer_id=:id", new { id = bargainId });
+
+        const string sql = """
+            BEGIN sp_buyer_handle_bargain(p_offer_id=>:oid, p_buyer_id=>:bid, p_buyer_result=>:br, p_offer_price=>:op); END;
+            """;
+        await using var cmd = new OracleCommand(sql, oc) { BindByName = true };
+        cmd.Parameters.Add(new OracleParameter("oid", OracleDbType.Int32) { Value = bargainId });
+        cmd.Parameters.Add(new OracleParameter("bid", OracleDbType.Int32) { Value = buyerId ?? 0 });
+        cmd.Parameters.Add(new OracleParameter("br", OracleDbType.Varchar2, 20) { Value = buyerResult });
+        cmd.Parameters.Add(new OracleParameter("op", OracleDbType.Decimal) { Value = offerPrice ?? (object)DBNull.Value });
+        await cmd.ExecuteNonQueryAsync();
     }
 }

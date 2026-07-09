@@ -37,10 +37,16 @@ END;
 
 
 /* =========================
-   2. 下订单（核心交易流程）
+   2. 下订单（核心交易流程 F15-F16）
    入参：商品ID、买家ID、成交价
-   校验：调用 fn_can_purchase 检查购买资格
-   效果：插入订单 + 商品状态改为 locked + 关闭该商品上所有活跃议价
+
+   原子事务（全部在一个 COMMIT 中，任一步失败自动回滚）：
+     1. 调用 fn_can_purchase 预校验（信用分、封禁状态等）
+     2. SELECT goods FOR UPDATE 加行锁，校验 goods_status='approved' 且 buyer≠seller
+     3. 条件 UPDATE goods SET goods_status='locked' 必须 ROWCOUNT=1（防超卖）
+     4. 关此买家+商品对应的一条活跃议价（一对买卖家+商品只有一条议价）
+     5. INSERT trade_order（status='pending_meet'）RETURNING order_id
+     6. COMMIT
    ========================= */
 CREATE OR REPLACE PROCEDURE sp_place_order(
     p_goods_id IN NUMBER,
@@ -49,31 +55,58 @@ CREATE OR REPLACE PROCEDURE sp_place_order(
     p_order_id OUT NUMBER
 )
 IS
-    v_seller_id NUMBER;
-    v_can_buy   NUMBER;
+    v_seller_id   NUMBER;
+    v_can_buy     NUMBER;
+    v_rowcount    NUMBER;
 BEGIN
-    -- 校验购买资格
+    -- Step 1: 调用 fn_can_purchase 做软校验（信用分≥0、未封禁、非自买等）
     v_can_buy := fn_can_purchase(p_buyer_id, p_goods_id);
     IF v_can_buy = 0 THEN
         RAISE_APPLICATION_ERROR(-20002, '无法购买该商品：商品已下架、自己不能买自己的商品、或账号异常');
     END IF;
 
-    -- 查出卖家ID
-    SELECT seller_id INTO v_seller_id FROM goods WHERE goods_id = p_goods_id;
+    -- Step 2: SELECT ... FOR UPDATE 加行锁，同时校验 goods 存在且状态为 approved
+    BEGIN
+        SELECT seller_id INTO v_seller_id
+        FROM goods
+        WHERE goods_id = p_goods_id
+          AND goods_status = 'approved'
+        FOR UPDATE;
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            RAISE_APPLICATION_ERROR(-20020, '商品不存在、已被锁定或已被他人购买');
+    END;
 
-    -- 插入订单
+    -- 二次确认非自买（已由 fn_can_purchase 检查，此处防御）
+    IF v_seller_id = p_buyer_id THEN
+        RAISE_APPLICATION_ERROR(-20030, '不能购买自己的商品');
+    END IF;
+
+    -- Step 3: 条件 UPDATE 锁商品，必须影响恰好 1 行（F16 防超卖核心）
+    UPDATE goods
+    SET goods_status = 'locked', updated_at = SYSTIMESTAMP
+    WHERE goods_id = p_goods_id
+      AND goods_status = 'approved';
+
+    v_rowcount := SQL%ROWCOUNT;
+    IF v_rowcount != 1 THEN
+        ROLLBACK;
+        RAISE_APPLICATION_ERROR(-20021, '商品已被他人锁定或不可购买（并发冲突）');
+    END IF;
+
+    -- Step 4: 关闭此买家+此商品的活跃议价（一对买卖家+商品只有一条）
+    UPDATE bargain_offer
+    SET offer_status = 'closed', updated_at = SYSTIMESTAMP
+    WHERE goods_id = p_goods_id
+      AND buyer_id = p_buyer_id
+      AND offer_status = 'active';
+
+    -- Step 5: 插入订单
     INSERT INTO trade_order (goods_id, buyer_id, seller_id, final_price, order_status)
     VALUES (p_goods_id, p_buyer_id, v_seller_id, p_price, 'pending_meet')
     RETURNING order_id INTO p_order_id;
 
-    -- 锁定商品（防止其他人重复下单）
-    UPDATE goods SET goods_status = 'locked' WHERE goods_id = p_goods_id;
-
-    -- 关闭该商品上的所有活跃议价
-    UPDATE bargain_offer
-    SET offer_status = 'closed', updated_at = SYSTIMESTAMP
-    WHERE goods_id = p_goods_id AND offer_status = 'active';
-
+    -- Step 6: 全部通过，提交事务
     COMMIT;
 END;
 /
@@ -292,7 +325,95 @@ END;
 
 
 /* =========================
-   8. 用户评价（交易互评）
+   8. 买家回应卖家还价（F12 买家端）
+   入参：议价ID、买家ID、回应（accepted/rejected/countered）、新报价
+   校验：只有该议价的买家可操作 + 议价必须处于 active + 卖家已还价
+   效果：接受→议价完成 / 拒绝→议价关闭 / 继续还价→重置卖家状态
+   ========================= */
+CREATE OR REPLACE PROCEDURE sp_buyer_handle_bargain(
+    p_offer_id    IN NUMBER,
+    p_buyer_id    IN NUMBER,
+    p_buyer_result IN VARCHAR2,
+    p_offer_price  IN NUMBER DEFAULT NULL
+)
+IS
+    v_actual_buyer   NUMBER;
+    v_offer_status   VARCHAR2(20);
+    v_seller_response VARCHAR2(20);
+    v_original_price  NUMBER(10,2);
+    v_rowcount       NUMBER;
+BEGIN
+    -- Step 1: 查出议价的买家、状态、卖家回复、商品原价
+    SELECT b.buyer_id, b.offer_status, b.seller_response, g.price
+    INTO v_actual_buyer, v_offer_status, v_seller_response, v_original_price
+    FROM bargain_offer b
+    JOIN goods g ON b.goods_id = g.goods_id
+    WHERE b.offer_id = p_offer_id;
+
+    -- Step 2: 身份校验 — 只有该议价的买家可操作
+    IF v_actual_buyer != p_buyer_id THEN
+        RAISE_APPLICATION_ERROR(-20050, '只有该议价的买家才能执行此操作');
+    END IF;
+
+    -- Step 3: 状态校验 — 议价必须处于 active
+    IF v_offer_status != 'active' THEN
+        RAISE_APPLICATION_ERROR(-20051, '该议价已关闭，无法操作');
+    END IF;
+
+    -- Step 4: 业务校验 — 卖家必须已还价（seller_response='countered'）买家才能回应
+    IF v_seller_response != 'countered' THEN
+        RAISE_APPLICATION_ERROR(-20052, '卖家尚未还价，无法执行此操作');
+    END IF;
+
+    -- Step 5: 按买家回应类型执行不同操作
+    IF p_buyer_result = 'accepted' THEN
+        -- 买家接受卖家的还价 → 议价完成
+        UPDATE bargain_offer
+        SET offer_status = 'accepted', updated_at = SYSTIMESTAMP
+        WHERE offer_id = p_offer_id;
+
+    ELSIF p_buyer_result = 'rejected' THEN
+        -- 买家拒绝 → 议价关闭
+        UPDATE bargain_offer
+        SET offer_status = 'rejected', updated_at = SYSTIMESTAMP
+        WHERE offer_id = p_offer_id;
+
+    ELSIF p_buyer_result = 'countered' THEN
+        -- 买家继续还价 → 需要提供新报价
+        IF p_offer_price IS NULL OR p_offer_price <= 0 THEN
+            RAISE_APPLICATION_ERROR(-20053, '继续还价时必须提供大于0的新报价');
+        END IF;
+
+        -- 新报价不能超过商品原价（与 trg_bargain_price_check 一致）
+        IF p_offer_price > v_original_price THEN
+            RAISE_APPLICATION_ERROR(-20031, '议价金额不能高于商品原价 ' || v_original_price);
+        END IF;
+
+        -- 更新报价，重置卖家状态，清空卖家还价
+        UPDATE bargain_offer
+        SET offer_price = p_offer_price,
+            seller_response = 'pending',
+            counter_price = NULL,
+            offer_status = 'active',
+            updated_at = SYSTIMESTAMP
+        WHERE offer_id = p_offer_id;
+
+    ELSE
+        RAISE_APPLICATION_ERROR(-20054, '无效的操作类型，请使用 accepted/rejected/countered');
+    END IF;
+
+    v_rowcount := SQL%ROWCOUNT;
+    IF v_rowcount = 0 THEN
+        RAISE_APPLICATION_ERROR(-20055, '议价更新失败，记录不存在');
+    END IF;
+
+    COMMIT;
+END;
+/
+
+
+/* =========================
+   9. 用户评价（交易互评）
    入参：订单ID、评价者ID、评分(1-5)、评价内容
    校验：必须是订单参与方 + 每方只能评价一次
    效果：插入评价 + 更新被评价者信用分
