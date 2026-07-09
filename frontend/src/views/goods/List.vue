@@ -52,6 +52,17 @@ const fetchCategories = async () => {
 const fetchData = async () => {
   loading.value = true
   try {
+    // 解析排序参数
+    let sortByParam: string | undefined
+    let ascendingParam: boolean = false
+    if (sortBy.value) {
+      const lastIndex = sortBy.value.lastIndexOf('_')
+      if (lastIndex !== -1) {
+        sortByParam = sortBy.value.substring(0, lastIndex)
+        ascendingParam = sortBy.value.substring(lastIndex + 1) === 'asc'
+      }
+    }
+
     const res = await getGoodsList({
       keyword: keyword.value,
       categoryId: categoryId.value,
@@ -59,7 +70,9 @@ const fetchData = async () => {
       maxPrice: maxPrice.value,
       page: page.value,
       size: size.value,
-      status: 'approved'
+      status: 'approved',
+      sortBy: sortByParam,
+      ascending: ascendingParam
     })
     goodsList.value = res.data.list
     total.value = res.data.total

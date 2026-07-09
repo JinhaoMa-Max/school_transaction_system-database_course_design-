@@ -23,12 +23,15 @@ public class GoodsController : ControllerBase
         [FromQuery] int size = 10,
         [FromQuery] int? categoryId = null,
         [FromQuery] string? keyword = null,
+        [FromQuery] decimal? minPrice = null,
+        [FromQuery] decimal? maxPrice = null,
         [FromQuery] string? sortBy = null,
         [FromQuery] bool ascending = false)
     {
-        var result = await _goodsService.GetPagedAsync(page, size, categoryId, keyword, sortBy, ascending);
+        var result = await _goodsService.GetPagedAsync(page, size, categoryId, keyword, minPrice, maxPrice, sortBy, ascending);
         return Ok(ApiResponse<GoodsListResult>.Success(result));
     }
+
 
     // GET /api/goods/{id}
     [HttpGet("{goodsId:int}")]
