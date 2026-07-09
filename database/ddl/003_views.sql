@@ -30,8 +30,7 @@ SELECT
     ) AS cover_image
 FROM goods g
 JOIN app_user u ON g.seller_id = u.user_id
-JOIN category c ON g.category_id = c.category_id
-WHERE g.goods_status IN ('approved', 'sold');
+JOIN category c ON g.category_id = c.category_id;
 
 -- 使用示例：SELECT * FROM v_goods_list WHERE category_id = 1 ORDER BY created_at DESC;
 
