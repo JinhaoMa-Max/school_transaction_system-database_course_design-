@@ -43,21 +43,3 @@ public class CompleteOrderRequest
 {
     public string ConfirmCode { get; set; } = string.Empty;
 }
-
-public class AppointmentDto
-{
-    public int AppointmentId { get; set; }
-    public int OrderId { get; set; }
-    public DateTime MeetTime { get; set; }
-    public string MeetLocation { get; set; } = string.Empty;
-    public string ConfirmCode { get; set; } = string.Empty;
-    public string Status { get; set; } = string.Empty;
-    public DateTime CreateTime { get; set; }
-}
-
-public class CreateAppointmentRequest
-{
-    public int OrderId { get; set; }
-    public DateTime MeetTime { get; set; }
-    public string MeetLocation { get; set; } = string.Empty;
-}
