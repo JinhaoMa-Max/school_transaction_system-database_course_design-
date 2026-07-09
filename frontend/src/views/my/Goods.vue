@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { Message, Modal } from '@arco-design/web-vue'
 import { getGoodsList, offlineGoods } from '@/api'
 import { useUserStore } from '@/stores'
+import { conditionMap, goodsStatusMap } from '@/constants'
 import type { Goods } from '@/types'
 
 const router = useRouter()
@@ -25,30 +26,7 @@ const tabOptions = [
   { key: 'offline', label: '已下架' }
 ]
 
-const goodsStatusMap: Record<string, string> = {
-  pending: '待审核',
-  approved: '已上架',
-  rejected: '已驳回',
-  locked: '已锁定',
-  sold: '已售出',
-  offline: '已下架'
-}
 
-const statusTagColor: Record<string, string> = {
-  pending: 'orange',
-  approved: 'green',
-  rejected: 'red',
-  locked: 'gold',
-  sold: 'cyan',
-  offline: 'gray'
-}
-
-const conditionMap: Record<string, string> = {
-  new: '全新',
-  like_new: '几乎全新',
-  slight_use: '轻微使用',
-  obvious_trace: '明显痕迹'
-}
 
 const columns = [
   { title: '商品图片', dataIndex: 'imageUrl', width: 100 },
@@ -196,8 +174,8 @@ onMounted(() => {
             </template>
 
             <template #status="{ record }">
-              <a-tag :color="statusTagColor[record.status] || 'gray'">
-                {{ goodsStatusMap[record.status] || record.status }}
+              <a-tag :color="goodsStatusMap[record.status]?.color || 'gray'">
+                {{ goodsStatusMap[record.status]?.text || record.status }}
               </a-tag>
             </template>
 

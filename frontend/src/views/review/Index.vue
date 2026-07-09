@@ -109,9 +109,7 @@ onMounted(fetchData)
             <div class="user-info">
               <a-avatar :size="48">
                 <img :src="reviewedUser?.avatarUrl" v-if="reviewedUser?.avatarUrl" />
-                <template #icon v-else>
-                  <icon-user />
-                </template>
+                <icon-user v-else />
               </a-avatar>
               <div class="user-detail">
                 <div class="user-name">{{ reviewedUser?.nickname || '用户' }}</div>

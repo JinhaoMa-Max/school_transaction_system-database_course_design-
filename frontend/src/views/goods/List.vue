@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'  
+import { ref, onMounted } from 'vue'  
 import { useRouter } from 'vue-router'
-import { Message } from '@arco-design/web-vue'
 import { getGoodsList, getCategoryList } from '@/api'
+import { useUserStore } from '@/stores'
 import type { Goods, Category } from '@/types'
 
 const router = useRouter()
+const userStore = useUserStore()
 
 const goodsList = ref<Goods[]>([])
 const loading = ref(false)
@@ -52,15 +53,22 @@ const fetchCategories = async () => {
 const fetchData = async () => {
   loading.value = true
   try {
-    const res = await getGoodsList({
+    const params: Record<string, any> = {
       keyword: keyword.value,
       categoryId: categoryId.value,
       minPrice: minPrice.value,
       maxPrice: maxPrice.value,
       page: page.value,
-      size: size.value,
-      status: 'approved'
-    })
+      size: size.value
+    }
+    
+    if (userStore.isSeller && userStore.user?.userId) {
+      params.sellerId = userStore.user.userId
+    } else {
+      params.status = 'approved'
+    }
+    
+    const res = await getGoodsList(params)
     goodsList.value = res.data.list
     total.value = res.data.total
   } catch {
@@ -90,14 +98,14 @@ const goToDetail = (id: number) => {
   router.push(`/goods/${id}`)
 }
 
-const handleCategoryChange = (value: number | undefined) => {
-  categoryId.value = value
+const handleCategoryChange = (value: any) => {
+  categoryId.value = value as number | undefined
   page.value = 1
   fetchData()
 }
 
-const handleSortChange = (value: string) => {
-  sortBy.value = value
+const handleSortChange = (value: any) => {
+  sortBy.value = value as string
   page.value = 1
   fetchData()
 }

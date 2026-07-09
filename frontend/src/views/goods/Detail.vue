@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Message, Modal } from '@arco-design/web-vue'
+import { Message } from '@arco-design/web-vue'
 import { useUserStore } from '@/stores'
 import {
   getGoodsById,
@@ -13,6 +13,7 @@ import {
   createBargain,
   createOrder
 } from '@/api'
+import { conditionMap, goodsStatusMap } from '@/constants'
 import type { Goods, GoodsImage } from '@/types'
 
 const route = useRoute()
@@ -32,22 +33,6 @@ const bargainLoading = ref(false)
 
 const buyVisible = ref(false)
 const buyLoading = ref(false)
-
-const conditionMap: Record<string, string> = {
-  new: '全新',
-  like_new: '几乎全新',
-  slight_use: '轻微使用',
-  obvious_trace: '明显痕迹'
-}
-
-const statusMap: Record<string, { text: string; color: string }> = {
-  pending: { text: '待审核', color: 'orange' },
-  approved: { text: '已上架', color: 'green' },
-  rejected: { text: '已驳回', color: 'red' },
-  locked: { text: '已锁定', color: 'gold' },
-  sold: { text: '已售出', color: 'cyan' },
-  offline: { text: '已下架', color: 'gray' }
-}
 
 const mainImage = computed(() => {
   if (images.value.length > 0) {
@@ -178,7 +163,15 @@ const handleContact = () => {
     router.push(`/login?redirect=${encodeURIComponent(route.fullPath)}`)
     return
   }
-  Message.info('私信功能开发中')
+  if (goods.value?.sellerId) {
+    router.push({
+      path: '/chat',
+      query: {
+        sellerId: goods.value.sellerId,
+        goodsId: goods.value.goodsId
+      }
+    })
+  }
 }
 
 const goToReport = () => {
@@ -215,8 +208,8 @@ onMounted(fetchData)
         <div class="info-section">
           <div class="goods-header">
             <h1 class="goods-title">{{ goods.title }}</h1>
-            <a-tag :color="statusMap[goods.status]?.color || 'default'">
-              {{ statusMap[goods.status]?.text || goods.status }}
+            <a-tag :color="goodsStatusMap[goods.status]?.color || 'default'">
+              {{ goodsStatusMap[goods.status]?.text || goods.status }}
             </a-tag>
           </div>
 
@@ -265,7 +258,8 @@ onMounted(fetchData)
             </a-button>
             <a-button
               v-if="canBuy"
-              type="warning"
+              type="outline"
+              status="warning"
               size="large"
               @click="openBargain"
             >

@@ -8,8 +8,10 @@ import {
   getCategoryList,
   updateGoods,
   uploadGoodsImage,
-  deleteGoodsImage
+  deleteGoodsImage,
+  uploadImageFile
 } from '@/api'
+import { conditionMap, goodsStatusMap } from '@/constants'
 import type { Category, GoodsImage, Goods } from '@/types'
 
 const route = useRoute()
@@ -21,7 +23,7 @@ const loading = ref(false)
 const pageLoading = ref(true)
 const categories = ref<Category[]>([])
 const existingImages = ref<GoodsImage[]>([])
-const newImageList = ref<{ url: string; file?: File }[]>([])
+const newImageList = ref<{ url: string; uploadedUrl?: string }[]>([])
 
 const form = reactive({
   title: '',
@@ -66,21 +68,10 @@ const rules = {
   categoryId: [{ required: true, message: '请选择商品分类' }]
 }
 
-const conditionOptions = [
-  { label: '全新', value: 'new' },
-  { label: '几乎全新', value: 'like_new' },
-  { label: '轻微使用', value: 'slight_use' },
-  { label: '明显痕迹', value: 'obvious_trace' }
-]
-
-const goodsStatusMap: Record<string, string> = {
-  pending: '待审核',
-  approved: '已上架',
-  rejected: '已驳回',
-  locked: '已锁定',
-  sold: '已售出',
-  offline: '已下架'
-}
+const conditionOptions = Object.entries(conditionMap).map(([value, label]) => ({
+  label,
+  value
+}))
 
 const fetchCategories = async () => {
   try {
@@ -119,7 +110,7 @@ const triggerFileInput = () => {
   input?.click()
 }
 
-const handleImageUpload = (fileList: File[]) => {
+const handleImageUpload = async (fileList: File[]) => {
   if (totalImageCount.value + fileList.length > 6) {
     Message.warning('最多上传6张图片')
     return
@@ -130,11 +121,19 @@ const handleImageUpload = (fileList: File[]) => {
       continue
     }
     const reader = new FileReader()
-    reader.onload = (e) => {
-      newImageList.value.push({
-        url: e.target?.result as string,
-        file
-      })
+    reader.onload = async (e) => {
+      const base64Url = e.target?.result as string
+      newImageList.value.push({ url: base64Url })
+      
+      try {
+        const uploadRes = await uploadImageFile(file)
+        const imgIndex = newImageList.value.findIndex(img => img.url === base64Url)
+        if (imgIndex >= 0) {
+          newImageList.value[imgIndex].uploadedUrl = uploadRes.imageUrl
+        }
+      } catch {
+        Message.warning('图片上传失败，请稍后重试')
+      }
     }
     reader.readAsDataURL(file)
   }
@@ -185,8 +184,9 @@ const handleSubmit = async () => {
     let currentSortOrder = existingImages.value.length
     for (let i = 0; i < newImageList.value.length; i++) {
       try {
+        const imageUrl = newImageList.value[i].uploadedUrl || newImageList.value[i].url
         await uploadGoodsImage(goodsId, {
-          imageUrl: newImageList.value[i].url,
+          imageUrl,
           sortOrder: currentSortOrder + i + 1
         })
       } catch {
@@ -196,8 +196,8 @@ const handleSubmit = async () => {
 
     Message.success('商品修改成功')
     router.push(`/goods/${goodsId}`)
-  } catch {
-    // 错误已由全局拦截器处理
+  } catch (error: any) {
+    Message.error(error?.response?.data?.message || error?.message || '修改商品失败')
   } finally {
     loading.value = false
   }

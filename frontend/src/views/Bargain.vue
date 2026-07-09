@@ -2,8 +2,10 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Message, Modal } from '@arco-design/web-vue'
-import { getBargainList, handleBargain, closeBargain } from '@/api'
+import { getBargainList, handleBargain, closeBargain, getBargainById } from '@/api'
+import { createOrder } from '@/api'
 import { useUserStore } from '@/stores'
+import { bargainStatusMap, sellerResultMap } from '@/constants'
 import type { BargainOffer } from '@/types'
 
 const router = useRouter()
@@ -21,19 +23,7 @@ const counterPrice = ref(0)
 const currentBargainId = ref<number | null>(null)
 const counterLoading = ref(false)
 
-const sellerResultMap: Record<string, { text: string; color: string }> = {
-  pending: { text: '待处理', color: 'orange' },
-  accepted: { text: '已接受', color: 'green' },
-  rejected: { text: '已拒绝', color: 'red' },
-  countered: { text: '已还价', color: 'blue' }
-}
 
-const bargainStatusMap: Record<string, { text: string; color: string }> = {
-  active: { text: '进行中', color: 'blue' },
-  accepted: { text: '已达成', color: 'green' },
-  rejected: { text: '已拒绝', color: 'red' },
-  closed: { text: '已关闭', color: 'gray' }
-}
 
 const columns = [
   { title: '商品信息', dataIndex: 'goodsId', width: 280 },
@@ -99,13 +89,22 @@ const openCounter = (bargainId: number) => {
 const handleAccept = (bargainId: number) => {
   Modal.confirm({
     title: '确认接受',
-    content: '确定接受该议价吗？接受后将生成订单。',
+    content: '确定接受该议价吗？接受后将自动生成订单。',
     okText: '确认接受',
     cancelText: '取消',
     onOk: async () => {
       try {
+        const bargainRes = await getBargainById(bargainId)
+        const bargain = bargainRes.data
+        
         await handleBargain(bargainId, { sellerResult: 'accepted' })
-        Message.success('已接受议价')
+        
+        await createOrder({
+          goodsId: bargain.goodsId,
+          dealPrice: bargain.counterPrice || bargain.offerPrice
+        })
+        
+        Message.success('议价已接受，订单已生成')
         fetchBargainList()
       } catch {
         // 错误已由全局拦截器处理
@@ -290,7 +289,7 @@ onMounted(() => {
       ok-text="发送还价"
     >
       <div class="counter-form">
-        <a-form layout="vertical">
+        <a-form :model="{ counterPrice }" layout="vertical">
           <a-form-item label="还价金额">
             <a-input-number
               v-model="counterPrice"

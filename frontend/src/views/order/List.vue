@@ -5,6 +5,7 @@ import { Message, Modal } from '@arco-design/web-vue'
 import { getOrderList, cancelOrder, completeOrder } from '@/api'
 import { verifyConfirmCode } from '@/api'
 import { useUserStore } from '@/stores'
+import { orderStatusMap } from '@/constants'
 import type { TradeOrder } from '@/types'
 
 const router = useRouter()
@@ -31,12 +32,7 @@ const statusOptions = [
   { label: '已取消', value: 'cancelled' }
 ]
 
-const orderStatusMap: Record<string, { text: string; color: string }> = {
-  pending_meet: { text: '待面交', color: 'orange' },
-  in_meet: { text: '面交中', color: 'blue' },
-  completed: { text: '已完成', color: 'green' },
-  cancelled: { text: '已取消', color: 'gray' }
-}
+
 
 const columns = [
   { title: '商品信息', dataIndex: 'goodsId', width: 280 },
@@ -59,11 +55,16 @@ const fetchOrderList = async () => {
     if (statusFilter.value) {
       params.status = statusFilter.value
     }
+    if (activeTab.value === 'buy') {
+      params.buyerId = userStore.user.userId
+    } else {
+      params.sellerId = userStore.user.userId
+    }
     const res = await getOrderList(params)
     orderList.value = res.data.list
     total.value = res.data.total
-  } catch {
-    // 错误已由全局拦截器处理
+  } catch (error: any) {
+    Message.error(error?.response?.data?.message || error?.message || '获取订单列表失败')
   } finally {
     loading.value = false
   }
@@ -75,8 +76,8 @@ const handleTabChange = (key: string | number) => {
   fetchOrderList()
 }
 
-const handleStatusChange = (value: string) => {
-  statusFilter.value = value
+const handleStatusChange = (value: any) => {
+  statusFilter.value = value as string
   page.value = 1
   fetchOrderList()
 }
@@ -114,14 +115,13 @@ const handleCancel = (orderId: number) => {
     content: '确定要取消该订单吗？取消后无法恢复。',
     okText: '确认取消',
     cancelText: '再想想',
-    status: 'warning',
     onOk: async () => {
       try {
         await cancelOrder(orderId)
         Message.success('订单已取消')
         fetchOrderList()
-      } catch {
-        // 错误已由全局拦截器处理
+      } catch (error: any) {
+        Message.error(error?.response?.data?.message || '取消订单失败')
       }
     }
   })
@@ -147,8 +147,8 @@ const handleVerify = async () => {
     Message.success('确认码验证成功')
     verifyVisible.value = false
     fetchOrderList()
-  } catch {
-    // 错误已由全局拦截器处理
+  } catch (error: any) {
+    Message.error(error?.response?.data?.message || '确认码验证失败')
   } finally {
     verifyLoading.value = false
   }
