@@ -9,6 +9,9 @@ namespace CampusTrade.Backend.Repositories;
 /// </summary>
 public interface IChatRepository
 {
+    /// <summary>查询已存在的会话ID（不创建），不存在返回 null</summary>
+    Task<int?> FindSessionIdAsync(int goodsId, int buyerId, int sellerId);
+
     /// <summary>获取/创建会话 — 调用 sp_get_or_create_session</summary>
     Task<int> GetOrCreateSessionAsync(int goodsId, int buyerId, int sellerId);
 
@@ -20,6 +23,9 @@ public interface IChatRepository
 
     /// <summary>会话消息列表</summary>
     Task<List<ChatMessageDto>> GetMessagesAsync(int sessionId, int page = 1, int size = 50);
+
+    /// <summary>根据ID获取单条消息（含发送者昵称）</summary>
+    Task<ChatMessageDto?> GetMessageByIdAsync(int messageId);
 
     /// <summary>发送消息 — 调用 sp_send_message</summary>
     Task<int> SendMessageAsync(int sessionId, int senderId, string content);

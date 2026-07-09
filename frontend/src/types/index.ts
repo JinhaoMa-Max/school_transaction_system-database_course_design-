@@ -95,15 +95,21 @@ export interface Appointment {
 export interface ChatSession {
   sessionId: number
   goodsId: number
+  goodsTitle?: string
   buyerId: number
+  buyerName?: string
   sellerId: number
+  sellerName?: string
   createTime: string
+  unreadCount?: number
+  isNew?: boolean
 }
 
 export interface ChatMessage {
   messageId: number
   sessionId: number
   senderId: number
+  senderName?: string
   content: string
   readStatus: 0 | 1
   sendTime: string

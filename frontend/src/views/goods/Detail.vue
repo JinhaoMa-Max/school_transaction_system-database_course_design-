@@ -13,6 +13,7 @@ import {
   createBargain,
   createOrder
 } from '@/api'
+import { createSession } from '@/api/chat'
 import type { Goods, GoodsImage } from '@/types'
 
 const route = useRoute()
@@ -173,12 +174,23 @@ const handleBuy = async () => {
   }
 }
 
-const handleContact = () => {
+const handleContact = async () => {
   if (!userStore.isLoggedIn) {
     router.push(`/login?redirect=${encodeURIComponent(route.fullPath)}`)
     return
   }
-  Message.info('私信功能开发中')
+  if (!goods.value) return
+
+  try {
+    const res = await createSession({
+      goodsId: goods.value.goodsId,
+      sellerId: goods.value.sellerId
+    })
+    Message.success('已进入私聊')
+    router.push({ path: '/chat', query: { sessionId: String(res.data.sessionId) } })
+  } catch {
+    Message.error('发起私聊失败')
+  }
 }
 
 const goToReport = () => {
@@ -215,9 +227,20 @@ onMounted(fetchData)
         <div class="info-section">
           <div class="goods-header">
             <h1 class="goods-title">{{ goods.title }}</h1>
-            <a-tag :color="statusMap[goods.status]?.color || 'default'">
-              {{ statusMap[goods.status]?.text || goods.status }}
-            </a-tag>
+            <div class="goods-header-right">
+              <a-button
+                v-if="!isOwner && canBuy"
+                type="primary"
+                size="small"
+                @click="handleContact"
+              >
+                <icon-message />
+                私聊卖家
+              </a-button>
+              <a-tag :color="statusMap[goods.status]?.color || 'default'">
+                {{ statusMap[goods.status]?.text || goods.status }}
+              </a-tag>
+            </div>
           </div>
 
           <div class="goods-price">
@@ -425,6 +448,14 @@ onMounted(fetchData)
   font-weight: 600;
   line-height: 1.4;
   flex: 1;
+}
+
+.goods-header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  margin-left: 16px;
 }
 
 .goods-price {

@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { getGoodsList, getCategoryList } from '@/api'
-import type { Goods, Category } from '@/types'
+import { getGoodsList, getCategoryList, getSessionList, getUnreadCount } from '@/api'
+import { useUserStore } from '@/stores'
+import type { Goods, Category, ChatSession } from '@/types'
 
 const router = useRouter()
+const userStore = useUserStore()
 
 const goodsList = ref<Goods[]>([])
 const loading = ref(false)
@@ -20,6 +22,49 @@ const sortBy = ref('created_at_desc')
 
 const categories = ref<Category[]>([])
 const flatCategories = ref<{ label: string; value: number }[]>([])
+
+// 消息相关
+const unreadCount = ref(0)
+const messageListVisible = ref(false)
+const chatSessions = ref<ChatSession[]>([])
+let unreadTimer: ReturnType<typeof setInterval> | null = null
+
+const fetchUnreadCount = async () => {
+  if (!userStore.isLoggedIn) return
+  try {
+    const res = await getUnreadCount()
+    unreadCount.value = res.data?.count ?? 0
+  } catch {
+    // ignore
+  }
+}
+
+const fetchChatSessions = async () => {
+  if (!userStore.isLoggedIn) return
+  try {
+    const res = await getSessionList()
+    chatSessions.value = res.data || []
+  } catch {
+    chatSessions.value = []
+  }
+}
+
+const toggleMessageList = async () => {
+  messageListVisible.value = !messageListVisible.value
+  if (messageListVisible.value) {
+    await fetchChatSessions()
+    await fetchUnreadCount()
+  }
+}
+
+const goToChat = (session: ChatSession) => {
+  messageListVisible.value = false
+  router.push({ path: '/chat', query: { sessionId: String(session.sessionId) } })
+}
+
+const goToFavorites = () => {
+  router.push('/favorites')
+}
 
 const conditionMap: Record<string, string> = {
   new: '全新',
@@ -126,6 +171,17 @@ const handleKeywordInput = () => {
 onMounted(() => {
   fetchCategories()
   fetchData()
+  if (userStore.isLoggedIn) {
+    fetchUnreadCount()
+    unreadTimer = setInterval(fetchUnreadCount, 30000) // 每30秒轮询未读数
+  }
+})
+
+onUnmounted(() => {
+  if (unreadTimer) {
+    clearInterval(unreadTimer)
+    unreadTimer = null
+  }
 })
 </script>
 
@@ -133,6 +189,60 @@ onMounted(() => {
   <div class="goods-list-page">
     <div class="page-header">
       <h2>商品广场</h2>
+      <div class="header-actions">
+        <a-button class="header-btn" @click="goToFavorites">
+          <icon-star />
+          收藏
+        </a-button>
+        <a-popover
+          v-model:popup-visible="messageListVisible"
+          trigger="click"
+          position="br"
+          :popup-container="undefined"
+        >
+          <a-badge :count="unreadCount" :dot="false" :max-count="99">
+            <a-button class="header-btn" @click="toggleMessageList">
+              <icon-message />
+              消息
+            </a-button>
+          </a-badge>
+          <template #content>
+            <div class="message-popover">
+              <div class="message-popover-header">
+                <span>消息列表</span>
+                <a-button
+                  type="text"
+                  size="mini"
+                  @click="router.push('/chat')"
+                >
+                  查看全部
+                </a-button>
+              </div>
+              <div v-if="chatSessions.length === 0" class="message-empty">
+                暂无消息
+              </div>
+              <div
+                v-for="session in chatSessions.slice(0, 10)"
+                :key="session.sessionId"
+                class="message-item"
+                @click="goToChat(session)"
+              >
+                <div class="message-item-main">
+                  <span class="message-goods-title">
+                    {{ session.goodsTitle || '商品 #' + session.goodsId }}
+                  </span>
+                  <span v-if="session.unreadCount && session.unreadCount > 0" class="message-unread-badge">
+                    {{ session.unreadCount }}
+                  </span>
+                </div>
+                <div class="message-item-sub">
+                  会话 #{{ session.sessionId }}
+                </div>
+              </div>
+            </div>
+          </template>
+        </a-popover>
+      </div>
     </div>
 
     <div class="filter-section">
@@ -252,6 +362,9 @@ onMounted(() => {
 }
 
 .page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 20px;
 }
 
@@ -259,6 +372,87 @@ onMounted(() => {
   margin: 0;
   font-size: 24px;
   font-weight: 600;
+}
+
+.header-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.header-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.message-popover {
+  width: 300px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.message-popover-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e5e5e5;
+  margin-bottom: 8px;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.message-empty {
+  text-align: center;
+  padding: 20px;
+  color: #999;
+  font-size: 13px;
+}
+
+.message-item {
+  padding: 10px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  border-bottom: 1px solid #f0f0f0;
+  transition: background 0.2s;
+}
+
+.message-item:hover {
+  background: #f5f5f5;
+}
+
+.message-item-main {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.message-goods-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: #1d2129;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 220px;
+}
+
+.message-unread-badge {
+  background: #f53f3f;
+  color: white;
+  border-radius: 10px;
+  padding: 0 6px;
+  font-size: 12px;
+  min-width: 18px;
+  text-align: center;
+  line-height: 18px;
+}
+
+.message-item-sub {
+  font-size: 12px;
+  color: #86909c;
+  margin-top: 4px;
 }
 
 .filter-section {

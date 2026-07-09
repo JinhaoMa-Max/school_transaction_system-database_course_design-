@@ -15,6 +15,17 @@ public class ChatRepository : IChatRepository
     private readonly IDbConnectionFactory _connectionFactory;
     public ChatRepository(IDbConnectionFactory connectionFactory) { _connectionFactory = connectionFactory; }
 
+    /// <summary>查询已存在的会话ID（利用 UNIQUE(goods_id,buyer_id,seller_id) 约束查重）</summary>
+    public async Task<int?> FindSessionIdAsync(int goodsId, int buyerId, int sellerId)
+    {
+        using var connection = _connectionFactory.CreateConnection();
+        const string sql = """
+            SELECT session_id FROM chat_session
+            WHERE goods_id = :G AND buyer_id = :B AND seller_id = :S
+            """;
+        return await connection.QueryFirstOrDefaultAsync<int?>(sql, new { G = goodsId, B = buyerId, S = sellerId });
+    }
+
     /// <summary>获取/创建会话 — sp_get_or_create_session(goodsId, buyerId, sellerId → sessionId OUT)</summary>
     public async Task<int> GetOrCreateSessionAsync(int goodsId, int buyerId, int sellerId)
     {
@@ -34,16 +45,21 @@ public class ChatRepository : IChatRepository
         return Convert.ToInt32(outP.Value?.ToString());
     }
 
-    /// <summary>我的会话列表</summary>
+    /// <summary>我的会话列表（含买卖家昵称）</summary>
     public async Task<List<ChatSessionDto>> GetSessionsAsync(int userId)
     {
         using var connection = _connectionFactory.CreateConnection();
         const string sql = """
             SELECT cs.session_id AS SessionId, cs.goods_id AS GoodsId, g.title AS GoodsTitle,
-                   cs.buyer_id AS BuyerId, cs.seller_id AS SellerId, cs.created_at AS CreateTime,
+                   cs.buyer_id AS BuyerId, bu.nickname AS BuyerName,
+                   cs.seller_id AS SellerId, su.nickname AS SellerName,
+                   cs.created_at AS CreateTime,
                    (SELECT COUNT(*) FROM chat_message cm WHERE cm.session_id = cs.session_id
                     AND cm.is_read = 0 AND cm.sender_id != :UserId) AS UnreadCount
-            FROM chat_session cs JOIN goods g ON cs.goods_id = g.goods_id
+            FROM chat_session cs
+            JOIN goods g ON cs.goods_id = g.goods_id
+            LEFT JOIN app_user bu ON cs.buyer_id = bu.user_id
+            LEFT JOIN app_user su ON cs.seller_id = su.user_id
             WHERE cs.buyer_id = :UserId OR cs.seller_id = :UserId
             ORDER BY cs.created_at DESC
             """;
@@ -56,8 +72,13 @@ public class ChatRepository : IChatRepository
         using var connection = _connectionFactory.CreateConnection();
         const string sql = """
             SELECT cs.session_id AS SessionId, cs.goods_id AS GoodsId, g.title AS GoodsTitle,
-                   cs.buyer_id AS BuyerId, cs.seller_id AS SellerId, cs.created_at AS CreateTime, 0 AS UnreadCount
-            FROM chat_session cs JOIN goods g ON cs.goods_id = g.goods_id
+                   cs.buyer_id AS BuyerId, bu.nickname AS BuyerName,
+                   cs.seller_id AS SellerId, su.nickname AS SellerName,
+                   cs.created_at AS CreateTime, 0 AS UnreadCount
+            FROM chat_session cs
+            JOIN goods g ON cs.goods_id = g.goods_id
+            LEFT JOIN app_user bu ON cs.buyer_id = bu.user_id
+            LEFT JOIN app_user su ON cs.seller_id = su.user_id
             WHERE cs.session_id = :Id
             """;
         return await connection.QueryFirstOrDefaultAsync<ChatSessionDto>(sql, new { Id = sessionId });
@@ -79,6 +100,20 @@ public class ChatRepository : IChatRepository
             """;
         var items = await connection.QueryAsync<ChatMessageDto>(sql, new { Sid = sessionId });
         return items.ToList();
+    }
+
+    /// <summary>根据ID获取单条消息（含发送者昵称）</summary>
+    public async Task<ChatMessageDto?> GetMessageByIdAsync(int messageId)
+    {
+        using var connection = _connectionFactory.CreateConnection();
+        const string sql = """
+            SELECT cm.message_id AS MessageId, cm.session_id AS SessionId, cm.sender_id AS SenderId,
+                   u.nickname AS SenderName, cm.content AS Content, cm.is_read AS ReadStatus,
+                   cm.created_at AS SendTime
+            FROM chat_message cm LEFT JOIN app_user u ON cm.sender_id = u.user_id
+            WHERE cm.message_id = :Mid
+            """;
+        return await connection.QueryFirstOrDefaultAsync<ChatMessageDto>(sql, new { Mid = messageId });
     }
 
     /// <summary>发送消息 — sp_send_message(sessionId, senderId, content → messageId OUT)</summary>

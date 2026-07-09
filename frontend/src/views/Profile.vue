@@ -121,6 +121,20 @@ const handleAvatarUpload = async (e: Event) => {
         </div>
       </template>
 
+      <!-- 右上角操作区 -->
+      <template #extra>
+        <a-button
+          v-if="user?.role === 'admin'"
+          type="primary"
+          status="warning"
+          size="small"
+          @click="goToAdmin"
+        >
+          <icon-settings />
+          管理员
+        </a-button>
+      </template>
+
       <div class = "profile-header">
         <a-avatar :size="100" class="profile-avatar" @click="triggerAvatarInput">
             <img v-if="user?.avatarUrl" :src="user?.avatarUrl"/>
