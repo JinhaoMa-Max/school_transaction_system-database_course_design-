@@ -16,6 +16,8 @@ public class GoodsService : IGoodsService
 
     public async Task<GoodsListResult> GetPagedAsync(
         int page, int size,
+        int? sellerId,
+        string? status,
         int? categoryId, string? keyword,
         decimal? minPrice, decimal? maxPrice,
         string? sortBy, bool ascending)
@@ -23,8 +25,7 @@ public class GoodsService : IGoodsService
         page = Math.Max(1, page);
         size = Math.Clamp(size, 1, 100);
         var (items, total) = await _goodsRepository.GetPagedAsync(
-            page, size, categoryId, keyword, minPrice, maxPrice, sortBy, ascending);
-
+            page, size, sellerId, status, categoryId, keyword, minPrice, maxPrice, sortBy, ascending);
         return new GoodsListResult
         {
             List = items,

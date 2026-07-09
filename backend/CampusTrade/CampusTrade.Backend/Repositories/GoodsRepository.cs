@@ -29,6 +29,8 @@ public class GoodsRepository : IGoodsRepository
     /// </summary>
     public async Task<(List<GoodsDto> Items, int Total)> GetPagedAsync(
         int page, int size,
+        int? sellerId,
+        string? status,
         int? categoryId, string? keyword,
         decimal? minPrice, decimal? maxPrice,
         string? sortBy, bool ascending)
@@ -38,6 +40,18 @@ public class GoodsRepository : IGoodsRepository
         // 构建动态 WHERE 条件
         var where = new List<string>();
         var parameters = new DynamicParameters();
+
+        if (sellerId.HasValue)
+        {
+            where.Add("seller_id = :SellerId");
+            parameters.Add(":SellerId", sellerId.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            where.Add("goods_status = :Status");
+            parameters.Add(":Status", status);
+        }
 
         if (categoryId.HasValue)
         {
