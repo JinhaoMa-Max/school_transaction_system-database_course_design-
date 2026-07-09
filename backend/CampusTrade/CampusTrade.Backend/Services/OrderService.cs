@@ -144,6 +144,7 @@ public class OrderService : IOrderService
             size: 1,
             goodsId: goodsId,
             buyerId: buyerId,
+            sellerId: null,
             status: "accepted");
 
         var bargain = items.FirstOrDefault();
