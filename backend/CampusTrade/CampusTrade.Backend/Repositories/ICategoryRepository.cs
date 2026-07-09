@@ -11,4 +11,5 @@ public interface ICategoryRepository
     Task<bool> DeleteAsync(int categoryId);
     Task<bool> HasChildrenAsync(int categoryId);
     Task<int> GetMaxSortOrderAsync(int? parentId);
+    Task<bool> HasGoodsAsync(int categoryId);
 }

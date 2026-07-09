@@ -25,7 +25,6 @@ public class CategoryService : ICategoryService
 
     public async Task<int> CreateAsync(CreateCategoryRequest request)
     {
-        // 校验父分类是否存在（如果传入 ParentId）
         if (request.ParentId.HasValue)
         {
             var parent = await _categoryRepository.GetByIdAsync(request.ParentId.Value);
@@ -33,8 +32,6 @@ public class CategoryService : ICategoryService
                 throw new ArgumentException("父分类不存在");
         }
 
-        // 检查同父下是否有同名分类（可选）
-        // 自动分配 sort_order（如果未指定，取最大值+1）
         if (request.SortOrder == 0)
         {
             var max = await _categoryRepository.GetMaxSortOrderAsync(request.ParentId);
@@ -50,17 +47,17 @@ public class CategoryService : ICategoryService
         if (existing == null)
             throw new ArgumentException("分类不存在");
 
-        // 如果修改父分类，需要检查是否会造成循环引用（不能将自己或子分类设为父分类）
         if (request.ParentId.HasValue)
         {
-            if (request.ParentId.Value == categoryId)
+            var newParentId = request.ParentId.Value;
+
+            if (newParentId == categoryId)
                 throw new ArgumentException("不能将自己设为父分类");
 
-            // 简单检查：是否有循环（如果 parentId 的祖先包含自己，则禁止）
-            // 这里可以通过递归检查，但为了简化，只禁止直接冲突。
-            // 更好的做法：检查新父分类是否是当前分类的子分类，但需要遍历树。
-            // 我们可以在业务层做简单校验，或者依赖数据库触发器/应用层。
-            // 暂时只检查是否为自己。
+            // ★ 修复：检查新父分类是否在当前分类的子树中
+            // 如果是，则把当前分类移到它的子分类下会造成循环引用
+            if (await IsDescendantAsync(categoryId, newParentId))
+                throw new ArgumentException("不能将父分类设为当前分类的子分类，这会形成循环引用");
         }
 
         return await _categoryRepository.UpdateAsync(categoryId, request);
@@ -71,13 +68,12 @@ public class CategoryService : ICategoryService
         var existing = await _categoryRepository.GetByIdAsync(categoryId);
         if (existing == null)
             throw new ArgumentException("分类不存在");
-
-        // 检查是否有子分类
+ 
         if (await _categoryRepository.HasChildrenAsync(categoryId))
             throw new InvalidOperationException("该分类存在子分类，无法删除");
 
-        // 检查是否有商品引用（可选）
-        // 这里可以调用商品仓储检查，暂不实现
+        if (await _categoryRepository.HasGoodsAsync(categoryId))
+            throw new InvalidOperationException("该分类下存在商品，无法删除");
 
         return await _categoryRepository.DeleteAsync(categoryId);
     }
@@ -99,7 +95,6 @@ public class CategoryService : ICategoryService
             }
         }
 
-        // 对每个节点的 Children 按 SortOrder 排序
         SortChildren(roots);
         return roots;
     }
@@ -114,5 +109,23 @@ public class CategoryService : ICategoryService
                 SortChildren(node.Children);
             }
         }
+    }
+
+    /// <summary>
+    /// 检查 ancestorId 是否是 descendantId 的祖先（即 descendantId 是否在 ancestorId 的子树中）
+    /// </summary>
+    private async Task<bool> IsDescendantAsync(int ancestorId, int descendantId)
+    {
+        int? currentId = descendantId;
+        while (currentId.HasValue)
+        {
+            var parent = await _categoryRepository.GetByIdAsync(currentId.Value);
+            if (parent == null)
+                break;
+            if (parent.ParentId == ancestorId)
+                return true;
+            currentId = parent.ParentId;
+        }
+        return false;
     }
 }

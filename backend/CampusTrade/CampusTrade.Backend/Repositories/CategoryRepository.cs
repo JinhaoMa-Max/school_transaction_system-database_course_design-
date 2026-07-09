@@ -111,16 +111,26 @@ public class CategoryRepository : ICategoryRepository
     }
 
     public async Task<int> GetMaxSortOrderAsync(int? parentId)
-    {
+   {
         using var connection = _connectionFactory.CreateConnection();
-
-        var sql2 = @"
+        string sql = @"
             SELECT NVL(MAX(sort_order), 0)
             FROM category
             WHERE (parent_id IS NULL AND :ParentId IS NULL)
                OR (parent_id = :ParentId)
         ";
-        var max = await connection.ExecuteScalarAsync<int>(sql2, new { ParentId = parentId });
+        var max = await connection.ExecuteScalarAsync<int>(sql, new { ParentId = parentId });
         return max;
     }
+
+
+    public async Task<bool> HasGoodsAsync(int categoryId)
+    {
+        using var connection = _connectionFactory.CreateConnection();
+        const string sql = "SELECT COUNT(1) FROM goods WHERE category_id = :CategoryId";
+        var count = await connection.ExecuteScalarAsync<int>(sql, new { CategoryId = categoryId });
+        return count > 0;
+    }
 }
+
+
