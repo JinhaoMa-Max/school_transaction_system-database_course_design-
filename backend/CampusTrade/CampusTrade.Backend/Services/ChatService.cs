@@ -37,33 +37,43 @@ public class ChatService : IChatService
         return ApiResponse<ChatSessionDto>.Success(session);
     }
 
-    public async Task<ApiResponse<int>> CreateSessionAsync(CreateSessionRequest request, int? userId)
+    public async Task<ApiResponse<ChatSessionDto>> CreateSessionAsync(CreateSessionRequest request, int? userId)
     {
         if (!userId.HasValue)
-            return ApiResponse<int>.Fail(401, "未登录");
+            return ApiResponse<ChatSessionDto>.Fail(401, "未登录");
 
         var sessionId = await _chatRepository.GetOrCreateSessionAsync(
             request.GoodsId,
             userId.Value,
             request.SellerId);
 
-        return ApiResponse<int>.Success(sessionId, "会话创建成功");
+        var session = await _chatRepository.GetSessionByIdAsync(sessionId);
+        if (session == null)
+            return ApiResponse<ChatSessionDto>.Fail(500, "会话创建失败");
+
+        return ApiResponse<ChatSessionDto>.Success(session, "会话创建成功");
     }
 
-    public async Task<ApiResponse<List<ChatMessageDto>>> GetMessagesAsync(int sessionId, int page, int size, int? userId)
+    public async Task<ApiResponse<ChatMessageListResult>> GetMessagesAsync(int sessionId, int page, int size, int? userId)
     {
         if (!userId.HasValue)
-            return ApiResponse<List<ChatMessageDto>>.Fail(401, "未登录");
+            return ApiResponse<ChatMessageListResult>.Fail(401, "未登录");
 
         var session = await _chatRepository.GetSessionByIdAsync(sessionId);
         if (session == null)
-            return ApiResponse<List<ChatMessageDto>>.Fail(404, "会话不存在");
+            return ApiResponse<ChatMessageListResult>.Fail(404, "会话不存在");
 
         if (session.BuyerId != userId.Value && session.SellerId != userId.Value)
-            return ApiResponse<List<ChatMessageDto>>.Fail(403, "无权访问该会话");
+            return ApiResponse<ChatMessageListResult>.Fail(403, "无权访问该会话");
 
         var messages = await _chatRepository.GetMessagesAsync(sessionId, page, size);
-        return ApiResponse<List<ChatMessageDto>>.Success(messages);
+        return ApiResponse<ChatMessageListResult>.Success(new ChatMessageListResult
+        {
+            List = messages,
+            Total = messages.Count,
+            Page = page,
+            Size = size
+        });
     }
 
     public async Task<ApiResponse<int>> SendMessageAsync(SendMessageRequest request, int? userId)

@@ -33,5 +33,7 @@ public class CreateSessionRequest//新增
     public int SellerId { get; set; }
 }
 
+public class ChatMessageListResult { public List<ChatMessageDto> List { get; set; } = new(); public int Total { get; set; } public int Page { get; set; } public int Size { get; set; } }
+
 
 

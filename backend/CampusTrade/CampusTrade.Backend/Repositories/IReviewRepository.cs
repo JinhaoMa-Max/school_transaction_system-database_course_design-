@@ -15,7 +15,7 @@ Task<(List<ReviewDto> Items, int Total)> GetPagedAsync(int page, int size, int? 
     Task<ReviewDto?> GetByIdAsync(int reviewId);
 
     /// <summary>创建评价 — 调用 sp_create_review（校验已完成、不重复、自动更新信用分）</summary>
-    Task<int> CreateAsync(int orderId, int reviewerId, int rating, string? content);
+    Task<int> CreateAsync(int orderId, int reviewerId, int reviewedUserId, int rating, string? content);
 
     /// <summary>检查某人对某订单是否已评价</summary>
     Task<bool> HasReviewedAsync(int orderId, int reviewerId);

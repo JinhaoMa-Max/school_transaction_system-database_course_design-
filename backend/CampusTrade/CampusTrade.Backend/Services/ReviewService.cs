@@ -33,7 +33,7 @@ public class ReviewService : IReviewService
         return ApiResponse<ReviewDto>.Success(review);
     }
 
-    public async Task<ApiResponse<ReviewDto>> CreateReviewAsync(int orderId, int rating, string? content, int currentUserId)
+    public async Task<ApiResponse<ReviewDto>> CreateReviewAsync(int orderId, int reviewedUserId, int rating, string? content, int currentUserId)
     {
         if (rating < 1 || rating > 5)
             return ApiResponse<ReviewDto>.Fail(400, "评分必须在1-5之间");
@@ -41,7 +41,7 @@ public class ReviewService : IReviewService
         if (await _reviewRepository.HasReviewedAsync(orderId, currentUserId))
             return ApiResponse<ReviewDto>.Fail(409, "您已对该订单评价过");
 
-        var reviewId = await _reviewRepository.CreateAsync(orderId, currentUserId, rating, content);
+        var reviewId = await _reviewRepository.CreateAsync(orderId, currentUserId, reviewedUserId, rating, content);
         var review = await _reviewRepository.GetByIdAsync(reviewId);
 
         if (review == null)

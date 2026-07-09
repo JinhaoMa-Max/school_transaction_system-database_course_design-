@@ -27,8 +27,8 @@ public class ReportRepository : IReportRepository
         var off = (page - 1) * size;
         var sql = $"""
             SELECT report_id AS ReportId, reporter_id AS ReporterId, report_type AS ReportType,
-                   target_goods_id AS TargetGoodsId, target_user_id AS TargetUserId,
-                   target_order_id AS TargetOrderId, reason AS Reason,
+                   target_goods_id AS ReportedGoodsId, target_user_id AS ReportedUserId,
+                   target_order_id AS ReportedOrderId, reason AS Reason,
                    report_status AS Status, created_at AS CreateTime
             FROM report {w} ORDER BY created_at DESC
             OFFSET {off} ROWS FETCH NEXT {size} ROWS ONLY
@@ -42,8 +42,8 @@ public class ReportRepository : IReportRepository
         using var connection = _connectionFactory.CreateConnection();
         const string sql = """
             SELECT report_id AS ReportId, reporter_id AS ReporterId, report_type AS ReportType,
-                   target_goods_id AS TargetGoodsId, target_user_id AS TargetUserId,
-                   target_order_id AS TargetOrderId, reason AS Reason,
+                   target_goods_id AS ReportedGoodsId, target_user_id AS ReportedUserId,
+                   target_order_id AS ReportedOrderId, reason AS Reason,
                    report_status AS Status, created_at AS CreateTime
             FROM report WHERE report_id = :Id
             """;

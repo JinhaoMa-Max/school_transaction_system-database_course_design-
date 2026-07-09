@@ -53,17 +53,18 @@ public async Task<(List<ReviewDto> Items, int Total)> GetPagedAsync(int page, in
     }
 
     /// <summary>创建评价 — sp_create_review: 校验已完成+不重复+自动更新信用分</summary>
-    public async Task<int> CreateAsync(int orderId, int reviewerId, int rating, string? content)
+    public async Task<int> CreateAsync(int orderId, int reviewerId, int reviewedUserId, int rating, string? content)
     {
         using var connection = _connectionFactory.CreateConnection();
         if (connection is not OracleConnection oc) throw new InvalidOperationException("Expected OracleConnection");
         await oc.OpenAsync();
         const string sql = """
-            BEGIN sp_create_review(p_order_id=>:o, p_reviewer_id=>:r, p_rating=>:ra, p_content=>:c, p_review_id=>:outId); END;
+            BEGIN sp_create_review(p_order_id=>:o, p_reviewer_id=>:r, p_reviewed_user_id=>:ru, p_rating=>:ra, p_content=>:c, p_review_id=>:outId); END;
             """;
         await using var cmd = new OracleCommand(sql, oc) { BindByName = true };
         cmd.Parameters.Add(new OracleParameter("o", OracleDbType.Int32) { Value = orderId });
         cmd.Parameters.Add(new OracleParameter("r", OracleDbType.Int32) { Value = reviewerId });
+        cmd.Parameters.Add(new OracleParameter("ru", OracleDbType.Int32) { Value = reviewedUserId });
         cmd.Parameters.Add(new OracleParameter("ra", OracleDbType.Int32) { Value = rating });
         cmd.Parameters.Add(new OracleParameter("c", OracleDbType.Clob) { Value = content ?? (object)DBNull.Value });
         var outP = new OracleParameter("outId", OracleDbType.Int32) { Direction = System.Data.ParameterDirection.Output };

@@ -42,7 +42,7 @@ public class ReviewController : ControllerBase
         if (!currentUserId.HasValue)
             return Unauthorized(ApiResponse<object>.Fail(401, "未登录"));
 
-        var result = await _reviewService.CreateReviewAsync(request.OrderId, request.Rating, request.Content, currentUserId.Value);
+        var result = await _reviewService.CreateReviewAsync(request.OrderId, request.ReviewedUserId, request.Rating, request.Content, currentUserId.Value);
         if (result.Code != 200) return StatusCode(result.Code, result);
         return Ok(result);
     }
