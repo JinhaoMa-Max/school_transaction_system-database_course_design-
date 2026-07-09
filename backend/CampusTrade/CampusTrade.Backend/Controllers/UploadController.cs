@@ -16,7 +16,7 @@ public class UploadController : ControllerBase
     }
 
     [HttpPost("image")]
-    public async Task<IActionResult> UploadImage([FromForm] IFormFile file)
+    public async Task<IActionResult> UploadImage(IFormFile file)
     {
         try
         {
