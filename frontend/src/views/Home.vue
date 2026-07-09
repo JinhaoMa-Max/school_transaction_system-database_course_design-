@@ -28,7 +28,7 @@ const goToProfile = () => {
       <h1>校园二手交易平台</h1>
       <nav>
         <button @click="goToGoods">商品广场</button>
-        <button v-if="userStore.isSeller" @click="goToPublish">发布商品</button>
+        <button v-if="userStore.isLoggedIn" @click="goToPublish">发布商品</button>
         <button v-if="userStore.isLoggedIn" @click="goToOrders">我的订单</button>
         <button v-if="userStore.isLoggedIn" @click="goToProfile">个人中心</button>
         <button v-if="userStore.isLoggedIn" @click="userStore.logout">退出登录</button>

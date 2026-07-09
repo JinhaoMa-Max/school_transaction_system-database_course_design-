@@ -22,7 +22,7 @@ const goToEditProfile = () => {
   router.push('/profile/edit')
 }
 
-//跳转到学生认证界面（当且仅当用户角色为买家或卖家时显示）
+//跳转到学生认证界面（当且仅当用户角色为普通用户时显示）
 const goToStudentAuth = () => {
   router.push('/student-auth')
 }
@@ -42,8 +42,7 @@ const handleLogout = () => {
 //获取角色身份
 const getRoleText = (role?: string) => {
   const map: Record<string, string> = {
-    buyer: '买家',
-    seller: '卖家',
+    user: '普通用户',
     admin: '管理员'
   }
   return role?map[role] || role:'未知角色'
@@ -52,10 +51,8 @@ const getRoleText = (role?: string) => {
 //根据用户身份决定tag样式（小巧思之美工优化这一块）
 const roleTagClass = computed(() => {
   switch (user.value?.role) {
-    case 'buyer':
-      return 'role-tag-buyer'
-    case 'seller':
-      return 'role-tag-seller'
+    case 'user':
+      return 'role-tag-user'
     case 'admin':
       return 'role-tag-admin'
     default:
@@ -315,14 +312,9 @@ const handleAvatarUpload = async (e: Event) => {
   line-height: 1;
 }
 
-.role-tag-buyer {
+.role-tag-user {
   color: #165dff;
   background-color: #e8f3ff;
-}
-
-.role-tag-seller {
-  color: #ff7d00;
-  background-color: #fff7e8;
 }
 
 .role-tag-admin {
