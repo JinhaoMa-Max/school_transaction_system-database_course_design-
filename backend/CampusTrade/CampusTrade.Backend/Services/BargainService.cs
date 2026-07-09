@@ -19,13 +19,14 @@ public class BargainService : IBargainService
         int size,
         int? goodsId,
         int? buyerId,
+        int? sellerId,
         string? status)
     {
         // 参数兜底校验（避免无意义分页与潜在数据库压力）
         if (page < 1) throw new ArgumentException("page 必须从 1 开始");
         if (size < 1) throw new ArgumentException("size 必须大于 0");
 
-        var (items, total) = await _bargainRepository.GetPagedAsync(page, size, goodsId, buyerId, status);
+        var (items, total) = await _bargainRepository.GetPagedAsync(page, size, goodsId, buyerId, sellerId, status);
         return new BargainListResult
         {
             List = items,

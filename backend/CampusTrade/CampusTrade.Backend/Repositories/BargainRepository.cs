@@ -15,15 +15,16 @@ public class BargainRepository : IBargainRepository
     private readonly IDbConnectionFactory _connectionFactory;
     public BargainRepository(IDbConnectionFactory connectionFactory) { _connectionFactory = connectionFactory; }
 
-    /// <summary>议价列表 — 查 v_active_bargains 视图（含商品名、买家名、原价）</summary>
-    public async Task<(List<BargainOfferDto> Items, int Total)> GetPagedAsync(int page, int size, int? goodsId, int? buyerId, string? status)
+    /// <summary>议价列表 — 查 v_active_bargains 视图（含商品名、买家名、原价、卖家ID）</summary>
+    public async Task<(List<BargainOfferDto> Items, int Total)> GetPagedAsync(int page, int size, int? goodsId, int? buyerId, int? sellerId, string? status)
     {
         using var connection = _connectionFactory.CreateConnection();
         var where = new List<string>();
         var p = new DynamicParameters();
         if (goodsId.HasValue) { where.Add("goods_id = :Gid"); p.Add(":Gid", goodsId.Value); }
         if (buyerId.HasValue) { where.Add("buyer_id = :Bid"); p.Add(":Bid", buyerId.Value); }
-        if (!string.IsNullOrWhiteSpace(status)) { where.Add("offer_status = :S"); p.Add(":S", status); }
+        if (sellerId.HasValue) { where.Add("seller_id = :Sid"); p.Add(":Sid", sellerId.Value); }
+        if (!string.IsNullOrWhiteSpace(status)) { where.Add("offer_status = :St"); p.Add(":St", status); }
         var w = where.Count > 0 ? "WHERE " + string.Join(" AND ", where) : "";
         var total = await connection.ExecuteScalarAsync<int>($"SELECT COUNT(*) FROM v_active_bargains {w}", p);
         var off = (page - 1) * size;

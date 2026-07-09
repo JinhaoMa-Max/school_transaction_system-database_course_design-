@@ -25,11 +25,12 @@ public class BargainsController : ControllerBase
         [FromQuery] int size = 10,
         [FromQuery] int? goodsId = null,
         [FromQuery] int? buyerId = null,
+        [FromQuery] int? sellerId = null,
         [FromQuery] string? status = null)
     {
         try
         {
-            var result = await _bargainService.GetPagedAsync(page, size, goodsId, buyerId, status);
+            var result = await _bargainService.GetPagedAsync(page, size, goodsId, buyerId, sellerId, status);
             return Ok(ApiResponse<BargainListResult>.Success(result));
         }
         catch (Exception ex)
