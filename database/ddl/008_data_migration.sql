@@ -2,9 +2,10 @@ SET SQLBLANKLINES ON
 WHENEVER SQLERROR EXIT SQL.SQLCODE;
 
 /*
-  Migrate app_user.role from buyer/seller/admin to user/admin.
-  Fresh installs are covered by 001_create_tables*.sql; this script updates
-  an existing schema and data set.
+  Data migration script for existing databases.
+  - Migrate app_user.role from buyer/seller/admin to user/admin
+  - Update legacy image URLs to match new UploadService path (/uploads/)
+  Fresh installs are covered by 001~006; this script is for upgrading.
 */
 
 ALTER TABLE app_user DROP CONSTRAINT ck_app_user_role;
@@ -41,5 +42,8 @@ LEFT JOIN trade_order o ON u.user_id = o.seller_id
 LEFT JOIN review r ON u.user_id = r.reviewed_user_id
 WHERE u.role = 'user'
 GROUP BY u.user_id, u.nickname, u.avatar, u.credit_score, sa.college, sa.auth_status;
+
+-- Update legacy image URLs from /images/goods/ to /uploads/
+UPDATE goods_image SET image_url = REPLACE(image_url, '/images/goods/', '/uploads/');
 
 COMMIT;

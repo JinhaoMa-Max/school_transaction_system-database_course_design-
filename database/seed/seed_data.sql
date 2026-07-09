@@ -222,48 +222,48 @@ PROMPT ✅ 15 件商品已插入 (10 approved + 2 pending + 2 sold + 1 locked)
 PROMPT >>> 2.3 插入商品图片...
 
 -- iPhone 15 (goods_id=1): 3 张图
-INSERT INTO goods_image (image_id, goods_id, image_url, sort_order) VALUES (1,  1,  '/images/goods/1/iphone15_front.jpg',  1);
-INSERT INTO goods_image (image_id, goods_id, image_url, sort_order) VALUES (2,  1,  '/images/goods/1/iphone15_back.jpg',   2);
-INSERT INTO goods_image (image_id, goods_id, image_url, sort_order) VALUES (3,  1,  '/images/goods/1/iphone15_side.jpg',   3);
+INSERT INTO goods_image (image_id, goods_id, image_url, sort_order) VALUES (1,  1,  '/uploads/1/iphone15_front.jpg',  1);
+INSERT INTO goods_image (image_id, goods_id, image_url, sort_order) VALUES (2,  1,  '/uploads/1/iphone15_back.jpg',   2);
+INSERT INTO goods_image (image_id, goods_id, image_url, sort_order) VALUES (3,  1,  '/uploads/1/iphone15_side.jpg',   3);
 
 -- MacBook Air (goods_id=2): 2 张
-INSERT INTO goods_image (image_id, goods_id, image_url, sort_order) VALUES (4,  2,  '/images/goods/2/macbook_air_1.jpg', 1);
-INSERT INTO goods_image (image_id, goods_id, image_url, sort_order) VALUES (5,  2,  '/images/goods/2/macbook_air_2.jpg', 2);
+INSERT INTO goods_image (image_id, goods_id, image_url, sort_order) VALUES (4,  2,  '/uploads/2/macbook_air_1.jpg', 1);
+INSERT INTO goods_image (image_id, goods_id, image_url, sort_order) VALUES (5,  2,  '/uploads/2/macbook_air_2.jpg', 2);
 
 -- 考研书 (goods_id=3): 1 张
-INSERT INTO goods_image (image_id, goods_id, image_url, sort_order) VALUES (6,  3,  '/images/goods/3/kaoyan_books.jpg',  1);
+INSERT INTO goods_image (image_id, goods_id, image_url, sort_order) VALUES (6,  3,  '/uploads/3/kaoyan_books.jpg',  1);
 
 -- 数据库教材 (goods_id=4): 1 张
-INSERT INTO goods_image (image_id, goods_id, image_url, sort_order) VALUES (7,  4,  '/images/goods/4/db_book.jpg',       1);
+INSERT INTO goods_image (image_id, goods_id, image_url, sort_order) VALUES (7,  4,  '/uploads/4/db_book.jpg',       1);
 
 -- 台灯 (goods_id=5): 2 张
-INSERT INTO goods_image (image_id, goods_id, image_url, sort_order) VALUES (8,  5,  '/images/goods/5/lamp_1.jpg',        1);
-INSERT INTO goods_image (image_id, goods_id, image_url, sort_order) VALUES (9,  5,  '/images/goods/5/lamp_2.jpg',        2);
+INSERT INTO goods_image (image_id, goods_id, image_url, sort_order) VALUES (8,  5,  '/uploads/5/lamp_1.jpg',        1);
+INSERT INTO goods_image (image_id, goods_id, image_url, sort_order) VALUES (9,  5,  '/uploads/5/lamp_2.jpg',        2);
 
 -- 键盘 (goods_id=6): 2 张
-INSERT INTO goods_image (image_id, goods_id, image_url, sort_order) VALUES (10, 6,  '/images/goods/6/mx_keys_1.jpg',    1);
-INSERT INTO goods_image (image_id, goods_id, image_url, sort_order) VALUES (11, 6,  '/images/goods/6/mx_keys_2.jpg',    2);
+INSERT INTO goods_image (image_id, goods_id, image_url, sort_order) VALUES (10, 6,  '/uploads/6/mx_keys_1.jpg',    1);
+INSERT INTO goods_image (image_id, goods_id, image_url, sort_order) VALUES (11, 6,  '/uploads/6/mx_keys_2.jpg',    2);
 
 -- AirPods (goods_id=7): 2 张
-INSERT INTO goods_image (image_id, goods_id, image_url, sort_order) VALUES (12, 7,  '/images/goods/7/airpods_1.jpg',    1);
-INSERT INTO goods_image (image_id, goods_id, image_url, sort_order) VALUES (13, 7,  '/images/goods/7/airpods_2.jpg',    2);
+INSERT INTO goods_image (image_id, goods_id, image_url, sort_order) VALUES (12, 7,  '/uploads/7/airpods_1.jpg',    1);
+INSERT INTO goods_image (image_id, goods_id, image_url, sort_order) VALUES (13, 7,  '/uploads/7/airpods_2.jpg',    2);
 
 -- 篮球 (goods_id=8): 1 张
-INSERT INTO goods_image (image_id, goods_id, image_url, sort_order) VALUES (14, 8,  '/images/goods/8/basketball.jpg',    1);
+INSERT INTO goods_image (image_id, goods_id, image_url, sort_order) VALUES (14, 8,  '/uploads/8/basketball.jpg',    1);
 
 -- 三体 (goods_id=9): 1 张
-INSERT INTO goods_image (image_id, goods_id, image_url, sort_order) VALUES (15, 9,  '/images/goods/9/three_body.jpg',    1);
+INSERT INTO goods_image (image_id, goods_id, image_url, sort_order) VALUES (15, 9,  '/uploads/9/three_body.jpg',    1);
 
 -- 工学椅 (goods_id=10): 3 张
-INSERT INTO goods_image (image_id, goods_id, image_url, sort_order) VALUES (16, 10, '/images/goods/10/chair_front.jpg',  1);
-INSERT INTO goods_image (image_id, goods_id, image_url, sort_order) VALUES (17, 10, '/images/goods/10/chair_side.jpg',   2);
-INSERT INTO goods_image (image_id, goods_id, image_url, sort_order) VALUES (18, 10, '/images/goods/10/chair_detail.jpg', 3);
+INSERT INTO goods_image (image_id, goods_id, image_url, sort_order) VALUES (16, 10, '/uploads/10/chair_front.jpg',  1);
+INSERT INTO goods_image (image_id, goods_id, image_url, sort_order) VALUES (17, 10, '/uploads/10/chair_side.jpg',   2);
+INSERT INTO goods_image (image_id, goods_id, image_url, sort_order) VALUES (18, 10, '/uploads/10/chair_detail.jpg', 3);
 
 -- 小米14 (goods_id=13): 1 张
-INSERT INTO goods_image (image_id, goods_id, image_url, sort_order) VALUES (19, 13, '/images/goods/13/mi14.jpg',         1);
+INSERT INTO goods_image (image_id, goods_id, image_url, sort_order) VALUES (19, 13, '/uploads/13/mi14.jpg',         1);
 
 -- 算法导论 (goods_id=14): 1 张
-INSERT INTO goods_image (image_id, goods_id, image_url, sort_order) VALUES (20, 14, '/images/goods/14/algorithms.jpg',   1);
+INSERT INTO goods_image (image_id, goods_id, image_url, sort_order) VALUES (20, 14, '/uploads/14/algorithms.jpg',   1);
 
 COMMIT;
 PROMPT ✅ 20 张商品图片已插入

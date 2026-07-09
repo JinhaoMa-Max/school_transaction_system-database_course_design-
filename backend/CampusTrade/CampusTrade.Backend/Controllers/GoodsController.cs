@@ -70,7 +70,7 @@ public class GoodsController : ControllerBase
         {
             var currentUserId = RequireCurrentUserId();
             var goodsId = await _goodsService.CreateAsync(request, currentUserId);
-            return Ok(ApiResponse<object>.Success(new { id = goodsId }, "goods created"));
+            return Ok(ApiResponse<object>.Success(new { goodsId = goodsId }, "goods created"));
         }
         catch (Exception ex)
         {
