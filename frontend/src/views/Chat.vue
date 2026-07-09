@@ -2,6 +2,8 @@
 import { ref, onMounted } from 'vue'
 import { getSessionList, getMessages, sendMessage } from '@/api'
 import type { ChatSession, ChatMessage } from '@/types'
+import router from '@/router'
+import{Message} from '@arco-design/web-vue'
 
 const sessions = ref<ChatSession[]>([])
 const messages = ref<ChatMessage[]>([])
@@ -12,6 +14,17 @@ onMounted(async () => {
   const res = await getSessionList()
   sessions.value = res.data
 })
+
+//跳转回上一页
+const goBack=()=>{
+  router.back()
+}
+
+//跳转到主页
+const goToHome = () => {
+  router.push('/')
+}
+
 
 const selectSession = async (session: ChatSession) => {
   selectedSession.value = session
@@ -28,6 +41,13 @@ const handleSend = async () => {
 
 <template>
   <div class="chat-page">
+
+    <div class = "chat-header">
+      <a-button @click="goBack" class = "back-button">
+             返回上一页
+      </a-button>
+    </div>
+
     <div class="chat-sidebar">
       <h2>聊天列表</h2>
       <div 
@@ -172,4 +192,10 @@ const handleSend = async () => {
   border-radius: 4px;
   cursor: pointer;
 }
+
+.back-button{
+  background-color: #934598;
+  color: white;
+}
+
 </style>

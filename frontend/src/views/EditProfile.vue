@@ -5,6 +5,7 @@ import { Message } from '@arco-design/web-vue'
 import { useUserStore } from '@/stores'
 import { updateUser } from '@/api/user'
 import type { UpdateUserParams } from '@/types'
+import { uploadImage } from '@/api'
 
 
 const router = useRouter()
@@ -186,12 +187,39 @@ const handleAvatarChange = (_: any, currentFile: any) => {
 
 //保存头像
 const saveAvatar = async () => {
+  if(!user.value?.userId){
+    Message.warning('当前用户不存在！')
+    return
+  }
   if (!avatarFile.value) {
     Message.warning('请先选择头像')
     return
   }
+  try
+  {
 
-  Message.info('当前仅支持头像预览，暂未接入上传接口')
+    savingAvatar.value = true
+
+    //上传头像图片
+    const uploadRes = await uploadImage(avatarFile.value)
+
+    //上传Url
+    const avatarUrl = uploadRes.data.url
+    const res = await updateUser(user.value.userId,{avatarUrl})
+
+    //存储
+    userStore.setUser(res.data)
+    form.avatarUrl = avatarUrl
+    avatarFile.value = null
+    Message.success('头像保存成功!')
+  }catch(error)
+  {
+    Message.error('头像保存失败，请稍后重试！')
+    console.error('头像保存失败！',error)
+  }finally{
+    savingAvatar.value = false
+  }
+
 }
 
 

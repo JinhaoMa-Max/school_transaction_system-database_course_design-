@@ -7,7 +7,6 @@ import { uploadAvatar } from '@/api'
 
 const router = useRouter()
 const userStore = useUserStore()
-
 const user = computed(() => userStore.user)
 const loading = ref(false)
 const avatarInput = ref<HTMLInputElement | null>(null)
@@ -16,6 +15,10 @@ const triggerAvatarInput = () => {
   avatarInput.value?.click()
 }
 
+//跳转到主页
+const goToHome = () => {
+  router.push('/')
+}
 
 //跳转到资料编辑页面
 const goToEditProfile = () => {
@@ -198,6 +201,18 @@ const handleAvatarUpload = async (e: Event) => {
       <!-- 操作按钮 (满足条件才显示)-->
       <a-space class = "profile-actions">
 
+        <!--左边按钮-->
+        <a-space class = "profile-actions-left">
+
+          <a-button @click="goToHome" class = "home-button">
+             返回主页
+          </a-button>
+
+        </a-space>  
+
+        <!--右边按钮-->
+        <a-space class = "profile-actions-right">
+
           <a-button type = "primary" @click="goToEditProfile">
             编辑资料
           </a-button>
@@ -213,6 +228,8 @@ const handleAvatarUpload = async (e: Event) => {
           <a-button @click="handleLogout" class="logout-button">
             退出登录
           </a-button>
+
+        </a-space>
 
       </a-space>
 
@@ -365,10 +382,22 @@ const handleAvatarUpload = async (e: Event) => {
 
 .profile-actions {
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: space-between;
   margin-top: 24px;
 }
 
+.profile-actions-left ,
+
+.profile-actions-right {
+  display: flex;
+  align-items: center;
+}
+
+.home-button{
+  background-color: #f8d86f;
+  color: white;
+}
 .student-auth-button {
   background-color: #7bdfab;
   color: white;
