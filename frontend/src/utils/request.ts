@@ -473,7 +473,7 @@ const getMockData = (url: string, method: string, params: any, data: any): any =
 
 service.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    const token = localStorage.getItem('accessToken')
+    const token = localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken')
     if (token) {
       config.headers = config.headers || {}
       config.headers.Authorization = `Bearer ${token}`
@@ -492,6 +492,7 @@ service.interceptors.response.use(
       Message.error(res.message || '请求失败')
       if (res.code === 401) {
         localStorage.removeItem('accessToken')
+        sessionStorage.removeItem('accessToken')
         window.location.href = '/login'
       }
       return Promise.reject(new Error(res.message || '请求失败'))
