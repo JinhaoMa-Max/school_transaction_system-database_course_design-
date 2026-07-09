@@ -6,7 +6,7 @@ export interface User {
   avatarUrl: string
   phone: string
   email: string
-  role: 'buyer' | 'seller' | 'admin'
+  role: 'user' | 'admin'
   status: 'normal' | 'banned'
   creditScore: number
   registerTime: string

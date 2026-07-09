@@ -22,8 +22,12 @@ builder.Services.AddScoped<IGoodsRepository, GoodsRepository>();
 builder.Services.AddScoped<IGoodsService, GoodsService>();
 builder.Services.AddScoped<IBargainRepository, BargainRepository>();
 builder.Services.AddScoped<IFavoriteRepository, FavoriteRepository>();
+builder.Services.AddScoped<IAdminRepository, AdminRepository>();
+builder.Services.AddScoped<IOrderRepository, OrderRepository>();
 builder.Services.AddScoped<IBargainService, BargainService>();
 builder.Services.AddScoped<IFavoriteService, FavoriteService>();
+builder.Services.AddScoped<IAdminService, AdminService>();
+builder.Services.AddScoped<IOrderService, OrderService>();
 
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IUploadService, UploadService>();

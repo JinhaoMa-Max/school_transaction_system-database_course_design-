@@ -140,8 +140,7 @@ const rules = {
 //获取角色身份
 const getRoleText = (role?: string) => {
   const map: Record<string, string> = {
-    buyer: '买家',
-    seller: '卖家',
+    user: '普通用户',
     admin: '管理员'
   }
   return role?map[role] || role:'未知角色'

@@ -42,13 +42,13 @@ const bargainStatusMap: Record<string, { text: string; color: string }> = {
 }
 
 const columns = [
-  { title: '商品信息', dataIndex: 'goodsId', width: 280 },
+  { title: '商品信息', dataIndex: 'goodsId', width: 240 },
   { title: '出价金额', dataIndex: 'offerPrice', width: 120 },
   { title: '卖家处理', dataIndex: 'sellerResult', width: 100 },
   { title: '还价金额', dataIndex: 'counterPrice', width: 120 },
   { title: '议价状态', dataIndex: 'status', width: 100 },
   { title: '发起时间', dataIndex: 'createTime', width: 170 },
-  { title: '操作', dataIndex: 'actions', width: 200 }
+  { title: '操作', dataIndex: 'actions', width: 280 }
 ]
 
 const fetchBargainList = async () => {

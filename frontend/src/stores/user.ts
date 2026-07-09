@@ -24,10 +24,8 @@ const token = ref(
   const isLoggedIn = computed(() => !!token.value && !!user.value)
   // 计算属性：判断当前用户是否为管理员
   const isAdmin = computed(() => user.value?.role === 'admin')
-  // 计算属性：判断当前用户是否为卖家
-  const isSeller = computed(() => user.value?.role === 'seller')
-  // 计算属性：判断当前用户是否为买家
-  const isBuyer = computed(() => user.value?.role === 'buyer')
+  // 计算属性：判断当前用户是否为普通用户
+  const isUser = computed(() => user.value?.role === 'user')
 
   // 登录方法，增加了一个rememberMe参数
 const login = async (account: string, password: string, rememberMe = true) => {
@@ -72,8 +70,7 @@ const login = async (account: string, password: string, rememberMe = true) => {
     token,
     isLoggedIn,
     isAdmin,
-    isSeller,
-    isBuyer,
+    isUser,
     login,
     logout,
     fetchCurrentUser,

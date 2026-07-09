@@ -8,12 +8,13 @@ import type { BargainOffer, PageResult } from '@/types'
  * @param params 查询参数（可选）
  * @param params.goodsId 商品ID（可选）
  * @param params.buyerId 买家ID（可选）
+ * @param params.sellerId 卖家ID（可选）
  * @param params.status 议价状态（可选）
  * @param params.page 页码（可选）
  * @param params.size 每页数量（可选）
  * @returns 议价分页结果
  */
-export const getBargainList = (params?: { goodsId?: number; buyerId?: number; status?: string; page?: number; size?: number }) => {
+export const getBargainList = (params?: { goodsId?: number; buyerId?: number; sellerId?: number; status?: string; page?: number; size?: number }) => {
   // 发送GET请求获取议价列表
   return request.get<PageResult<BargainOffer>>('/bargains', { params })
 }

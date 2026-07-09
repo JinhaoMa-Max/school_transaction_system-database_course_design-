@@ -2,6 +2,8 @@ using CampusTrade.Backend.Infrastructure;
 using CampusTrade.Backend.Models;
 using CampusTrade.Backend.Models.DTOs;
 using Dapper;
+using Oracle.ManagedDataAccess.Client;
+using System.Data;
 
 namespace CampusTrade.Backend.Repositories;
 
@@ -24,6 +26,7 @@ public interface IUserRepository
     Task<User> UpdateUserFieldsAsync(int userId, PartialUserUpdateRequest request);
     Task<bool> DeleteUserAsync(int userId);
     Task<bool> UpdateStatusAsync(int userId, string status);
+    Task<bool> ManageBanAsync(int targetUserId, int adminId, string action, string? remark);
     Task<bool> UpdateCreditScoreAsync(int userId, int score);
     Task<bool> UpdateAvatarAsync(int userId, string avatarUrl);
 }
@@ -399,6 +402,27 @@ public class UserRepository : IUserRepository
     }
 
     /// <summary>后台管理：调整信用评分（对齐 app_user）</summary>
+    public async Task<bool> ManageBanAsync(int targetUserId, int adminId, string action, string? remark)
+    {
+        using var connection = _connectionFactory.CreateConnection();
+        if (connection is not OracleConnection oracleConnection)
+        {
+            throw new InvalidOperationException("Expected OracleConnection");
+        }
+
+        await oracleConnection.OpenAsync();
+        const string sql = """
+            BEGIN sp_manage_user_ban(p_admin_id => :AdminId, p_target_id => :TargetUserId, p_action => :Action, p_remark => :Remark); END;
+            """;
+
+        using var command = new OracleCommand(sql, oracleConnection) { BindByName = true };
+        command.Parameters.Add(new OracleParameter("AdminId", OracleDbType.Int32) { Value = adminId });
+        command.Parameters.Add(new OracleParameter("TargetUserId", OracleDbType.Int32) { Value = targetUserId });
+        command.Parameters.Add(new OracleParameter("Action", OracleDbType.Varchar2, 20) { Value = action });
+        command.Parameters.Add(new OracleParameter("Remark", OracleDbType.Clob) { Value = string.IsNullOrWhiteSpace(remark) ? DBNull.Value : remark.Trim() });
+        await command.ExecuteNonQueryAsync();
+        return true;
+    }
     public async Task<bool> UpdateCreditScoreAsync(int userId, int score)
     {
         using var connection = _connectionFactory.CreateConnection();

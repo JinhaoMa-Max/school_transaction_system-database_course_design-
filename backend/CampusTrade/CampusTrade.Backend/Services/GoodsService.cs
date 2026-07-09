@@ -6,10 +6,12 @@ namespace CampusTrade.Backend.Services;
 public class GoodsService : IGoodsService
 {
     private readonly IGoodsRepository _goodsRepository;
+    private readonly IAdminRepository _adminRepository;
 
-    public GoodsService(IGoodsRepository goodsRepository)
+    public GoodsService(IGoodsRepository goodsRepository, IAdminRepository adminRepository)
     {
         _goodsRepository = goodsRepository;
+        _adminRepository = adminRepository;
     }
 
     public async Task<GoodsListResult> GetPagedAsync(
@@ -20,6 +22,8 @@ public class GoodsService : IGoodsService
         decimal? minPrice, decimal? maxPrice,
         string? sortBy, bool ascending)
     {
+        page = Math.Max(1, page);
+        size = Math.Clamp(size, 1, 100);
         var (items, total) = await _goodsRepository.GetPagedAsync(
             page, size, sellerId, status, categoryId, keyword, minPrice, maxPrice, sortBy, ascending);
         return new GoodsListResult
@@ -31,7 +35,6 @@ public class GoodsService : IGoodsService
         };
     }
 
-
     public async Task<GoodsDto?> GetByIdAsync(int goodsId)
     {
         return await _goodsRepository.GetByIdAsync(goodsId);
@@ -39,22 +42,32 @@ public class GoodsService : IGoodsService
 
     public async Task<int> CreateAsync(CreateGoodsRequest request, int sellerId)
     {
-        // 业务校验：卖家是否已认证？可在此调用认证服务
-        // 校验商品状态默认 pending，由 Repository 处理
+        if (sellerId <= 0)
+        {
+            throw new UnauthorizedAccessException("login required");
+        }
+
+        ValidateCreateRequest(request);
         return await _goodsRepository.CreateAsync(request, sellerId);
     }
 
     public async Task<bool> UpdateAsync(int goodsId, UpdateGoodsRequest request, int currentUserId, bool isAdmin)
     {
-        // 仅卖家本人或管理员可编辑
         var existing = await _goodsRepository.GetByIdAsync(goodsId);
-        if (existing == null) return false;
-        if (!isAdmin && existing.SellerId != currentUserId)
-            throw new UnauthorizedAccessException("只有卖家本人或管理员可以编辑商品");
+        if (existing == null)
+        {
+            return false;
+        }
 
-        // 如果商品已审核通过且非管理员，不允许修改（可根据需求调整）
+        if (!isAdmin && existing.SellerId != currentUserId)
+        {
+            throw new UnauthorizedAccessException("only the seller or an admin can edit this goods item");
+        }
+
         if (existing.Status == "approved" && !isAdmin)
-            throw new InvalidOperationException("商品已审核通过，无法修改，如需修改请联系管理员");
+        {
+            throw new InvalidOperationException("approved goods cannot be edited by seller");
+        }
 
         return await _goodsRepository.UpdateAsync(goodsId, request);
     }
@@ -62,37 +75,61 @@ public class GoodsService : IGoodsService
     public async Task<bool> DeleteAsync(int goodsId, int currentUserId, bool isAdmin)
     {
         var existing = await _goodsRepository.GetByIdAsync(goodsId);
-        if (existing == null) return false;
-        if (!isAdmin && existing.SellerId != currentUserId)
-            throw new UnauthorizedAccessException("只有卖家本人或管理员可以删除商品");
+        if (existing == null)
+        {
+            return false;
+        }
 
-        // 软删除：可以改为状态 offline，这里直接物理删除（也可根据需求调整）
+        if (!isAdmin && existing.SellerId != currentUserId)
+        {
+            throw new UnauthorizedAccessException("only the seller or an admin can delete this goods item");
+        }
+
         return await _goodsRepository.DeleteAsync(goodsId);
     }
 
     public async Task<bool> AuditAsync(int goodsId, AuditGoodsRequest request, int adminId)
     {
-        // 仅管理员可操作
         if (request.Status != "approved" && request.Status != "rejected")
-            throw new ArgumentException("审核状态必须为 'approved' 或 'rejected'");
-
-        // 可记录审核日志（调用 audit_log 写入）
-        var success = await _goodsRepository.UpdateStatusAsync(goodsId, request.Status);
-        if (success && !string.IsNullOrEmpty(request.Remark))
         {
-            // 可写入审核日志表（这里省略，实际应调用 IAuditLogService）
+            throw new ArgumentException("audit status must be approved or rejected");
         }
-        return success;
+
+        var existing = await _goodsRepository.GetByIdAsync(goodsId);
+        if (existing == null)
+        {
+            return false;
+        }
+
+        return await _goodsRepository.AuditAsync(goodsId, adminId, request.Status, request.Remark);
     }
 
     public async Task<bool> OfflineAsync(int goodsId, int currentUserId, bool isAdmin)
     {
         var existing = await _goodsRepository.GetByIdAsync(goodsId);
-        if (existing == null) return false;
-        if (!isAdmin && existing.SellerId != currentUserId)
-            throw new UnauthorizedAccessException("只有卖家本人或管理员可以下架商品");
+        if (existing == null)
+        {
+            return false;
+        }
 
-        return await _goodsRepository.UpdateStatusAsync(goodsId, "offline");
+        if (!isAdmin && existing.SellerId != currentUserId)
+        {
+            throw new UnauthorizedAccessException("only the seller or an admin can offline this goods item");
+        }
+
+        var success = await _goodsRepository.UpdateStatusAsync(goodsId, "offline");
+        if (success && isAdmin)
+        {
+            await _adminRepository.CreateAuditLogAsync(new CreateAuditLogRequest
+            {
+                AuditType = "goods_offline",
+                TargetId = goodsId,
+                Action = "offline",
+                Result = "success"
+            }, currentUserId);
+        }
+
+        return success;
     }
 
     public async Task<bool> IncrementViewCountAsync(int goodsId)
@@ -100,7 +137,6 @@ public class GoodsService : IGoodsService
         return await _goodsRepository.IncrementViewCountAsync(goodsId);
     }
 
-    // ---- 图片操作 ----
     public async Task<IEnumerable<GoodsImageDto>> GetImagesAsync(int goodsId)
     {
         return await _goodsRepository.GetImagesAsync(goodsId);
@@ -108,14 +144,45 @@ public class GoodsService : IGoodsService
 
     public async Task<int> AddImageAsync(int goodsId, string imageUrl, int sortOrder)
     {
-        // 可检查商品是否存在
         var goods = await _goodsRepository.GetByIdAsync(goodsId);
-        if (goods == null) throw new ArgumentException("商品不存在");
-        return await _goodsRepository.AddImageAsync(goodsId, imageUrl, sortOrder);
+        if (goods == null)
+        {
+            throw new ArgumentException("goods not found");
+        }
+
+        if (string.IsNullOrWhiteSpace(imageUrl))
+        {
+            throw new ArgumentException("imageUrl is required");
+        }
+
+        return await _goodsRepository.AddImageAsync(goodsId, imageUrl.Trim(), sortOrder);
     }
 
     public async Task<bool> DeleteImageAsync(int imageId)
     {
         return await _goodsRepository.DeleteImageAsync(imageId);
+    }
+
+    private static void ValidateCreateRequest(CreateGoodsRequest request)
+    {
+        if (request.CategoryId <= 0)
+        {
+            throw new ArgumentException("categoryId is required");
+        }
+
+        if (string.IsNullOrWhiteSpace(request.Title))
+        {
+            throw new ArgumentException("title is required");
+        }
+
+        if (request.Price < 0)
+        {
+            throw new ArgumentException("price cannot be negative");
+        }
+
+        if (string.IsNullOrWhiteSpace(request.Condition))
+        {
+            throw new ArgumentException("condition is required");
+        }
     }
 }
