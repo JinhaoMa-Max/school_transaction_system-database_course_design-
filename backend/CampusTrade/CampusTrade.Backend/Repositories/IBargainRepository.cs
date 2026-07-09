@@ -58,9 +58,10 @@ public interface IBargainRepository
     /// <remarks>
     /// 数据库实现注意事项：
     /// 1. 推荐调用存储过程 sp_create_bargain（见 docs/backend-rebuild-contract.md）。
-    /// 2. created_at 使用 SYSDATE；初始 seller_response/offer_status 由数据库统一设定（避免业务层分歧）。
-    /// 3. 若使用 INSERT，需使用 RETURNING offer_id INTO :变量 获取自增主键，并返回完整 DTO。
-    /// 4. 需要返回的字段需齐全（BargainOfferDto 全字段），以便 Controller 直接返回给前端。
+    /// 2. 请数据库同学保证同一买家 + 同一商品仅保留一条议价记录；若已存在，则应拒绝重复创建或转为更新原记录。
+    /// 3. created_at 使用 SYSDATE；初始 seller_response/offer_status 由数据库统一设定（避免业务层分歧）。
+    /// 4. 若使用 INSERT，需使用 RETURNING offer_id INTO :变量 获取自增主键，并返回完整 DTO。
+    /// 5. 需要返回的字段需齐全（BargainOfferDto 全字段），以便 Controller 直接返回给前端。
     /// </remarks>
     Task<BargainOfferDto> CreateAsync(int goodsId, int buyerId, decimal offerPrice);
 
@@ -74,9 +75,10 @@ public interface IBargainRepository
     /// <remarks>
     /// 数据库实现注意事项：
     /// 1. 推荐调用存储过程 sp_respond_bargain（见 docs/backend-rebuild-contract.md）。
-    /// 2. 需要写入 seller_response、counter_price，并根据业务规则更新 offer_status。
-    /// 3. 可在数据库侧校验当前议价是否可被处理（例如：已关闭/已完成的不允许重复处理）。
-    /// 4. 方法返回值需为更新后的完整记录（BargainOfferDto 全字段），供前端刷新展示。
+    /// 2. 多轮议价请始终更新同一条议价记录：卖家还价时更新 counter_price，后续成交仍基于该记录继续流转。
+    /// 3. 需要写入 seller_response、counter_price，并根据业务规则更新 offer_status。
+    /// 4. 可在数据库侧校验当前议价是否可被处理（例如：已关闭/已完成的不允许重复处理）。
+    /// 5. 方法返回值需为更新后的完整记录（BargainOfferDto 全字段），供前端刷新展示。
     /// </remarks>
     Task<BargainOfferDto> RespondAsync(int bargainId, string sellerResult, decimal? counterPrice);
 

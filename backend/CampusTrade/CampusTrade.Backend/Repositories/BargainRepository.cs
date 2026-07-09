@@ -53,7 +53,8 @@ public class BargainRepository : IBargainRepository
     /// <remarks>
     /// 待补充实现要点：
     /// 1. 推荐调用存储过程 sp_create_bargain，生成 offer_id 并写入 created_at、初始状态等。
-    /// 2. 返回创建后的完整 BargainOfferDto（供 Controller 直接返回前端）。
+    /// 2. 请数据库同学保证同一买家 + 同一商品仅保留一条议价记录；若已存在，则应拒绝重复创建或转为更新原记录。
+    /// 3. 返回创建后的完整 BargainOfferDto（供 Controller 直接返回前端）。
     /// </remarks>
     public Task<BargainOfferDto> CreateAsync(int goodsId, int buyerId, decimal offerPrice)
     {
@@ -66,7 +67,8 @@ public class BargainRepository : IBargainRepository
     /// <remarks>
     /// 待补充实现要点：
     /// 1. 推荐调用存储过程 sp_respond_bargain，写入 seller_response、counter_price，并更新 offer_status。
-    /// 2. 返回更新后的完整 BargainOfferDto。
+    /// 2. 多轮议价请始终更新同一条议价记录：卖家还价时更新 counter_price，后续成交仍基于该记录继续流转。
+    /// 3. 返回更新后的完整 BargainOfferDto。
     /// </remarks>
     public Task<BargainOfferDto> RespondAsync(int bargainId, string sellerResult, decimal? counterPrice)
     {

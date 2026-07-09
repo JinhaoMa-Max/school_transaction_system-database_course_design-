@@ -19,6 +19,8 @@ builder.Services.AddScoped<IGoodsRepository, GoodsRepository>();
 builder.Services.AddScoped<IGoodsService, GoodsService>();
 builder.Services.AddScoped<IBargainRepository, BargainRepository>();
 builder.Services.AddScoped<IBargainService, BargainService>();
+builder.Services.AddScoped<IOrderRepository, OrderRepository>();
+builder.Services.AddScoped<IOrderService, OrderService>();
 
 var app = builder.Build();
 
