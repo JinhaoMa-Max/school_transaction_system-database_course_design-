@@ -23,6 +23,8 @@ builder.Services.AddScoped<IGoodsService, GoodsService>();
 builder.Services.AddScoped<IBargainRepository, BargainRepository>();
 builder.Services.AddScoped<IBargainService, BargainService>();
 
+builder.Services.AddScoped<IUserService, UserService>();
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
