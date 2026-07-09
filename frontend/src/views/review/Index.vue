@@ -108,7 +108,7 @@ onMounted(fetchData)
             <div class="section-title">评价对象</div>
             <div class="user-info">
               <a-avatar :size="48">
-                <img :src="reviewedUser?.avatarUrl" v-if="reviewedUser?.avatarUrl" />
+                <img v-if="reviewedUser?.avatarUrl" :src="reviewedUser.avatarUrl" />
                 <icon-user v-else />
               </a-avatar>
               <div class="user-detail">

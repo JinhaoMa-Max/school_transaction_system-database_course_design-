@@ -97,6 +97,45 @@ public class BargainService : IBargainService
         return await _bargainRepository.RespondAsync(bargainId, sellerResult, request.CounterPrice);
     }
 
+    public async Task<BargainOfferDto> BuyerHandleAsync(int bargainId, BuyerHandleBargainRequest request, int? currentUserId)
+    {
+        if (currentUserId == null)
+        {
+            throw new UnauthorizedAccessException("未登录");
+        }
+
+        if (bargainId <= 0) throw new ArgumentException("bargainId 不合法");
+
+        // 买家对卖家还价进行确认：接受/拒绝/再次出价
+        var buyerResult = request.BuyerResult?.Trim();
+        if (buyerResult != "accepted" && buyerResult != "rejected" && buyerResult != "countered")
+        {
+            throw new ArgumentException("buyerResult 必须为 accepted / rejected / countered");
+        }
+
+        if (buyerResult == "countered")
+        {
+            if (request.OfferPrice == null || request.OfferPrice <= 0)
+                throw new ArgumentException("offerPrice 在 countered 时必填且必须大于 0");
+        }
+
+        var bargain = await _bargainRepository.GetByIdAsync(bargainId);
+        if (bargain == null) throw new ArgumentException("议价不存在");
+
+        if (bargain.BuyerId != currentUserId.Value)
+        {
+            throw new UnauthorizedAccessException("只有买家本人可以响应卖家还价");
+        }
+
+        // 当前设计下，买家响应接口主要用于处理卖家已给出 counterPrice 的场景
+        if (bargain.SellerResult != "countered")
+        {
+            throw new InvalidOperationException("当前议价未处于卖家还价状态，无法进行买家响应");
+        }
+
+        return await _bargainRepository.BuyerHandleAsync(bargainId, buyerResult, request.OfferPrice);
+    }
+
     public async Task<bool> CloseAsync(int bargainId, int? currentUserId)
     {
         if (currentUserId == null)

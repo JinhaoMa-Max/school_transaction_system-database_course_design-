@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'  
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { getGoodsList, getCategoryList } from '@/api'
 import { useUserStore } from '@/stores'
@@ -112,13 +112,13 @@ const goToDetail = (id: number) => {
 }
 
 const handleCategoryChange = (value: any) => {
-  categoryId.value = value as number | undefined
+  categoryId.value = typeof value === 'number' ? value : undefined
   page.value = 1
   fetchData()
 }
 
 const handleSortChange = (value: any) => {
-  sortBy.value = value as string
+  sortBy.value = String(value || 'created_at_desc')
   page.value = 1
   fetchData()
 }

@@ -88,7 +88,7 @@ const handleTabChange = (key: string | number) => {
 }
 
 const handleStatusChange = (value: any) => {
-  statusFilter.value = value as string
+  statusFilter.value = String(value || '')
   page.value = 1
   fetchOrderList()
 }

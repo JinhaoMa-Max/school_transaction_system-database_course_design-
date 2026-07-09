@@ -7,6 +7,7 @@ public interface IGoodsRepository
     Task<(List<GoodsDto> Items, int Total)> GetPagedAsync(
         int page, int size,
         int? categoryId, string? keyword,
+        decimal? minPrice, decimal? maxPrice,
         string? sortBy, bool ascending);
 
     Task<GoodsDto?> GetByIdAsync(int goodsId);
@@ -14,6 +15,7 @@ public interface IGoodsRepository
     Task<bool> UpdateAsync(int goodsId, UpdateGoodsRequest request);
     Task<bool> DeleteAsync(int goodsId);
     Task<bool> UpdateStatusAsync(int goodsId, string newStatus);
+    Task<bool> AuditAsync(int goodsId, int adminId, string action, string? remark);
     Task<bool> IncrementViewCountAsync(int goodsId);
 
     Task<IEnumerable<GoodsImageDto>> GetImagesAsync(int goodsId);

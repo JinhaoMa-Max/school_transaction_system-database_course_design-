@@ -2,6 +2,7 @@ using CampusTrade.Backend.Infrastructure;
 using CampusTrade.Backend.Models;
 using CampusTrade.Backend.Models.DTOs;
 using Dapper;
+using Oracle.ManagedDataAccess.Client;
 using System.Data;
 
 namespace CampusTrade.Backend.Repositories;
@@ -27,7 +28,10 @@ public class GoodsRepository : IGoodsRepository
     /// 数据来源: v_goods_list 视图（自动 JOIN 卖家名、分类名、首图）
     /// </summary>
     public async Task<(List<GoodsDto> Items, int Total)> GetPagedAsync(
-        int page, int size, int? categoryId, string? keyword, string? sortBy, bool ascending)
+        int page, int size,
+        int? categoryId, string? keyword,
+        decimal? minPrice, decimal? maxPrice,
+        string? sortBy, bool ascending)
     {
         using var connection = _connectionFactory.CreateConnection();
 
@@ -45,14 +49,25 @@ public class GoodsRepository : IGoodsRepository
             where.Add("title LIKE :Keyword");
             parameters.Add(":Keyword", $"%{keyword}%");
         }
+        if (minPrice.HasValue)
+        {
+            where.Add("price >= :MinPrice");
+            parameters.Add(":MinPrice", minPrice.Value);
+        }
+        if (maxPrice.HasValue)
+        {
+            where.Add("price <= :MaxPrice");
+            parameters.Add(":MaxPrice", maxPrice.Value);
+        }
 
         var whereClause = where.Count > 0 ? "WHERE " + string.Join(" AND ", where) : "";
 
-        // 排序字段映射（防 SQL 注入：只用白名单，不拼接用户输入）
-        var orderColumn = sortBy switch
+        // 排序映射
+        var orderColumn = sortBy?.ToLower() switch
         {
             "price" => "price",
-            "viewCount" => "view_count",
+            "viewcount" or "view_count" or "view" or "views" => "view_count", 
+            "createdat" => "created_at",
             _ => "created_at"
         };
         var direction = ascending ? "ASC" : "DESC";
@@ -201,6 +216,27 @@ public class GoodsRepository : IGoodsRepository
     /// <summary>
     /// 浏览量 +1 — 调用数据库函数 fn_increment_view
     /// </summary>
+    public async Task<bool> AuditAsync(int goodsId, int adminId, string action, string? remark)
+    {
+        using var connection = _connectionFactory.CreateConnection();
+        if (connection is not OracleConnection oracleConnection)
+        {
+            throw new InvalidOperationException("Expected OracleConnection");
+        }
+
+        await oracleConnection.OpenAsync();
+        const string sql = """
+            BEGIN sp_audit_goods(p_admin_id => :AdminId, p_goods_id => :GoodsId, p_action => :Action, p_remark => :Remark); END;
+            """;
+
+        using var command = new OracleCommand(sql, oracleConnection) { BindByName = true };
+        command.Parameters.Add(new OracleParameter("AdminId", OracleDbType.Int32) { Value = adminId });
+        command.Parameters.Add(new OracleParameter("GoodsId", OracleDbType.Int32) { Value = goodsId });
+        command.Parameters.Add(new OracleParameter("Action", OracleDbType.Varchar2, 20) { Value = action });
+        command.Parameters.Add(new OracleParameter("Remark", OracleDbType.Clob) { Value = string.IsNullOrWhiteSpace(remark) ? DBNull.Value : remark.Trim() });
+        await command.ExecuteNonQueryAsync();
+        return true;
+    }
     public async Task<bool> IncrementViewCountAsync(int goodsId)
     {
         using var connection = _connectionFactory.CreateConnection();

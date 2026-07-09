@@ -7,6 +7,7 @@ public interface IGoodsService
     Task<GoodsListResult> GetPagedAsync(
         int page, int size,
         int? categoryId, string? keyword,
+        decimal? minPrice, decimal? maxPrice,
         string? sortBy, bool ascending);
 
     Task<GoodsDto?> GetByIdAsync(int goodsId);

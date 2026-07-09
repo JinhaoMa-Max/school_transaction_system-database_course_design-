@@ -88,4 +88,31 @@ public class BargainRepository : IBargainRepository
         using var connection = _connectionFactory.CreateConnection();
         return await connection.ExecuteAsync("UPDATE bargain_offer SET offer_status='closed', updated_at=SYSDATE WHERE offer_id=:id AND offer_status='active'", new { id = bargainId }) > 0;
     }
+
+    /// <summary>Buyer handles seller counter offer.</summary>
+    public async Task<BargainOfferDto> BuyerHandleAsync(int bargainId, string buyerResult, decimal? offerPrice)
+    {
+        using var connection = _connectionFactory.CreateConnection();
+
+        var rows = buyerResult switch
+        {
+            "accepted" => await connection.ExecuteAsync(
+                "UPDATE bargain_offer SET offer_status='accepted', updated_at=SYSDATE WHERE offer_id=:id",
+                new { id = bargainId }),
+            "rejected" => await connection.ExecuteAsync(
+                "UPDATE bargain_offer SET offer_status='rejected', updated_at=SYSDATE WHERE offer_id=:id",
+                new { id = bargainId }),
+            "countered" => await connection.ExecuteAsync(
+                "UPDATE bargain_offer SET offer_price=:op, seller_response='pending', counter_price=NULL, offer_status='active', updated_at=SYSDATE WHERE offer_id=:id",
+                new { id = bargainId, op = offerPrice ?? throw new ArgumentException("offerPrice is required when buyerResult is countered") }),
+            _ => throw new ArgumentException($"Invalid buyer result: {buyerResult}")
+        };
+
+        if (rows <= 0)
+        {
+            throw new InvalidOperationException("Bargain update failed");
+        }
+
+        return (await GetByIdAsync(bargainId))!;
+    }
 }
