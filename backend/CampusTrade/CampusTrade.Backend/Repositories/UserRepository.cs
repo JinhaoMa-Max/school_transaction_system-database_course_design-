@@ -25,6 +25,7 @@ public interface IUserRepository
     Task<bool> DeleteUserAsync(int userId);
     Task<bool> UpdateStatusAsync(int userId, string status);
     Task<bool> UpdateCreditScoreAsync(int userId, int score);
+    Task<bool> UpdateAvatarAsync(int userId, string avatarUrl);
 }
 
 public class UserRepository : IUserRepository
@@ -403,5 +404,16 @@ public class UserRepository : IUserRepository
         using var connection = _connectionFactory.CreateConnection();
         const string sql = "UPDATE app_user SET credit_score = :Score WHERE user_id = :UserId";
         return await connection.ExecuteAsync(sql, new { Score = score, UserId = userId }) > 0;
+    }
+    public async Task<bool> UpdateAvatarAsync(int userId, string avatarUrl)
+    {
+        using var connection = _connectionFactory.CreateConnection();
+        const string sql = """
+            UPDATE app_user
+            SET avatar = :AvatarUrl, updated_at = SYSDATE
+            WHERE user_id = :UserId
+            """;
+        var affected = await connection.ExecuteAsync(sql, new { UserId = userId, AvatarUrl = avatarUrl });
+        return affected > 0;
     }
 }

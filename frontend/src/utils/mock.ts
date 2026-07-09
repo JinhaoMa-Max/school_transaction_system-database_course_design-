@@ -133,6 +133,16 @@ export const mockBargains: BargainOffer[] = [
     counterPrice: 5300,
     status: 'active',
     createTime: '2024-01-11 15:00:00'
+  },
+  {
+    bargainId: 2,
+    goodsId: 1,
+    buyerId: 3,
+    offerPrice: 4800,
+    sellerResult: 'pending',
+    counterPrice: null,
+    status: 'active',
+    createTime: '2024-01-11 15:05:00'
   }
 ]
 

@@ -1,7 +1,6 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'  
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { Message } from '@arco-design/web-vue'
 import { getGoodsList, getCategoryList } from '@/api'
 import type { Goods, Category } from '@/types'
 
@@ -103,14 +102,14 @@ const goToDetail = (id: number) => {
   router.push(`/goods/${id}`)
 }
 
-const handleCategoryChange = (value: number | undefined) => {
-  categoryId.value = value
+const handleCategoryChange = (value: any) => {
+  categoryId.value = typeof value === 'number' ? value : undefined
   page.value = 1
   fetchData()
 }
 
-const handleSortChange = (value: string) => {
-  sortBy.value = value
+const handleSortChange = (value: any) => {
+  sortBy.value = String(value || 'created_at_desc')
   page.value = 1
   fetchData()
 }

@@ -1,12 +1,20 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { Message } from '@arco-design/web-vue'
 import { useUserStore } from '@/stores'
+import { uploadAvatar } from '@/api'
 
 const router = useRouter()
 const userStore = useUserStore()
 
 const user = computed(() => userStore.user)
+const loading = ref(false)
+const avatarInput = ref<HTMLInputElement | null>(null)
+
+const triggerAvatarInput = () => {
+  avatarInput.value?.click()
+}
 
 
 //跳转到资料编辑页面
@@ -69,6 +77,34 @@ const avatarText = computed(() => {
     const name = user.value?.nickname || user.value?.username || '用户'
     return name.slice(0, 1).toUpperCase()
 })
+const handleAvatarUpload = async (e: Event) => {
+  const target = e.target as HTMLInputElement
+  const file = target.files?.[0]
+  if (!file) return
+
+  if (file.size > 5 * 1024 * 1024) {
+    Message.warning('头像大小不能超过5MB')
+    return
+  }
+
+  const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/gif', 'image/webp']
+  if (!allowedTypes.includes(file.type)) {
+    Message.warning('只允许上传JPG、PNG、GIF、WebP格式的图片')
+    return
+  }
+
+  loading.value = true
+  try {
+    const res = await uploadAvatar(file)
+    userStore.user = res.data
+    Message.success('头像上传成功')
+  } catch {
+    Message.error('头像上传失败')
+  } finally {
+    loading.value = false
+    target.value = ''
+  }
+}
 </script>
 
 <template>
@@ -86,12 +122,20 @@ const avatarText = computed(() => {
       </template>
 
       <div class = "profile-header">
-        <a-avatar :size="100" class="profile-avatar">
+        <a-avatar :size="100" class="profile-avatar" @click="triggerAvatarInput">
             <img v-if="user?.avatarUrl" :src="user?.avatarUrl"/>
             <span v-else>
                  {{ avatarText }}
             </span>
         </a-avatar>
+        <input
+          id="avatar-input"
+          ref="avatarInput"
+          type="file"
+          accept="image/jpeg,image/png,image/jpg,image/gif,image/webp"
+          style="display: none"
+          @change="handleAvatarUpload"
+        />
         <div class = "profile-basic">
 
             <div class = "nickname-row">
@@ -115,7 +159,7 @@ const avatarText = computed(() => {
       </div>
 
       <!-- 用户信息展示表格 -->
-      <a-descriptions class = "profile-descriptions"  :column="1"bordered size="large">
+      <a-descriptions class = "profile-descriptions"  :column="1" bordered size="large">
 
         <a-descriptions-item label="用户名">
           {{ user?.username || '未填写' }}
@@ -240,6 +284,7 @@ const avatarText = computed(() => {
   font-weight: 600;
   background-color: var(--color-fill-3);
   color: #253554;
+  cursor: pointer;
 }
 
 

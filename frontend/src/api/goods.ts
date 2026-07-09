@@ -4,6 +4,19 @@ import request from '@/utils/request'
 import type { Goods, GoodsImage, PageResult, GoodsQuery } from '@/types'
 
 /**
+ * 上传图片到服务器
+ * @param file 图片文件
+ * @returns 上传结果，包含 fileName 和 url
+ */
+export const uploadImage = (file: File) => {
+  const formData = new FormData()
+  formData.append('file', file)
+  return request.post<{ fileName: string; url: string }>('/upload/image', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  })
+}
+
+/**
  * 获取商品列表
  * @param params 查询参数（可选）
  * @returns 商品分页结果

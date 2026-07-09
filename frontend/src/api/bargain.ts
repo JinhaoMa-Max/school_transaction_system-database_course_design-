@@ -54,6 +54,19 @@ export const handleBargain = (bargainId: number, params: { sellerResult: 'accept
 }
 
 /**
+ * 买家处理议价（买家对卖家还价做出回应）
+ * @param bargainId 议价ID
+ * @param params 处理参数
+ * @param params.buyerResult 买家处理结果（accepted/rejected/countered）— 中间传递值，对称于 sellerResult，不存入数据库
+ * @param params.offerPrice 买家新出价（可选，当 buyerResult 为 countered 时必填）
+ * @returns 处理后的议价信息
+ */
+export const handleBargainByBuyer = (bargainId: number, params: { buyerResult: 'accepted' | 'rejected' | 'countered'; offerPrice?: number }) => {
+  // 发送PUT请求，买家处理议价
+  return request.put<BargainOffer>(`/bargains/${bargainId}/buyer-handle`, params)
+}
+
+/**
  * 关闭议价
  * @param bargainId 议价ID
  * @returns 关闭结果
