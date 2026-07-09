@@ -68,6 +68,8 @@ export interface BargainOffer {
   counterPrice: number | null
   status: 'active' | 'accepted' | 'rejected' | 'closed'
   createTime: string
+  /** 买家处理结果（中间传递值，对称于 sellerResult，不存入数据库表） */
+  buyerResult?: 'pending' | 'accepted' | 'rejected' | 'countered'
 }
 
 export interface TradeOrder {
@@ -187,10 +189,20 @@ export interface GoodsQuery {
   status?: string
   page?: number
   size?: number
+  sortBy?: string
+  ascending?: boolean
 }
 
 export interface OrderQuery {
   status?: string
   page?: number
   size?: number
+}
+
+//新增：增加了一个接口，用于更新用户信息时的参数(安全性保证)
+export interface UpdateUserParams {
+  nickname?: string
+  avatarUrl?: string
+  phone?: string
+  email?: string
 }

@@ -19,9 +19,9 @@ PROMPT
 
 PROMPT >>> 1. 插入测试用户...
 INSERT INTO app_user (username, password, nickname, role, credit_score) VALUES ('admin', 'pass', '管理员小张', 'admin', 100);
-INSERT INTO app_user (username, password, nickname, role, credit_score) VALUES ('zhangsan', 'pass', '张三', 'seller', 100);
-INSERT INTO app_user (username, password, nickname, role, credit_score) VALUES ('lisi', 'pass', '李四', 'buyer', 100);
-INSERT INTO app_user (username, password, nickname, role, credit_score) VALUES ('wangwu', 'pass', '王五', 'buyer', 50);
+INSERT INTO app_user (username, password, nickname, role, credit_score) VALUES ('zhangsan', 'pass', '张三', 'user', 100);
+INSERT INTO app_user (username, password, nickname, role, credit_score) VALUES ('lisi', 'pass', '李四', 'user', 100);
+INSERT INTO app_user (username, password, nickname, role, credit_score) VALUES ('wangwu', 'pass', '王五', 'user', 50);
 COMMIT;
 
 PROMPT >>> 2. 插入学生认证...

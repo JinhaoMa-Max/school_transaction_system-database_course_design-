@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Message, Modal } from '@arco-design/web-vue'
+import { Message } from '@arco-design/web-vue'
 import { useUserStore } from '@/stores'
 import {
   getGoodsById,
@@ -265,7 +265,8 @@ onMounted(fetchData)
             </a-button>
             <a-button
               v-if="canBuy"
-              type="warning"
+              type="primary"
+              status="warning"
               size="large"
               @click="openBargain"
             >

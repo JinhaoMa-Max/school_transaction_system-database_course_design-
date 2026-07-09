@@ -75,8 +75,8 @@ const handleTabChange = (key: string | number) => {
   fetchOrderList()
 }
 
-const handleStatusChange = (value: string) => {
-  statusFilter.value = value
+const handleStatusChange = (value: any) => {
+  statusFilter.value = String(value || '')
   page.value = 1
   fetchOrderList()
 }
@@ -114,7 +114,6 @@ const handleCancel = (orderId: number) => {
     content: '确定要取消该订单吗？取消后无法恢复。',
     okText: '确认取消',
     cancelText: '再想想',
-    status: 'warning',
     onOk: async () => {
       try {
         await cancelOrder(orderId)

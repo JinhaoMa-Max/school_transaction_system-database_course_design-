@@ -10,7 +10,6 @@ import {
 } from '@/api'
 import {
   getAppointmentByOrderId,
-  createAppointment,
   verifyConfirmCode
 } from '@/api'
 import type { TradeOrder, Appointment } from '@/types'
@@ -46,9 +45,6 @@ const isBuyer = computed(() => {
   return userStore.user?.userId === order.value?.buyerId
 })
 
-const isSeller = computed(() => {
-  return userStore.user?.userId === order.value?.sellerId
-})
 
 const fetchData = async () => {
   loading.value = true
@@ -86,7 +82,6 @@ const handleCancel = () => {
     content: '确定要取消该订单吗？取消后无法恢复。',
     okText: '确认取消',
     cancelText: '再想想',
-    status: 'warning',
     onOk: async () => {
       try {
         await cancelOrder(orderId)

@@ -5,6 +5,14 @@ export const login = (params: LoginParams) => {
   return request.post<LoginResult>('/auth/login', params)
 }
 
+export const uploadAvatar = (file: File) => {
+  const formData = new FormData()
+  formData.append('file', file)
+  return request.post<User>('/auth/avatar', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  })
+}
+
 export const logout = () => {
   return request.post('/auth/logout')
 }

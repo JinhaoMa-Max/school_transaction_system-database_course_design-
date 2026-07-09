@@ -170,7 +170,7 @@ LEFT JOIN student_auth sa ON u.user_id = sa.user_id
 LEFT JOIN goods g ON u.user_id = g.seller_id AND g.goods_status IN ('approved', 'sold')
 LEFT JOIN trade_order o ON u.user_id = o.seller_id
 LEFT JOIN review r ON u.user_id = r.reviewed_user_id
-WHERE u.role IN ('seller', 'buyer')
+WHERE u.role = 'user'
 GROUP BY u.user_id, u.nickname, u.avatar, u.credit_score, sa.college, sa.auth_status;
 
 -- 使用示例：SELECT * FROM v_seller_stats WHERE user_id = 2;

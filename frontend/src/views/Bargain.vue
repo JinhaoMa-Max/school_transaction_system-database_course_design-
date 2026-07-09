@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Message, Modal } from '@arco-design/web-vue'
-import { getBargainList, handleBargain, closeBargain } from '@/api'
+import { getBargainList, handleBargain, handleBargainByBuyer, closeBargain } from '@/api'
 import { useUserStore } from '@/stores'
 import type { BargainOffer } from '@/types'
 
@@ -20,6 +20,12 @@ const counterVisible = ref(false)
 const counterPrice = ref(0)
 const currentBargainId = ref<number | null>(null)
 const counterLoading = ref(false)
+
+// 买家还价相关状态
+const buyerCounterVisible = ref(false)
+const buyerCounterPrice = ref(0)
+const buyerCurrentBargainId = ref<number | null>(null)
+const buyerCounterLoading = ref(false)
 
 const sellerResultMap: Record<string, { text: string; color: string }> = {
   pending: { text: '待处理', color: 'orange' },
@@ -171,6 +177,70 @@ const handleClose = (bargainId: number) => {
   })
 }
 
+// ---------- 买家操作：对卖家还价做出回应 ----------
+const openBuyerCounter = (bargainId: number) => {
+  buyerCurrentBargainId.value = bargainId
+  buyerCounterPrice.value = 0
+  buyerCounterVisible.value = true
+}
+
+const handleBuyerAccept = (bargainId: number) => {
+  Modal.confirm({
+    title: '确认接受',
+    content: '确定接受卖家的还价吗？接受后将生成订单。',
+    okText: '确认接受',
+    cancelText: '取消',
+    onOk: async () => {
+      try {
+        await handleBargainByBuyer(bargainId, { buyerResult: 'accepted' })
+        Message.success('已接受卖家还价')
+        fetchBargainList()
+      } catch {
+        // 错误已由全局拦截器处理
+      }
+    }
+  })
+}
+
+const handleBuyerReject = (bargainId: number) => {
+  Modal.confirm({
+    title: '确认拒绝',
+    content: '确定拒绝卖家的还价吗？',
+    okText: '确认拒绝',
+    cancelText: '取消',
+    onOk: async () => {
+      try {
+        await handleBargainByBuyer(bargainId, { buyerResult: 'rejected' })
+        Message.success('已拒绝卖家还价')
+        fetchBargainList()
+      } catch {
+        // 错误已由全局拦截器处理
+      }
+    }
+  })
+}
+
+const handleBuyerCounter = async () => {
+  if (!buyerCurrentBargainId.value || buyerCounterPrice.value <= 0) {
+    Message.warning('请输入有效的出价金额')
+    return
+  }
+  buyerCounterLoading.value = true
+  try {
+    await handleBargainByBuyer(buyerCurrentBargainId.value, {
+      buyerResult: 'countered',
+      offerPrice: buyerCounterPrice.value
+    })
+    Message.success('继续还价已发送')
+    buyerCounterVisible.value = false
+    fetchBargainList()
+  } catch {
+    // 错误已由全局拦截器处理
+  } finally {
+    buyerCounterLoading.value = false
+  }
+}
+
 onMounted(() => {
   fetchBargainList()
 })
@@ -241,6 +311,7 @@ onMounted(() => {
 
             <template #actions="{ record }">
               <a-space size="small">
+                <!-- 卖家操作：待处理 -->
                 <template v-if="activeTab === 'seller' && record.status === 'active' && record.sellerResult === 'pending'">
                   <a-button type="primary" size="small" @click="handleAccept(record.bargainId)">
                     接受
@@ -252,6 +323,19 @@ onMounted(() => {
                     还价
                   </a-button>
                 </template>
+                <!-- 买家操作：卖家已还价，买家做出回应 -->
+                <template v-else-if="activeTab === 'buyer' && record.status === 'active' && record.sellerResult === 'countered'">
+                  <a-button type="primary" size="small" @click="handleBuyerAccept(record.bargainId)">
+                    接受还价
+                  </a-button>
+                  <a-button type="outline" status="danger" size="small" @click="handleBuyerReject(record.bargainId)">
+                    拒绝还价
+                  </a-button>
+                  <a-button type="outline" status="warning" size="small" @click="openBuyerCounter(record.bargainId)">
+                    继续还价
+                  </a-button>
+                </template>
+                <!-- 买家操作：普通进行中（非 countered 状态） -->
                 <template v-else-if="activeTab === 'buyer' && record.status === 'active'">
                   <a-button type="text" size="small" status="danger" @click="handleClose(record.bargainId)">
                     关闭议价
@@ -290,13 +374,39 @@ onMounted(() => {
       ok-text="发送还价"
     >
       <div class="counter-form">
-        <a-form layout="vertical">
+        <a-form :model="{ counterPrice }" layout="vertical">
           <a-form-item label="还价金额">
             <a-input-number
               v-model="counterPrice"
               :min="0.01"
               :precision="2"
               placeholder="请输入还价金额"
+              style="width: 100%"
+            >
+              <template #prepend>¥</template>
+            </a-input-number>
+          </a-form-item>
+        </a-form>
+      </div>
+    </a-modal>
+
+    <!-- 买家继续还价弹窗 -->
+    <a-modal
+      v-model:visible="buyerCounterVisible"
+      title="继续还价"
+      @ok="handleBuyerCounter"
+      @cancel="buyerCounterVisible = false"
+      :confirm-loading="buyerCounterLoading"
+      ok-text="发送还价"
+    >
+      <div class="counter-form">
+        <a-form :model="{ buyerCounterPrice }" layout="vertical">
+          <a-form-item label="您的出价">
+            <a-input-number
+              v-model="buyerCounterPrice"
+              :min="0.01"
+              :precision="2"
+              placeholder="请输入您的出价"
               style="width: 100%"
             >
               <template #prepend>¥</template>

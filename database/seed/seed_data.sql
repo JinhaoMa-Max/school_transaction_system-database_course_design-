@@ -54,23 +54,23 @@ VALUES (1, 'admin', 'pass123', '管理员小刘', '13800000001', 'admin@campus.e
 
 -- 卖家（有不同信用分）
 INSERT INTO app_user (user_id, username, password, nickname, phone, email, role, credit_score)
-VALUES (2, 'zhangsan', 'pass123', '张三', '13800000002', 'zhangsan@campus.edu.cn', 'seller', 120);
+VALUES (2, 'zhangsan', 'pass123', '张三', '13800000002', 'zhangsan@campus.edu.cn', 'user', 120);
 INSERT INTO app_user (user_id, username, password, nickname, phone, email, role, credit_score)
-VALUES (3, 'lisi', 'pass123', '李四', '13800000003', 'lisi@campus.edu.cn', 'seller', 95);
+VALUES (3, 'lisi', 'pass123', '李四', '13800000003', 'lisi@campus.edu.cn', 'user', 95);
 INSERT INTO app_user (user_id, username, password, nickname, phone, email, role, credit_score)
-VALUES (4, 'wangwu', 'pass123', '王五', '13800000004', 'wangwu@campus.edu.cn', 'seller', 108);
+VALUES (4, 'wangwu', 'pass123', '王五', '13800000004', 'wangwu@campus.edu.cn', 'user', 108);
 
 -- 买家
 INSERT INTO app_user (user_id, username, password, nickname, phone, email, role, credit_score)
-VALUES (5, 'zhaoliu', 'pass123', '赵六', '13800000005', 'zhaoliu@campus.edu.cn', 'buyer', 100);
+VALUES (5, 'zhaoliu', 'pass123', '赵六', '13800000005', 'zhaoliu@campus.edu.cn', 'user', 100);
 INSERT INTO app_user (user_id, username, password, nickname, phone, email, role, credit_score)
-VALUES (6, 'sunqi', 'pass123', '孙七', '13800000006', 'sunqi@campus.edu.cn', 'buyer', 80);
+VALUES (6, 'sunqi', 'pass123', '孙七', '13800000006', 'sunqi@campus.edu.cn', 'user', 80);
 INSERT INTO app_user (user_id, username, password, nickname, phone, email, role, credit_score)
-VALUES (7, 'zhouba', 'pass123', '周八', '13800000007', 'zhouba@campus.edu.cn', 'buyer', 100);
+VALUES (7, 'zhouba', 'pass123', '周八', '13800000007', 'zhouba@campus.edu.cn', 'user', 100);
 
 -- 被封禁用户
 INSERT INTO app_user (user_id, username, password, nickname, phone, email, role, status, credit_score)
-VALUES (8, 'banned_user', 'pass123', '违规用户', '13800000008', 'bad@spam.com', 'seller', 'banned', 10);
+VALUES (8, 'banned_user', 'pass123', '违规用户', '13800000008', 'bad@spam.com', 'user', 'banned', 10);
 
 COMMIT;
 PROMPT ✅ 8 个用户已插入
