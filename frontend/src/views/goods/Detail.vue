@@ -34,6 +34,8 @@ const bargainLoading = ref(false)
 const buyVisible = ref(false)
 const buyLoading = ref(false)
 
+const dealPrice = ref(0)
+
 const mainImage = computed(() => {
   if (images.value.length > 0) {
     return images.value[0].imageUrl
@@ -123,9 +125,13 @@ const handleBargain = async () => {
   }
   bargainLoading.value = true
   try {
-    await createBargain({ goodsId, offerPrice: bargainPrice.value })
+    const res = await createBargain({ goodsId, offerPrice: bargainPrice.value })
     Message.success('议价申请已发送')
     bargainVisible.value = false
+    const bargain = res.data
+    if (bargain?.counterPrice) {
+      dealPrice.value = bargain.counterPrice
+    }
   } catch {
     // 错误已由全局拦截器处理
   } finally {
@@ -144,9 +150,10 @@ const openBuy = () => {
 const handleBuy = async () => {
   buyLoading.value = true
   try {
+    const finalPrice = dealPrice.value || goods.value?.price || 0
     const res = await createOrder({
       goodsId,
-      dealPrice: goods.value?.price || 0
+      dealPrice: finalPrice
     })
     Message.success('订单创建成功')
     buyVisible.value = false
@@ -333,8 +340,11 @@ onMounted(fetchData)
       ok-text="确认购买"
     >
       <div class="buy-confirm">
-        <p>您确定要以 <strong class="price">¥{{ goods?.price }}</strong> 的价格购买该商品吗？</p>
-        <a-alert type="info">
+        <p>您确定要以 <strong class="price">¥{{ dealPrice || goods?.price }}</strong> 的价格购买该商品吗？</p>
+        <a-alert v-if="dealPrice && dealPrice !== goods?.price" type="success">
+          <p>该价格为议价后的成交价格</p>
+        </a-alert>
+        <a-alert v-else type="info">
           <p>购买后将生成订单，请及时与卖家联系完成面交。</p>
         </a-alert>
       </div>

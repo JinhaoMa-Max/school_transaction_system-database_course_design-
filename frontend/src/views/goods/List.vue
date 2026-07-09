@@ -53,11 +53,24 @@ const fetchCategories = async () => {
 const fetchData = async () => {
   loading.value = true
   try {
+    let sortByParam: string | undefined
+    let ascendingParam: boolean | undefined
+    
+    if (sortBy.value) {
+      const lastIndex = sortBy.value.lastIndexOf('_')
+      if (lastIndex !== -1) {
+        sortByParam = sortBy.value.substring(0, lastIndex)
+        ascendingParam = sortBy.value.substring(lastIndex + 1) === 'asc'
+      }
+    }
+    
     const params: Record<string, any> = {
       keyword: keyword.value,
       categoryId: categoryId.value,
       minPrice: minPrice.value,
       maxPrice: maxPrice.value,
+      sortBy: sortByParam,
+      ascending: ascendingParam,
       page: page.value,
       size: size.value
     }

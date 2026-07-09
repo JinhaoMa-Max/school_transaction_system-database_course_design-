@@ -2,11 +2,11 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Message, Modal } from '@arco-design/web-vue'
-import { getOrderList, cancelOrder, completeOrder } from '@/api'
+import { getOrderList, cancelOrder, completeOrder, getGoodsById } from '@/api'
 import { verifyConfirmCode } from '@/api'
 import { useUserStore } from '@/stores'
 import { orderStatusMap } from '@/constants'
-import type { TradeOrder } from '@/types'
+import type { TradeOrder, Goods } from '@/types'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -18,6 +18,7 @@ const page = ref(1)
 const pageSize = ref(10)
 const activeTab = ref('buy')
 const statusFilter = ref('')
+const goodsMap = ref<Record<number, Goods>>({})
 
 const verifyVisible = ref(false)
 const verifyCode = ref('')
@@ -63,6 +64,16 @@ const fetchOrderList = async () => {
     const res = await getOrderList(params)
     orderList.value = res.data.list
     total.value = res.data.total
+
+    const goodsIds = [...new Set(orderList.value.map(order => order.goodsId))]
+    goodsMap.value = {}
+    for (const goodsId of goodsIds) {
+      try {
+        const goodsRes = await getGoodsById(goodsId)
+        goodsMap.value[goodsId] = goodsRes.data
+      } catch {
+      }
+    }
   } catch (error: any) {
     Message.error(error?.response?.data?.message || error?.message || '获取订单列表失败')
   } finally {
@@ -214,8 +225,16 @@ onMounted(() => {
           >
             <template #goodsId="{ record }">
               <div class="goods-info" @click="goToGoodsDetail(record.goodsId)">
-                <div class="goods-name">商品 #{{ record.goodsId }}</div>
-                <div class="goods-hint">点击查看商品</div>
+                <div class="goods-image">
+                  <img
+                    :src="goodsMap[record.goodsId]?.imageUrl || 'https://via.placeholder.com/60x60?text=No+Image'"
+                    :alt="goodsMap[record.goodsId]?.title || '商品图片'"
+                  />
+                </div>
+                <div class="goods-detail">
+                  <div class="goods-name">{{ goodsMap[record.goodsId]?.title || `商品 #${record.goodsId}` }}</div>
+                  <div class="goods-hint">点击查看商品</div>
+                </div>
               </div>
             </template>
 
@@ -347,6 +366,29 @@ onMounted(() => {
 
 .goods-info {
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.goods-image {
+  width: 60px;
+  height: 60px;
+  border-radius: 6px;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: #f2f3f5;
+}
+
+.goods-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.goods-detail {
+  flex: 1;
+  min-width: 0;
 }
 
 .goods-name {
@@ -354,6 +396,9 @@ onMounted(() => {
   color: #1d2129;
   margin-bottom: 4px;
   transition: color 0.2s;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .goods-info:hover .goods-name {
