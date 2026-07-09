@@ -10,13 +10,16 @@ namespace CampusTrade.Backend.Controllers;
 public class GoodsController : ControllerBase
 {
     private readonly IGoodsService _goodsService;
+    private readonly IAuthService _authService;
+    private readonly IAdminService _adminService;
 
-    public GoodsController(IGoodsService goodsService)
+    public GoodsController(IGoodsService goodsService, IAuthService authService, IAdminService adminService)
     {
         _goodsService = goodsService;
+        _authService = authService;
+        _adminService = adminService;
     }
 
-    // GET /api/goods
     [HttpGet]
     public async Task<IActionResult> GetList(
         [FromQuery] int page = 1,
@@ -28,111 +31,234 @@ public class GoodsController : ControllerBase
         [FromQuery] string? sortBy = null,
         [FromQuery] bool ascending = false)
     {
-        var result = await _goodsService.GetPagedAsync(page, size, categoryId, keyword, minPrice, maxPrice, sortBy, ascending);
-        return Ok(ApiResponse<GoodsListResult>.Success(result));
+        try
+        {
+            var result = await _goodsService.GetPagedAsync(page, size, categoryId, keyword, minPrice, maxPrice, sortBy, ascending);
+            return Ok(ApiResponse<GoodsListResult>.Success(result));
+        }
+        catch (Exception ex)
+        {
+            return ToErrorResult(ex);
+        }
     }
 
-
-    // GET /api/goods/{id}
     [HttpGet("{goodsId:int}")]
     public async Task<IActionResult> GetById(int goodsId)
     {
-        var dto = await _goodsService.GetByIdAsync(goodsId);
-        if (dto == null)
-            return NotFound(ApiResponse<object>.Fail(404, "商品不存在"));
-        return Ok(ApiResponse<GoodsDto>.Success(dto));
+        try
+        {
+            var dto = await _goodsService.GetByIdAsync(goodsId);
+            if (dto == null)
+            {
+                return NotFound(ApiResponse<object>.Fail(404, "goods not found"));
+            }
+
+            return Ok(ApiResponse<GoodsDto>.Success(dto));
+        }
+        catch (Exception ex)
+        {
+            return ToErrorResult(ex);
+        }
     }
 
-    // POST /api/goods
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateGoodsRequest request)
     {
-        // 实际应从 JWT 中获取当前用户ID，这里暂用 1 模拟（需替换）
-        int currentUserId = 1; // TODO: 从 HttpContext.User 获取
-        var goodsId = await _goodsService.CreateAsync(request, currentUserId);
-        return Ok(ApiResponse<object>.Success(new { id = goodsId }, "商品发布成功"));
+        try
+        {
+            var currentUserId = RequireCurrentUserId();
+            var goodsId = await _goodsService.CreateAsync(request, currentUserId);
+            return Ok(ApiResponse<object>.Success(new { id = goodsId }, "goods created"));
+        }
+        catch (Exception ex)
+        {
+            return ToErrorResult(ex);
+        }
     }
 
-    // PUT /api/goods/{id}
     [HttpPut("{goodsId:int}")]
     public async Task<IActionResult> Update(int goodsId, [FromBody] UpdateGoodsRequest request)
     {
-        int currentUserId = 1; // TODO: 从认证获取
-        bool isAdmin = false;  // TODO: 检查角色
-        var success = await _goodsService.UpdateAsync(goodsId, request, currentUserId, isAdmin);
-        if (!success)
-            return NotFound(ApiResponse<object>.Fail(404, "商品不存在或更新失败"));
-        return Ok(ApiResponse<object>.Success(new { success = true }, "更新成功"));
+        try
+        {
+            var currentUserId = RequireCurrentUserId();
+            var isAdmin = await _adminService.IsAdminAsync(currentUserId);
+            var success = await _goodsService.UpdateAsync(goodsId, request, currentUserId, isAdmin);
+            if (!success)
+            {
+                return NotFound(ApiResponse<object>.Fail(404, "goods not found"));
+            }
+
+            return Ok(ApiResponse<object>.Success(new { success = true }, "goods updated"));
+        }
+        catch (Exception ex)
+        {
+            return ToErrorResult(ex);
+        }
     }
 
-    // DELETE /api/goods/{id}
     [HttpDelete("{goodsId:int}")]
     public async Task<IActionResult> Delete(int goodsId)
     {
-        int currentUserId = 1;
-        bool isAdmin = false;
-        var success = await _goodsService.DeleteAsync(goodsId, currentUserId, isAdmin);
-        if (!success)
-            return NotFound(ApiResponse<object>.Fail(404, "商品不存在或删除失败"));
-        return Ok(ApiResponse<object>.Success(new { success = true }, "删除成功"));
+        try
+        {
+            var currentUserId = RequireCurrentUserId();
+            var isAdmin = await _adminService.IsAdminAsync(currentUserId);
+            var success = await _goodsService.DeleteAsync(goodsId, currentUserId, isAdmin);
+            if (!success)
+            {
+                return NotFound(ApiResponse<object>.Fail(404, "goods not found"));
+            }
+
+            return Ok(ApiResponse<object>.Success(new { success = true }, "goods deleted"));
+        }
+        catch (Exception ex)
+        {
+            return ToErrorResult(ex);
+        }
     }
 
-    // GET /api/goods/{id}/images
     [HttpGet("{goodsId:int}/images")]
     public async Task<IActionResult> GetImages(int goodsId)
     {
-        var images = await _goodsService.GetImagesAsync(goodsId);
-        return Ok(ApiResponse<IEnumerable<GoodsImageDto>>.Success(images));
+        try
+        {
+            var images = await _goodsService.GetImagesAsync(goodsId);
+            return Ok(ApiResponse<IEnumerable<GoodsImageDto>>.Success(images));
+        }
+        catch (Exception ex)
+        {
+            return ToErrorResult(ex);
+        }
     }
 
-    // POST /api/goods/{id}/images
     [HttpPost("{goodsId:int}/images")]
     public async Task<IActionResult> AddImage(int goodsId, [FromBody] UploadImageRequest request)
     {
-        var imageId = await _goodsService.AddImageAsync(goodsId, request.ImageUrl, request.SortOrder);
-        return Ok(ApiResponse<object>.Success(new { id = imageId }, "图片上传成功"));
+        try
+        {
+            var imageId = await _goodsService.AddImageAsync(goodsId, request.ImageUrl, request.SortOrder);
+            return Ok(ApiResponse<object>.Success(new { id = imageId }, "image uploaded"));
+        }
+        catch (Exception ex)
+        {
+            return ToErrorResult(ex);
+        }
     }
 
-    // DELETE /api/goods/images/{imageId}
     [HttpDelete("images/{imageId:int}")]
     public async Task<IActionResult> DeleteImage(int imageId)
     {
-        var success = await _goodsService.DeleteImageAsync(imageId);
-        if (!success)
-            return NotFound(ApiResponse<object>.Fail(404, "图片不存在"));
-        return Ok(ApiResponse<object>.Success(new { success = true }, "图片删除成功"));
+        try
+        {
+            var success = await _goodsService.DeleteImageAsync(imageId);
+            if (!success)
+            {
+                return NotFound(ApiResponse<object>.Fail(404, "image not found"));
+            }
+
+            return Ok(ApiResponse<object>.Success(new { success = true }, "image deleted"));
+        }
+        catch (Exception ex)
+        {
+            return ToErrorResult(ex);
+        }
     }
 
-    // PUT /api/goods/{id}/audit
     [HttpPut("{goodsId:int}/audit")]
     public async Task<IActionResult> Audit(int goodsId, [FromBody] AuditGoodsRequest request)
     {
-        int adminId = 1; // TODO: 从认证获取管理员ID
-        var success = await _goodsService.AuditAsync(goodsId, request, adminId);
-        if (!success)
-            return NotFound(ApiResponse<object>.Fail(404, "商品不存在或审核失败"));
-        return Ok(ApiResponse<object>.Success(new { success = true }, "审核完成"));
+        try
+        {
+            var adminId = await _adminService.RequireAdminAsync(ResolveCurrentUserId());
+            var success = await _goodsService.AuditAsync(goodsId, request, adminId);
+            if (!success)
+            {
+                return NotFound(ApiResponse<object>.Fail(404, "goods not found"));
+            }
+
+            return Ok(ApiResponse<object>.Success(new { success = true }, "goods audited"));
+        }
+        catch (Exception ex)
+        {
+            return ToErrorResult(ex);
+        }
     }
 
-    // PUT /api/goods/{id}/offline
     [HttpPut("{goodsId:int}/offline")]
     public async Task<IActionResult> Offline(int goodsId)
     {
-        int currentUserId = 1;
-        bool isAdmin = false;
-        var success = await _goodsService.OfflineAsync(goodsId, currentUserId, isAdmin);
-        if (!success)
-            return NotFound(ApiResponse<object>.Fail(404, "商品不存在或下架失败"));
-        return Ok(ApiResponse<object>.Success(new { success = true }, "商品已下架"));
+        try
+        {
+            var currentUserId = RequireCurrentUserId();
+            var isAdmin = await _adminService.IsAdminAsync(currentUserId);
+            var success = await _goodsService.OfflineAsync(goodsId, currentUserId, isAdmin);
+            if (!success)
+            {
+                return NotFound(ApiResponse<object>.Fail(404, "goods not found"));
+            }
+
+            return Ok(ApiResponse<object>.Success(new { success = true }, "goods offlined"));
+        }
+        catch (Exception ex)
+        {
+            return ToErrorResult(ex);
+        }
     }
 
-    // PUT /api/goods/{id}/view
     [HttpPut("{goodsId:int}/view")]
     public async Task<IActionResult> IncrementView(int goodsId)
     {
-        var success = await _goodsService.IncrementViewCountAsync(goodsId);
-        if (!success)
-            return NotFound(ApiResponse<object>.Fail(404, "商品不存在"));
-        return Ok(ApiResponse<object>.Success(new { success = true }, "浏览量已更新"));
+        try
+        {
+            var success = await _goodsService.IncrementViewCountAsync(goodsId);
+            if (!success)
+            {
+                return NotFound(ApiResponse<object>.Fail(404, "goods not found"));
+            }
+
+            return Ok(ApiResponse<object>.Success(new { success = true }, "view count updated"));
+        }
+        catch (Exception ex)
+        {
+            return ToErrorResult(ex);
+        }
+    }
+
+    private int RequireCurrentUserId()
+    {
+        return ResolveCurrentUserId() ?? throw new UnauthorizedAccessException("login required");
+    }
+
+    private int? ResolveCurrentUserId()
+    {
+        return _authService.TryGetUserIdFromToken(ReadBearerToken());
+    }
+
+    private string? ReadBearerToken()
+    {
+        var value = Request.Headers.Authorization.ToString();
+        const string prefix = "Bearer ";
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        return value.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
+            ? value[prefix.Length..].Trim()
+            : value.Trim();
+    }
+
+    private IActionResult ToErrorResult(Exception ex)
+    {
+        return ex switch
+        {
+            UnauthorizedAccessException uae when uae.Message.Contains("admin", StringComparison.OrdinalIgnoreCase) =>
+                StatusCode(403, ApiResponse<object>.Fail(403, uae.Message)),
+            UnauthorizedAccessException uae => Unauthorized(ApiResponse<object>.Fail(401, uae.Message)),
+            ArgumentException ae => BadRequest(ApiResponse<object>.Fail(400, ae.Message)),
+            InvalidOperationException ioe => BadRequest(ApiResponse<object>.Fail(400, ioe.Message)),
+            _ => StatusCode(500, ApiResponse<object>.Fail(500, "internal server error"))
+        };
     }
 }

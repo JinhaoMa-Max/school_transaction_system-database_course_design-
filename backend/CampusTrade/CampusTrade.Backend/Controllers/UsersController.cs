@@ -117,7 +117,7 @@ public class UsersController : ControllerBase
         try
         {
             var currentUserId = ResolveCurrentUserId();
-            var success = await _userService.UpdateStatusAsync(userId, "active", currentUserId); // 正常通常为 active
+            var success = await _userService.UpdateStatusAsync(userId, "normal", currentUserId); // 正常通常为 active
             if (!success)
                 return BadRequest(ApiResponse<object>.Fail(400, "操作失败"));
 

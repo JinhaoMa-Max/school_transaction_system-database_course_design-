@@ -55,13 +55,19 @@ public class UserService : IUserService
 
     public async Task<bool> UpdateStatusAsync(int userId, string status, int? operatorId)
     {
-        // 鉴权：只有管理员可以封禁(banned)或解封(active)账号
         var currentUser = operatorId.HasValue ? await _userRepository.GetByIdAsync(operatorId.Value) : null;
-        if (currentUser?.Role != "admin") throw new UnauthorizedAccessException("只有管理员能操作用户状态");
+        if (currentUser?.Role != "admin") throw new UnauthorizedAccessException("admin role required");
 
-        return await _userRepository.UpdateStatusAsync(userId, status);
+        var action = status.ToLowerInvariant() switch
+        {
+            "banned" => "ban",
+            "normal" => "unban",
+            "active" => "unban",
+            _ => throw new ArgumentException("invalid user status")
+        };
+
+        return await _userRepository.ManageBanAsync(userId, operatorId!.Value, action, null);
     }
-
     public async Task<bool> UpdateCreditScoreAsync(int userId, int score, int? operatorId)
     {
         // 鉴权：修改信用分一般由系统自动或管理员进行

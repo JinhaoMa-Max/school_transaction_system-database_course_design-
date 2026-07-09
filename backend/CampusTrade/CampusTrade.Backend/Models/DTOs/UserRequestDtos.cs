@@ -19,7 +19,9 @@ public class UpdateCreditRequest
 public class PageResult<T>
 {
     public List<T> Items { get; set; } = new();
+    public List<T> List { get => Items; set => Items = value; }
     public int TotalCount { get; set; }
+    public int Total { get => TotalCount; set => TotalCount = value; }
     public int Page { get; set; }
     public int Size { get; set; }
 }

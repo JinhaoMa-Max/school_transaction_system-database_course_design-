@@ -2,6 +2,7 @@ using CampusTrade.Backend.Infrastructure;
 using CampusTrade.Backend.Models;
 using CampusTrade.Backend.Models.DTOs;
 using Dapper;
+using Oracle.ManagedDataAccess.Client;
 using System.Data;
 
 namespace CampusTrade.Backend.Repositories;
@@ -215,6 +216,27 @@ public class GoodsRepository : IGoodsRepository
     /// <summary>
     /// 浏览量 +1 — 调用数据库函数 fn_increment_view
     /// </summary>
+    public async Task<bool> AuditAsync(int goodsId, int adminId, string action, string? remark)
+    {
+        using var connection = _connectionFactory.CreateConnection();
+        if (connection is not OracleConnection oracleConnection)
+        {
+            throw new InvalidOperationException("Expected OracleConnection");
+        }
+
+        await oracleConnection.OpenAsync();
+        const string sql = """
+            BEGIN sp_audit_goods(p_admin_id => :AdminId, p_goods_id => :GoodsId, p_action => :Action, p_remark => :Remark); END;
+            """;
+
+        using var command = new OracleCommand(sql, oracleConnection) { BindByName = true };
+        command.Parameters.Add(new OracleParameter("AdminId", OracleDbType.Int32) { Value = adminId });
+        command.Parameters.Add(new OracleParameter("GoodsId", OracleDbType.Int32) { Value = goodsId });
+        command.Parameters.Add(new OracleParameter("Action", OracleDbType.Varchar2, 20) { Value = action });
+        command.Parameters.Add(new OracleParameter("Remark", OracleDbType.Clob) { Value = string.IsNullOrWhiteSpace(remark) ? DBNull.Value : remark.Trim() });
+        await command.ExecuteNonQueryAsync();
+        return true;
+    }
     public async Task<bool> IncrementViewCountAsync(int goodsId)
     {
         using var connection = _connectionFactory.CreateConnection();
