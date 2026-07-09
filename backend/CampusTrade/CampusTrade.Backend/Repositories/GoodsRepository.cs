@@ -65,7 +65,7 @@ public class GoodsRepository : IGoodsRepository
         var orderColumn = sortBy?.ToLower() switch
         {
             "price" => "price",
-            "viewcount" or "view_count" or "view" or "views" => "view_count", 
+            "viewcount" => "view_count", 
             "createdat" => "created_at",
             _ => "created_at"
         };
