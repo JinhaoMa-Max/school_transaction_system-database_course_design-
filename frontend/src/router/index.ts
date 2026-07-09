@@ -134,6 +134,12 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: true }
   },
   {
+    path: '/profile/edit',
+    name: 'ProfileEdit',
+    component: () => import('@/views/EditProfile.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
     path: '/student-auth',
     name: 'StudentAuth',
     component: () => import('@/views/StudentAuth.vue'),
@@ -195,7 +201,7 @@ router.beforeEach(async (to, _from, next) => {
   // 本地开发临时绕过登录校验
   if (DEV_BYPASS_AUTH) {
     if (USE_MOCK_USER && !userStore.user) {
-      userStore.setUser(mockUsers[0])
+      userStore.setUser(mockUsers[2])
 
       // 如果store 里 token 是可以直接赋值(还没看)
       userStore.token = 'mock-token'

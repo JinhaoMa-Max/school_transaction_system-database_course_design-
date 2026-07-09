@@ -194,3 +194,11 @@ export interface OrderQuery {
   page?: number
   size?: number
 }
+
+//新增：增加了一个接口，用于更新用户信息时的参数(安全性保证)
+export interface UpdateUserParams {
+  nickname?: string
+  avatarUrl?: string
+  phone?: string
+  email?: string
+}
