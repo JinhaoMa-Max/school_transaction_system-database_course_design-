@@ -14,12 +14,14 @@ public class GoodsService : IGoodsService
 
     public async Task<GoodsListResult> GetPagedAsync(
         int page, int size,
+        int? sellerId,
+        string? status,
         int? categoryId, string? keyword,
         decimal? minPrice, decimal? maxPrice,
         string? sortBy, bool ascending)
     {
         var (items, total) = await _goodsRepository.GetPagedAsync(
-            page, size, categoryId, keyword, minPrice, maxPrice, sortBy, ascending);
+            page, size, sellerId, status, categoryId, keyword, minPrice, maxPrice, sortBy, ascending);
         return new GoodsListResult
         {
             List = items,

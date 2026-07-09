@@ -21,6 +21,8 @@ public class GoodsController : ControllerBase
     public async Task<IActionResult> GetList(
         [FromQuery] int page = 1,
         [FromQuery] int size = 10,
+        [FromQuery] int? sellerId = null,        
+        [FromQuery] string? status = null, 
         [FromQuery] int? categoryId = null,
         [FromQuery] string? keyword = null,
         [FromQuery] decimal? minPrice = null,
@@ -28,7 +30,7 @@ public class GoodsController : ControllerBase
         [FromQuery] string? sortBy = null,
         [FromQuery] bool ascending = false)
     {
-        var result = await _goodsService.GetPagedAsync(page, size, categoryId, keyword, minPrice, maxPrice, sortBy, ascending);
+        var result = await _goodsService.GetPagedAsync(page, size, sellerId, status, categoryId, keyword, minPrice, maxPrice, sortBy, ascending);
         return Ok(ApiResponse<GoodsListResult>.Success(result));
     }
 

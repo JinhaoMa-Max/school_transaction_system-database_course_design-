@@ -6,6 +6,8 @@ public interface IGoodsRepository
 {
     Task<(List<GoodsDto> Items, int Total)> GetPagedAsync(
         int page, int size,
+        int? sellerId,
+        string? status,
         int? categoryId, string? keyword,
         decimal? minPrice, decimal? maxPrice,
         string? sortBy, bool ascending);
