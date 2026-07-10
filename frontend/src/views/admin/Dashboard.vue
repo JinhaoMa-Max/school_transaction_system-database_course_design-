@@ -1,12 +1,31 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
+import { getAdminStats } from '@/api'
 
 const stats = ref([
-  { label: '用户总数', value: 1000 },
-  { label: '商品总数', value: 5000 },
-  { label: '订单总数', value: 8000 },
-  { label: '举报总数', value: 100 }
+  { label: '用户总数', value: 0 },
+  { label: '商品总数', value: 0 },
+  { label: '订单总数', value: 0 },
+  { label: '举报总数', value: 0 }
 ])
+
+const loading = ref(false)
+
+onMounted(async () => {
+  loading.value = true
+  try {
+    const res = await getAdminStats()
+    const data = res.data
+    stats.value[0].value = data.userCount
+    stats.value[1].value = data.goodsCount
+    stats.value[2].value = data.orderCount
+    stats.value[3].value = data.reportCount
+  } catch {
+    // keep default zero values on error
+  } finally {
+    loading.value = false
+  }
+})
 </script>
 
 <template>

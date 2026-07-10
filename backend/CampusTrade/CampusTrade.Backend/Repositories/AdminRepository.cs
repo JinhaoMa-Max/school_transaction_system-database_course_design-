@@ -87,6 +87,22 @@ public class AdminRepository : IAdminRepository
             ?? throw new InvalidOperationException("audit log was created but could not be loaded");
     }
 
+    public async Task<AdminStatsDto> GetStatsAsync()
+    {
+        using var connection = _connectionFactory.CreateConnection();
+        var userCount = await connection.ExecuteScalarAsync<int>("SELECT COUNT(1) FROM users");
+        var goodsCount = await connection.ExecuteScalarAsync<int>("SELECT COUNT(1) FROM goods");
+        var orderCount = await connection.ExecuteScalarAsync<int>("SELECT COUNT(1) FROM orders");
+        var reportCount = await connection.ExecuteScalarAsync<int>("SELECT COUNT(1) FROM report");
+        return new AdminStatsDto
+        {
+            UserCount = userCount,
+            GoodsCount = goodsCount,
+            OrderCount = orderCount,
+            ReportCount = reportCount
+        };
+    }
+
     public async Task<(List<NoticeDto> Items, int Total)> GetNoticesAsync(int page, int size, string? noticeType)
     {
         using var connection = _connectionFactory.CreateConnection();

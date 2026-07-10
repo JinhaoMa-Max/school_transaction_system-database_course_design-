@@ -7,6 +7,8 @@ public interface IAdminService
     Task<int> RequireAdminAsync(int? currentUserId);
     Task<bool> IsAdminAsync(int? currentUserId);
 
+    Task<AdminStatsDto> GetStatsAsync(int? currentUserId);
+
     Task<AuditLogListResult> GetAuditLogsAsync(int? currentUserId, int page, int size, int? adminId, string? auditType);
     Task<AuditLogDto?> GetAuditLogByIdAsync(int? currentUserId, int logId);
     Task<AuditLogDto> CreateAuditLogAsync(int? currentUserId, CreateAuditLogRequest request);

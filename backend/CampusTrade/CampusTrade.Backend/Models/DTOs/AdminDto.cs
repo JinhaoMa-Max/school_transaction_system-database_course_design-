@@ -61,3 +61,11 @@ public class UpdateNoticeRequest
     public string? Content { get; set; }
     public string? NoticeType { get; set; }
 }
+
+public class AdminStatsDto
+{
+    public int UserCount { get; set; }
+    public int GoodsCount { get; set; }
+    public int OrderCount { get; set; }
+    public int ReportCount { get; set; }
+}

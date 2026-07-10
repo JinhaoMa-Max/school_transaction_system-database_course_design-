@@ -8,6 +8,8 @@ public interface IAdminRepository
     Task<AuditLogDto?> GetAuditLogByIdAsync(int logId);
     Task<AuditLogDto> CreateAuditLogAsync(CreateAuditLogRequest request, int adminId);
 
+    Task<AdminStatsDto> GetStatsAsync();
+
     Task<(List<NoticeDto> Items, int Total)> GetNoticesAsync(int page, int size, string? noticeType);
     Task<NoticeDto?> GetNoticeByIdAsync(int noticeId);
     Task<NoticeDto> CreateNoticeAsync(CreateNoticeRequest request, int publisherId);

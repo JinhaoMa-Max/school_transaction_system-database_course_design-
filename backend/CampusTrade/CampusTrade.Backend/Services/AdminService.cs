@@ -68,6 +68,12 @@ public class AdminService : IAdminService
             && string.Equals(user.Role, "admin", StringComparison.OrdinalIgnoreCase);
     }
 
+    public async Task<AdminStatsDto> GetStatsAsync(int? currentUserId)
+    {
+        await RequireAdminAsync(currentUserId);
+        return await _adminRepository.GetStatsAsync();
+    }
+
     public async Task<AuditLogListResult> GetAuditLogsAsync(int? currentUserId, int page, int size, int? adminId, string? auditType)
     {
         await RequireAdminAsync(currentUserId);
