@@ -116,8 +116,8 @@ export const mockGoodsImages: GoodsImage[] = [
  * 模拟收藏数据
  */
 export const mockFavorites: Favorite[] = [
-  { favoriteId: 1, userId: 3, goodsId: 1, favoriteTime: '2024-01-11 10:00:00' },
-  { favoriteId: 2, userId: 3, goodsId: 2, favoriteTime: '2024-01-12 14:00:00' }
+  { favoriteId: 1, userId: 3, goodsId: 1, title: 'iPhone 14 Pro 256GB 深空黑', price: 5500, imageUrl: 'https://via.placeholder.com/400', status: 'approved', favoriteTime: '2024-01-11 10:00:00' },
+  { favoriteId: 2, userId: 3, goodsId: 2, title: '高等数学第七版上下册', price: 45, imageUrl: 'https://via.placeholder.com/400', status: 'approved', favoriteTime: '2024-01-12 14:00:00' }
 ]
 
 /**

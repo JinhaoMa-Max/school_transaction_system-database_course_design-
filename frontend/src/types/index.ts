@@ -57,6 +57,10 @@ export interface Favorite {
   userId: number
   goodsId: number
   favoriteTime: string
+  title?: string
+  price?: number
+  imageUrl?: string
+  status?: string
 }
 
 export interface BargainOffer {
