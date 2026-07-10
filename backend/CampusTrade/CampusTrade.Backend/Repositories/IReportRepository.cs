@@ -22,4 +22,7 @@ public interface IReportRepository
 
     /// <summary>更新举报状态</summary>
     Task<bool> UpdateStatusAsync(int reportId, string newStatus);
+
+    /// <summary>校验举报目标是否存在</summary>
+    Task<bool> TargetExistsAsync(string reportType, int targetId);
 }

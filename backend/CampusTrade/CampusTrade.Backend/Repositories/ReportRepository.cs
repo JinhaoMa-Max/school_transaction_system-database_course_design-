@@ -93,4 +93,18 @@ public class ReportRepository : IReportRepository
         using var connection = _connectionFactory.CreateConnection();
         return await connection.ExecuteAsync("UPDATE report SET report_status=:s WHERE report_id=:r", new { r = reportId, s = newStatus }) > 0;
     }
+
+    /// <summary>校验举报目标是否存在</summary>
+    public async Task<bool> TargetExistsAsync(string reportType, int targetId)
+    {
+        using var connection = _connectionFactory.CreateConnection();
+        var sql = reportType switch
+        {
+            "goods" => "SELECT COUNT(1) FROM goods WHERE goods_id = :Id",
+            "user" => "SELECT COUNT(1) FROM app_user WHERE user_id = :Id",
+            "order" => "SELECT COUNT(1) FROM trade_order WHERE order_id = :Id",
+            _ => "SELECT 0 FROM DUAL"
+        };
+        return await connection.ExecuteScalarAsync<int>(sql, new { Id = targetId }) > 0;
+    }
 }
