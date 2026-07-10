@@ -1,15 +1,48 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Message } from '@arco-design/web-vue'
 import { useUserStore } from '@/stores'
-import { uploadAvatar } from '@/api'
+import { uploadAvatar, getReviewList } from '@/api'
+import type { Review } from '@/types'
 
 const router = useRouter()
 const userStore = useUserStore()
 const user = computed(() => userStore.user)
 const loading = ref(false)
 const avatarInput = ref<HTMLInputElement | null>(null)
+
+// 评价相关
+const receivedReviews = ref<Review[]>([])
+const reviewLoading = ref(false)
+const reviewTotal = ref(0)
+const avgRating = ref(0)
+
+const fetchReviews = async () => {
+  if (!user.value?.userId) return
+  reviewLoading.value = true
+  try {
+    const res = await getReviewList({
+      reviewedUserId: user.value.userId,
+      page: 1,
+      size: 5
+    })
+    receivedReviews.value = res.data.list
+    reviewTotal.value = res.data.total
+    if (res.data.list.length > 0) {
+      const sum = res.data.list.reduce((acc, r) => acc + r.rating, 0)
+      avgRating.value = Math.round(sum / res.data.list.length * 10) / 10
+    }
+  } catch {
+    // 静默失败，不影响主要信息展示
+  } finally {
+    reviewLoading.value = false
+  }
+}
+
+const goToReviews = () => {
+  router.push('/reviews')
+}
 
 const triggerAvatarInput = () => {
   avatarInput.value?.click()
@@ -105,6 +138,10 @@ const handleAvatarUpload = async (e: Event) => {
     target.value = ''
   }
 }
+
+onMounted(() => {
+  fetchReviews()
+})
 </script>
 
 <template>
@@ -230,6 +267,60 @@ const handleAvatarUpload = async (e: Event) => {
 
       </a-space>
 
+    </a-card>
+
+    <!-- 收到的评价 -->
+    <a-card class="review-card" :bordered="false">
+      <template #title>
+        <div class="review-title-row">
+          <span>收到的评价</span>
+          <span v-if="receivedReviews.length > 0" class="review-avg-badge">
+            <icon-star-fill style="color: #f7ba1e; font-size: 14px;" />
+            {{ avgRating }}
+          </span>
+        </div>
+      </template>
+
+      <a-spin :loading="reviewLoading">
+        <a-empty v-if="!reviewLoading && receivedReviews.length === 0" description="暂无评价" />
+
+        <div v-else class="review-items">
+          <div
+            v-for="item in receivedReviews"
+            :key="item.reviewId"
+            class="review-row"
+          >
+            <div class="review-row-header">
+              <a-avatar :size="36" class="review-row-avatar">
+                <span>{{ (item.reviewerName || '用户').slice(0, 1).toUpperCase() }}</span>
+              </a-avatar>
+              <div class="review-row-meta">
+                <span class="review-row-name">{{ item.reviewerName || '用户' }}</span>
+                <a-rate
+                  :model-value="item.rating"
+                  :count="5"
+                  disabled
+                  size="small"
+                  style="font-size: 12px;"
+                />
+              </div>
+              <span class="review-row-time">{{ item.createTime }}</span>
+            </div>
+            <div v-if="item.content" class="review-row-content">
+              {{ item.content }}
+            </div>
+            <div v-if="item.goodsTitle" class="review-row-goods">
+              商品：{{ item.goodsTitle }}
+            </div>
+          </div>
+        </div>
+
+        <div v-if="reviewTotal > 5" class="review-more">
+          <a-button type="text" @click="goToReviews">
+            查看全部 {{ reviewTotal }} 条评价 →
+          </a-button>
+        </div>
+      </a-spin>
     </a-card>
 
   </div>
@@ -403,5 +494,99 @@ const handleAvatarUpload = async (e: Event) => {
 .logout-button {
   background-color: #cc5c5d;
   color: white;
+}
+
+/* 评价卡片 */
+.review-card {
+  max-width: 960px;
+  margin: 24px auto 0;
+  border-radius: 20px;
+  background: var(--color-bg-2);
+  box-shadow: 0 8px 24px rgba(45, 54, 142, 0.06);
+}
+
+.review-title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.review-avg-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #1d2129;
+  background: #fff7e6;
+  padding: 2px 10px;
+  border-radius: 999px;
+}
+
+.review-items {
+  display: flex;
+  flex-direction: column;
+}
+
+.review-row {
+  padding: 16px 0;
+  border-bottom: 1px solid var(--color-border-2);
+}
+
+.review-row:last-child {
+  border-bottom: none;
+}
+
+.review-row-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.review-row-avatar {
+  background: #e8f3ff;
+  color: #165dff;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.review-row-meta {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.review-row-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: #1d2129;
+}
+
+.review-row-time {
+  font-size: 12px;
+  color: #86909c;
+  flex-shrink: 0;
+}
+
+.review-row-content {
+  margin-top: 10px;
+  padding: 10px 14px;
+  background: #f7f8fa;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #4e5969;
+  line-height: 1.5;
+}
+
+.review-row-goods {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #86909c;
+}
+
+.review-more {
+  text-align: center;
+  margin-top: 8px;
 }
 </style>

@@ -15,7 +15,7 @@ public class ReviewRepository : IReviewRepository
     private readonly IDbConnectionFactory _connectionFactory;
     public ReviewRepository(IDbConnectionFactory connectionFactory) { _connectionFactory = connectionFactory; }
 
-    /// <summary>评价列表 — 查 v_review_detail（含评价者/被评者昵称、商品名）</summary>
+    /// <summary>评价列表 — 查 v_review_detail + ROW_NUMBER 区分首评/追评</summary>
 public async Task<(List<ReviewDto> Items, int Total)> GetPagedAsync(int page, int size, int? reviewerId, int? reviewedUserId, int? orderId)
 {
     using var connection = _connectionFactory.CreateConnection();
@@ -28,11 +28,15 @@ public async Task<(List<ReviewDto> Items, int Total)> GetPagedAsync(int page, in
     var total = await connection.ExecuteScalarAsync<int>($"SELECT COUNT(*) FROM v_review_detail {w}", p);
     var off = (page - 1) * size;
     var sql = $"""
-        SELECT review_id AS ReviewId, order_id AS OrderId, reviewer_id AS ReviewerId,
-               reviewer_name AS ReviewerName, reviewed_user_id AS ReviewedUserId,
-               reviewed_user_name AS ReviewedUserName, rating AS Rating, content AS Content,
-               created_at AS CreateTime, goods_id AS GoodsId, goods_title AS GoodsTitle
-        FROM v_review_detail {w} ORDER BY created_at DESC
+        SELECT * FROM (
+            SELECT review_id AS ReviewId, order_id AS OrderId, reviewer_id AS ReviewerId,
+                   reviewer_name AS ReviewerName, reviewed_user_id AS ReviewedUserId,
+                   reviewed_user_name AS ReviewedUserName, rating AS Rating, content AS Content,
+                   created_at AS CreateTime, goods_id AS GoodsId, goods_title AS GoodsTitle,
+                   CASE WHEN ROW_NUMBER() OVER (PARTITION BY order_id, reviewer_id ORDER BY created_at) = 2
+                        THEN 1 ELSE 0 END AS IsFollowUp
+            FROM v_review_detail {w}
+        ) ORDER BY CreateTime DESC
         OFFSET {off} ROWS FETCH NEXT {size} ROWS ONLY
         """;
     var items = await connection.QueryAsync<ReviewDto>(sql, p);
@@ -43,11 +47,15 @@ public async Task<(List<ReviewDto> Items, int Total)> GetPagedAsync(int page, in
     {
         using var connection = _connectionFactory.CreateConnection();
         const string sql = """
-            SELECT review_id AS ReviewId, order_id AS OrderId, reviewer_id AS ReviewerId,
-                   reviewer_name AS ReviewerName, reviewed_user_id AS ReviewedUserId,
-                   reviewed_user_name AS ReviewedUserName, rating AS Rating, content AS Content,
-                   created_at AS CreateTime, goods_id AS GoodsId, goods_title AS GoodsTitle
-            FROM v_review_detail WHERE review_id = :Id
+            SELECT * FROM (
+                SELECT review_id AS ReviewId, order_id AS OrderId, reviewer_id AS ReviewerId,
+                       reviewer_name AS ReviewerName, reviewed_user_id AS ReviewedUserId,
+                       reviewed_user_name AS ReviewedUserName, rating AS Rating, content AS Content,
+                       created_at AS CreateTime, goods_id AS GoodsId, goods_title AS GoodsTitle,
+                       CASE WHEN ROW_NUMBER() OVER (PARTITION BY order_id, reviewer_id ORDER BY created_at) = 2
+                            THEN 1 ELSE 0 END AS IsFollowUp
+                FROM v_review_detail
+            ) WHERE review_id = :Id
             """;
         return await connection.QueryFirstOrDefaultAsync<ReviewDto>(sql, new { Id = reviewId });
     }
@@ -79,6 +87,22 @@ public async Task<(List<ReviewDto> Items, int Total)> GetPagedAsync(int page, in
         return await connection.ExecuteScalarAsync<int>("SELECT COUNT(1) FROM review WHERE order_id=:o AND reviewer_id=:r", new { o = orderId, r = reviewerId }) > 0;
     }
 
+    public async Task<int> GetReviewCountAsync(int orderId, int reviewerId)
+    {
+        using var connection = _connectionFactory.CreateConnection();
+        return await connection.ExecuteScalarAsync<int>("SELECT COUNT(1) FROM review WHERE order_id=:o AND reviewer_id=:r", new { o = orderId, r = reviewerId });
+    }
+
+    public async Task<int> GetFirstReviewDaysAsync(int orderId, int reviewerId)
+    {
+        using var connection = _connectionFactory.CreateConnection();
+        var firstDate = await connection.ExecuteScalarAsync<DateTime?>(
+            "SELECT MIN(created_at) FROM review WHERE order_id=:o AND reviewer_id=:r",
+            new { o = orderId, r = reviewerId });
+        if (firstDate == null) return -1;
+        return (int)(DateTime.UtcNow - firstDate.Value).TotalDays;
+    }
+
     public async Task<decimal> GetAvgRatingAsync(int userId)
     {
         using var connection = _connectionFactory.CreateConnection();
@@ -94,7 +118,7 @@ public async Task<(List<ReviewDto> Items, int Total)> GetPagedAsync(int page, in
 public async Task<bool> UpdateAsync(int reviewId, int rating, string? content)
 {
     using var connection = _connectionFactory.CreateConnection();
-    const string sql = "UPDATE review SET rating=:r, content=:c, updated_at=SYSTIMESTAMP WHERE review_id=:id";
+    const string sql = "UPDATE review SET rating=:r, content=:c WHERE review_id=:id";
     var rows = await connection.ExecuteAsync(sql, new { r = rating, c = content ?? (object)DBNull.Value, id = reviewId });
     return rows > 0;
 }

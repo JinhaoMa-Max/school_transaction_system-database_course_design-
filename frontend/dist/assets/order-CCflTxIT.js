@@ -1,1 +1,0 @@
-import{s as e}from"./index-Cqd3zK7d.js";const s=r=>e.get("/orders",{params:r}),o=r=>e.get(`/orders/${r}`),c=r=>e.post("/orders",r),n=r=>e.put(`/orders/${r}/cancel`),a=r=>e.put(`/orders/${r}/complete`),d=r=>e.put(`/orders/${r}/start-meet`);export{o as a,n as b,c,a as d,s as g,d as s};

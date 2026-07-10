@@ -17,8 +17,14 @@ Task<(List<ReviewDto> Items, int Total)> GetPagedAsync(int page, int size, int? 
     /// <summary>创建评价 — 调用 sp_create_review（校验已完成、不重复、自动更新信用分）</summary>
     Task<int> CreateAsync(int orderId, int reviewerId, int reviewedUserId, int rating, string? content);
 
-    /// <summary>检查某人对某订单是否已评价</summary>
+    /// <summary>检查某人对某订单是否已评价（首评）</summary>
     Task<bool> HasReviewedAsync(int orderId, int reviewerId);
+
+    /// <summary>获取某人对某订单的累计评价数（0/1/2）</summary>
+    Task<int> GetReviewCountAsync(int orderId, int reviewerId);
+
+    /// <summary>获取某人某订单首评距今多少天（无评价返回 -1）</summary>
+    Task<int> GetFirstReviewDaysAsync(int orderId, int reviewerId);
 
     /// <summary>用户平均评分 — 调用 fn_avg_rating</summary>
     Task<decimal> GetAvgRatingAsync(int userId);

@@ -17,6 +17,11 @@ const goods = ref<Goods | null>(null)
 const reviewedUser = ref<User | null>(null)
 const loading = ref(false)
 const submitLoading = ref(false)
+const canReview = ref(true)
+const blockReason = ref('')
+
+// 是否为追评
+const isFollowUp = ref(false)
 
 const form = reactive({
   rating: 5,
@@ -25,16 +30,53 @@ const form = reactive({
 
 const formRef = ref()
 
+// 当前用户是否为买家
+const isBuyer = computed(() => {
+  return userStore.user?.userId === order.value?.buyerId
+})
+
+// 被评价者 = 交易对方
 const reviewedUserId = computed(() => {
   if (!order.value || !userStore.user) return 0
-  return userStore.user.userId === order.value.buyerId ? order.value.sellerId : order.value.buyerId
+  return isBuyer.value ? order.value.sellerId : order.value.buyerId
 })
+
+// 当前用户的已有评价数（0=未评, 1=已首评可追评, 2=已达上限）
+const reviewCount = computed(() => {
+  if (!order.value) return 0
+  return isBuyer.value ? (order.value.buyerReviewed ?? 0) : (order.value.sellerReviewed ?? 0)
+})
+
+// 页面标题
+const pageTitle = computed(() => isFollowUp.value ? '发表追评' : '发表评价')
+
+// 提交按钮文字
+const submitText = computed(() => isFollowUp.value ? '提交追评' : '提交评价')
 
 const fetchData = async () => {
   loading.value = true
   try {
     const orderRes = await getOrderById(orderId)
     order.value = orderRes.data
+
+    // ---- 校验前置条件 ----
+    if (order.value.status !== 'completed') {
+      canReview.value = false
+      blockReason.value = '只有已完成的订单才能评价'
+      loading.value = false
+      return
+    }
+
+    const count = reviewCount.value
+    if (count >= 2) {
+      canReview.value = false
+      blockReason.value = '您已达到评价次数上限（首评+追评各一次）'
+      loading.value = false
+      return
+    }
+
+    // count == 1 → 追评模式
+    isFollowUp.value = count === 1
 
     const [goodsRes, userRes] = await Promise.all([
       getGoodsById(order.value.goodsId).catch(() => ({ data: null })),
@@ -44,6 +86,8 @@ const fetchData = async () => {
     goods.value = goodsRes.data
     reviewedUser.value = userRes.data
   } catch {
+    canReview.value = false
+    blockReason.value = '获取订单信息失败'
   } finally {
     loading.value = false
   }
@@ -62,15 +106,20 @@ const handleSubmit = async ({ values }: { values: Record<string, any> }) => {
       rating: values.rating,
       content: values.content || undefined
     })
-    Message.success('评价提交成功')
-    router.push('/orders')
+    Message.success(isFollowUp.value ? '追评提交成功' : '评价提交成功')
+    router.push(`/orders/${orderId}`)
   } catch {
+    // 错误已由全局拦截器处理（包括超7天等后端校验）
   } finally {
     submitLoading.value = false
   }
 }
 
 const handleBack = () => {
+  router.push(`/orders/${orderId}`)
+}
+
+const goToOrder = () => {
   router.push(`/orders/${orderId}`)
 }
 
@@ -86,10 +135,25 @@ onMounted(fetchData)
             <icon-left />
             返回订单详情
           </a-button>
-          <h2 class="page-title">发表评价</h2>
+          <h2 class="page-title">{{ pageTitle }}</h2>
+          <p v-if="isFollowUp" class="followup-hint">
+            ⚠️ 追评需在首评后7天内提交，且仅可追评一次
+          </p>
         </div>
 
         <a-card>
+          <!-- 前置条件不满足时显示阻止信息 -->
+          <a-result
+            v-if="!canReview"
+            status="warning"
+            :title="blockReason"
+          >
+            <template #extra>
+              <a-button type="primary" @click="goToOrder">返回订单详情</a-button>
+            </template>
+          </a-result>
+
+          <template v-else>
           <div class="order-info">
             <div v-if="goods" class="goods-info">
               <div class="goods-image">
@@ -112,7 +176,10 @@ onMounted(fetchData)
                 <icon-user v-else />
               </a-avatar>
               <div class="user-detail">
-                <div class="user-name">{{ reviewedUser?.nickname || '用户' }}</div>
+                <div class="user-name">
+                  {{ reviewedUser?.nickname || '用户' }}
+                  <a-tag v-if="isFollowUp" color="orange" size="small">追评</a-tag>
+                </div>
                 <a-tag color="green" size="small">信用分 {{ reviewedUser?.creditScore || '--' }}</a-tag>
               </div>
             </div>
@@ -152,10 +219,11 @@ onMounted(fetchData)
                 取消
               </a-button>
               <a-button type="primary" html-type="submit" size="large" :loading="submitLoading">
-                提交评价
+                {{ submitText }}
               </a-button>
             </div>
           </a-form>
+          </template>
         </a-card>
       </div>
     </a-spin>
@@ -177,6 +245,12 @@ onMounted(fetchData)
   margin: 16px 0 0 0;
   font-size: 24px;
   font-weight: 600;
+}
+
+.followup-hint {
+  margin: 8px 0 0 0;
+  font-size: 13px;
+  color: #e69a2e;
 }
 
 .goods-info {
@@ -247,6 +321,9 @@ onMounted(fetchData)
   font-size: 16px;
   font-weight: 500;
   color: #1d2129;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .form-actions {

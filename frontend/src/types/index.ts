@@ -80,6 +80,10 @@ export interface TradeOrder {
   dealPrice: number
   status: 'pending_meet' | 'in_meet' | 'completed' | 'cancelled'
   createTime: string
+  /** 买家评价数：0=未评, 1=首评, 2=首评+追评 */
+  buyerReviewed?: number
+  /** 卖家评价数：0=未评, 1=首评, 2=首评+追评 */
+  sellerReviewed?: number
 }
 
 export interface Appointment {
@@ -113,10 +117,16 @@ export interface Review {
   reviewId: number
   orderId: number
   reviewerId: number
+  reviewerName?: string
   reviewedUserId: number
+  reviewedUserName?: string
   rating: number
   content: string | null
-  reviewTime: string
+  createTime: string
+  goodsId?: number
+  goodsTitle?: string
+  /** 是否为追评（首评后7天内的第二条评价） */
+  isFollowUp?: boolean
 }
 
 export interface Report {

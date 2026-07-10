@@ -38,8 +38,18 @@ public class ReviewService : IReviewService
         if (rating < 1 || rating > 5)
             return ApiResponse<ReviewDto>.Fail(400, "评分必须在1-5之间");
 
-        if (await _reviewRepository.HasReviewedAsync(orderId, currentUserId))
-            return ApiResponse<ReviewDto>.Fail(409, "您已对该订单评价过");
+        // 检查是否已达上限（首评+追评各一次，共2条）
+        var reviewCount = await _reviewRepository.GetReviewCountAsync(orderId, currentUserId);
+        if (reviewCount >= 2)
+            return ApiResponse<ReviewDto>.Fail(409, "您已达到评价次数上限（首评+追评各一次）");
+
+        // 追评时检查7天期限
+        if (reviewCount == 1)
+        {
+            var firstReviewDays = await _reviewRepository.GetFirstReviewDaysAsync(orderId, currentUserId);
+            if (firstReviewDays > 7)
+                return ApiResponse<ReviewDto>.Fail(409, "追评已超过7天期限，无法追评");
+        }
 
         var reviewId = await _reviewRepository.CreateAsync(orderId, currentUserId, reviewedUserId, rating, content);
         var review = await _reviewRepository.GetByIdAsync(reviewId);
@@ -47,7 +57,8 @@ public class ReviewService : IReviewService
         if (review == null)
             return ApiResponse<ReviewDto>.Fail(500, "评价创建失败");
 
-        return ApiResponse<ReviewDto>.Success(review, "评价成功");
+        var msg = reviewCount == 0 ? "评价成功" : "追评成功";
+        return ApiResponse<ReviewDto>.Success(review, msg);
     }
 
     public async Task<ApiResponse<ReviewDto>> UpdateReviewAsync(int reviewId, int rating, string? content, int currentUserId)

@@ -15,8 +15,8 @@ public class OrderDto
     public DateTime? MeetTime { get; set; }
     public string? MeetLocation { get; set; }
     public string? ConfirmCode { get; set; }
-    public bool BuyerReviewed { get; set; }
-    public bool SellerReviewed { get; set; }
+    public int BuyerReviewed { get; set; }          // 0=未评, 1=首评, 2=首评+追评
+    public int SellerReviewed { get; set; }
 }
 
 public class OrderListResult

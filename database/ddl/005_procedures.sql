@@ -413,24 +413,26 @@ END;
 
 
 /* =========================
-   9. 用户评价（交易互评）
-   入参：订单ID、评价者ID、评分(1-5)、评价内容
-   校验：必须是订单参与方 + 每方只能评价一次
+   9. 用户评价（交易互评 + 追评）
+   入参：订单ID、评价者ID、被评价者ID、评分(1-5)、评价内容
+   校验：必须是订单参与方 + 最多两条（首评+追评）+ 追评需在首评7天内
    效果：插入评价 + 更新被评价者信用分
    ========================= */
 CREATE OR REPLACE PROCEDURE sp_create_review(
-    p_order_id    IN NUMBER,
-    p_reviewer_id IN NUMBER,
-    p_rating      IN NUMBER,
-    p_content     IN CLOB DEFAULT NULL,
-    p_review_id   OUT NUMBER
+    p_order_id        IN NUMBER,
+    p_reviewer_id     IN NUMBER,
+    p_reviewed_user_id IN NUMBER,
+    p_rating          IN NUMBER,
+    p_content         IN CLOB DEFAULT NULL,
+    p_review_id       OUT NUMBER
 )
 IS
-    v_buyer_id       NUMBER;
-    v_seller_id      NUMBER;
-    v_order_status   VARCHAR2(20);
-    v_reviewed_user  NUMBER;
-    v_existing       NUMBER;
+    v_buyer_id         NUMBER;
+    v_seller_id        NUMBER;
+    v_order_status     VARCHAR2(20);
+    v_reviewed_user    NUMBER;
+    v_existing         NUMBER;
+    v_first_review_at  TIMESTAMP;
 BEGIN
     -- 查订单
     SELECT buyer_id, seller_id, order_status
@@ -452,13 +454,28 @@ BEGIN
         RAISE_APPLICATION_ERROR(-20012, '只有交易参与方才能评价');
     END IF;
 
-    -- 不能重复评价
-    SELECT COUNT(*) INTO v_existing
+    -- 校验被评价者ID必须与订单中的对方一致
+    IF p_reviewed_user_id != v_reviewed_user THEN
+        RAISE_APPLICATION_ERROR(-20022, '被评价者与订单参与方不匹配');
+    END IF;
+
+    -- 检查已有评价数量及首评时间
+    SELECT COUNT(*), MIN(created_at)
+    INTO v_existing, v_first_review_at
     FROM review
     WHERE order_id = p_order_id AND reviewer_id = p_reviewer_id;
 
-    IF v_existing > 0 THEN
-        RAISE_APPLICATION_ERROR(-20013, '您已对该订单进行过评价');
+    IF v_existing = 0 THEN
+        -- 首评：正常插入
+        NULL;
+    ELSIF v_existing = 1 THEN
+        -- 追评：需在首评后 7 天内
+        IF SYSDATE - v_first_review_at > 7 THEN
+            RAISE_APPLICATION_ERROR(-20023, '追评已超过7天期限，无法追评');
+        END IF;
+    ELSE
+        -- 已达上限（首评+追评各一条）
+        RAISE_APPLICATION_ERROR(-20024, '您已达到评价次数上限（首评+追评各一次）');
     END IF;
 
     -- 插入评价

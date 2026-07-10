@@ -157,7 +157,9 @@ export const mockOrders: TradeOrder[] = [
     sellerId: 2,
     dealPrice: 45,
     status: 'pending_meet',
-    createTime: '2024-01-12 16:00:00'
+    createTime: '2024-01-12 16:00:00',
+    buyerReviewed: 0,
+    sellerReviewed: 0
   }
 ]
 

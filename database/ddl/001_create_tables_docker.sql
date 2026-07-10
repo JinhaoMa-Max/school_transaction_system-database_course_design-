@@ -262,7 +262,6 @@ CREATE TABLE review (
         REFERENCES app_user(user_id),
     CONSTRAINT fk_review_reviewed_user FOREIGN KEY (reviewed_user_id)
         REFERENCES app_user(user_id),
-    CONSTRAINT uq_review_order_reviewer UNIQUE (order_id, reviewer_id),
     CONSTRAINT ck_review_rating CHECK (rating BETWEEN 1 AND 5),
     CONSTRAINT ck_review_users CHECK (reviewer_id <> reviewed_user_id)
 );

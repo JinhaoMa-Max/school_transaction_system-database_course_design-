@@ -291,9 +291,55 @@ onMounted(() => {
                 </template>
 
                 <template v-else-if="record.status === 'completed'">
-                  <a-button type="outline" size="small" @click="goToReview(record.orderId)">
-                    去评价
-                  </a-button>
+                  <!-- 双向评价状态（支持追评） -->
+                  <template v-if="activeTab === 'buy'">
+                    <template v-if="(record.buyerReviewed ?? 0) === 0">
+                      <a-button type="primary" size="small" @click="goToReview(record.orderId)">
+                        去评价
+                      </a-button>
+                    </template>
+                    <template v-else-if="(record.buyerReviewed ?? 0) === 1">
+                      <a-tag color="green" size="small">已评价</a-tag>
+                      <a-button type="outline" size="small" @click="goToReview(record.orderId)">
+                        追评
+                      </a-button>
+                    </template>
+                    <template v-else>
+                      <a-tag color="green" size="small">已评价</a-tag>
+                      <a-tag color="orange" size="small">已追评</a-tag>
+                    </template>
+                    <a-tag
+                      v-if="record.sellerReviewed !== undefined"
+                      :color="(record.sellerReviewed ?? 0) >= 1 ? 'green' : 'gray'"
+                      size="small"
+                    >
+                      对方{{ (record.sellerReviewed ?? 0) >= 1 ? '已' : '未' }}评价
+                    </a-tag>
+                  </template>
+                  <template v-else>
+                    <template v-if="(record.sellerReviewed ?? 0) === 0">
+                      <a-button type="primary" size="small" @click="goToReview(record.orderId)">
+                        去评价
+                      </a-button>
+                    </template>
+                    <template v-else-if="(record.sellerReviewed ?? 0) === 1">
+                      <a-tag color="green" size="small">已评价</a-tag>
+                      <a-button type="outline" size="small" @click="goToReview(record.orderId)">
+                        追评
+                      </a-button>
+                    </template>
+                    <template v-else>
+                      <a-tag color="green" size="small">已评价</a-tag>
+                      <a-tag color="orange" size="small">已追评</a-tag>
+                    </template>
+                    <a-tag
+                      v-if="record.buyerReviewed !== undefined"
+                      :color="(record.buyerReviewed ?? 0) >= 1 ? 'green' : 'gray'"
+                      size="small"
+                    >
+                      对方{{ (record.buyerReviewed ?? 0) >= 1 ? '已' : '未' }}评价
+                    </a-tag>
+                  </template>
                 </template>
               </a-space>
             </template>

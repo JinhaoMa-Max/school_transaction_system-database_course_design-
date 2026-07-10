@@ -34,6 +34,23 @@ const isBuyer = computed(() => {
   return userStore.user?.userId === order.value?.buyerId
 })
 
+// 当前用户的评价数（0=未评, 1=已首评, 2=已追评）
+const myReviewCount = computed(() => {
+  if (!order.value || !userStore.user) return 0
+  return isBuyer.value ? (order.value.buyerReviewed ?? 0) : (order.value.sellerReviewed ?? 0)
+})
+
+// 双向评价状态文本
+const reviewStatusText = computed(() => {
+  if (!order.value) return ''
+  const b = order.value.buyerReviewed ?? 0
+  const s = order.value.sellerReviewed ?? 0
+  if (b >= 1 && s >= 1) return '双方已互评'
+  if (b >= 1) return '买家已评价，卖家未评价'
+  if (s >= 1) return '卖家已评价，买家未评价'
+  return '双方均未评价'
+})
+
 const fetchData = async () => {
   loading.value = true
   try {
@@ -210,8 +227,62 @@ onMounted(fetchData)
               </template>
 
               <template v-else-if="order.status === 'completed'">
-                <a-button type="primary" long @click="goToReview">
+                <!-- 双向评价状态展示 -->
+                <div class="review-status-box">
+                  <div class="review-status-title">评价状态</div>
+                  <a-tag
+                    :color="reviewStatusText.includes('互评') ? 'green' : 'orange'"
+                    size="medium"
+                  >
+                    {{ reviewStatusText }}
+                  </a-tag>
+                  <div class="review-status-detail">
+                    <div class="review-party">
+                      <span class="party-label">买家</span>
+                      <div class="party-tags">
+                        <a-tag v-if="(order.buyerReviewed ?? 0) >= 1" color="green" size="small">已评价</a-tag>
+                        <a-tag v-else color="gray" size="small">未评价</a-tag>
+                        <a-tag v-if="(order.buyerReviewed ?? 0) >= 2" color="orange" size="small">已追评</a-tag>
+                      </div>
+                    </div>
+                    <div class="review-party">
+                      <span class="party-label">卖家</span>
+                      <div class="party-tags">
+                        <a-tag v-if="(order.sellerReviewed ?? 0) >= 1" color="green" size="small">已评价</a-tag>
+                        <a-tag v-else color="gray" size="small">未评价</a-tag>
+                        <a-tag v-if="(order.sellerReviewed ?? 0) >= 2" color="orange" size="small">已追评</a-tag>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <!-- 首评按钮 -->
+                <a-button
+                  v-if="myReviewCount === 0"
+                  type="primary"
+                  long
+                  @click="goToReview"
+                >
                   去评价
+                </a-button>
+                <!-- 追评按钮 -->
+                <a-button
+                  v-else-if="myReviewCount === 1"
+                  type="primary"
+                  long
+                  @click="goToReview"
+                >
+                  去追评
+                </a-button>
+                <!-- 已达上限 -->
+                <a-tag v-else color="green" size="large" style="width: 100%; text-align: center; justify-content: center;">
+                  已评价 + 已追评
+                </a-tag>
+                <a-button
+                  type="outline"
+                  long
+                  @click="router.push('/reviews')"
+                >
+                  查看评价记录
                 </a-button>
               </template>
 
@@ -410,6 +481,42 @@ onMounted(fetchData)
 .verify-form p {
   margin: 0 0 12px 0;
   color: #4e5969;
+}
+
+.review-status-box {
+  padding: 12px;
+  background: #f7f8fa;
+  border-radius: 8px;
+  margin-bottom: 4px;
+}
+
+.review-status-title {
+  font-size: 12px;
+  color: #86909c;
+  margin-bottom: 8px;
+}
+
+.review-status-detail {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.review-party {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.party-label {
+  font-size: 13px;
+  color: #4e5969;
+}
+
+.party-tags {
+  display: flex;
+  gap: 4px;
 }
 
 @media (max-width: 1024px) {

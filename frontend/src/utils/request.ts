@@ -421,7 +421,7 @@ const getMockData = (url: string, method: string, params: any, data: any): any =
       reviewedUserId: data?.reviewedUserId || 2,
       rating: data?.rating || 5,
       content: data?.content || null,
-      reviewTime: new Date().toISOString().replace('T', ' ').substring(0, 19)
+      createTime: new Date().toISOString().replace('T', ' ').substring(0, 19)
     }
     mockReviews.push(newReview)
     return getMockResponse<Review>(newReview)
