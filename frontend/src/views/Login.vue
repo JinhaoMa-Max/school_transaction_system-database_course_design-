@@ -118,10 +118,21 @@ const goToRegister = () => {
 <style scoped>
 .login-page {
   display: flex;
+  min-height: 100vh;
+  padding: 20px;
+  background: linear-gradient(180deg, #253554 0%, #ffffff 100%);
   justify-content: center;
   align-items: center;
-  min-height: 100vh;
-  background: #f5f5f5;
+  font-family:
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    "PingFang SC",
+    "Hiragino Sans GB",
+    "Microsoft YaHei",
+    "Helvetica Neue",
+    Arial,
+    sans-serif;
 }
 
 .login-card {
@@ -130,6 +141,7 @@ const goToRegister = () => {
   background: white;
   border-radius: 8px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  animation: fadeUp 0.6s ease both;
 }
 
 .login-card h2 {
@@ -150,4 +162,17 @@ const goToRegister = () => {
   color: #165dff;
   cursor: pointer;
 }
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 </style>

@@ -53,7 +53,6 @@ const goToHome = () => {
   router.push('/')
 }
 
-//跳转到我的收藏
 const goToFavorites = () => {
   router.push('/favorites')
 }
@@ -256,7 +255,7 @@ onMounted(() => {
             我的收藏
           </a-button>
 
-          <a-button type = "primary" @click="goToEditProfile">
+          <a-button type = "primary" @click="goToEditProfile" class="edit-button">
             编辑资料
           </a-button>
 
@@ -360,6 +359,7 @@ onMounted(() => {
   border-radius: 20px;
   background: var(--color-bg-2);
   box-shadow: 0 8px 24px rgba(45, 54, 142, 0.06);
+  animation: fadeUp 0.6s ease both;
 }
 
 
@@ -488,21 +488,51 @@ onMounted(() => {
 
 .home-button{
   background-color: #f8d86f;
+  border-radius: 10px;
   color: white;
+  transition: all 0.25s ease;
 }
+
+.home-button:hover {
+  transform: translateY(-4px);
+}
+
 .student-auth-button {
   background-color: #7bdfab;
+  border-radius: 10px;
   color: white;
+  transition: all 0.25s ease;
 }
 
+.student-auth-button:hover {
+  transform: translateY(-4px);
+}
+
+.edit-button{
+   border-radius: 10px;
+   transition: all 0.25s ease;
+}
+.edit-button:hover {
+  transform: translateY(-4px);
+}
 .admin-button {
   background-color: #684993;
+  border-radius: 10px;
   color: white;
+  transition: all 0.25s ease;
 }
 
+.admin-button:hover {
+  transform: translateY(-4px);
+}
 .logout-button {
   background-color: #cc5c5d;
+  border-radius: 10px;
   color: white;
+  transition: all 0.25s ease;
+}
+.logout-button:hover {
+  transform: translateY(-4px);
 }
 
 /* 评价卡片 */
@@ -512,6 +542,8 @@ onMounted(() => {
   border-radius: 20px;
   background: var(--color-bg-2);
   box-shadow: 0 8px 24px rgba(45, 54, 142, 0.06);
+  animation: fadeUp 0.7s ease both;
+  animation-delay: 0.1s;
 }
 
 .review-title-row {
@@ -598,4 +630,18 @@ onMounted(() => {
   text-align: center;
   margin-top: 8px;
 }
+
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 </style>

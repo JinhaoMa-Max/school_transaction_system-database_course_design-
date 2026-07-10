@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import { getGoodsList, getCategoryList } from '@/api'
+import { useRouter,useRoute } from 'vue-router'
+import { getGoodsList } from '@/api/goods'
+import { getCategoryList } from '@/api/category'
 import type { Goods, Category } from '@/types'
 
 const router = useRouter()
+const route = useRoute()
 
 const goodsList = ref<Goods[]>([])
 const loading = ref(false)
@@ -17,6 +19,60 @@ const categoryId = ref<number | undefined>(undefined)
 const minPrice = ref<number | undefined>(undefined)
 const maxPrice = ref<number | undefined>(undefined)
 const sortBy = ref('created_at_desc')
+
+//获取传入query
+const getQueryNumber = (value: unknown) => {
+  const raw = Array.isArray(value) ? value[0] : value
+
+  if (raw === undefined || raw === null || raw === '') {
+    return undefined
+  }
+
+  const num = Number(raw)
+
+  return Number.isFinite(num) ? num : undefined
+}
+
+//获取字符串
+const getQueryString = (value: unknown) => {
+  const raw = Array.isArray(value) ? value[0] : value
+
+  return typeof raw === 'string' ? raw : ''
+}
+
+//根据网页跳转初始化分类
+const initFiltersFromRoute = () => {
+  keyword.value = getQueryString(route.query.keyword)
+
+  categoryId.value = getQueryNumber(
+    route.query.categoryId
+  )
+
+  minPrice.value = getQueryNumber(route.query.minPrice)
+  maxPrice.value = getQueryNumber(route.query.maxPrice)
+
+  sortBy.value = getQueryString(route.query.sortBy) || 'created_at_desc'
+
+  page.value = getQueryNumber(route.query.page) || 1
+  size.value = getQueryNumber(route.query.size) || 12
+}
+
+//页内转化分类栏的地址转换
+const syncRouteQuery = () => {
+  router.replace({
+    path: '/goods',
+    query: {
+      keyword: keyword.value || undefined,
+      categoryId: categoryId.value ? String(categoryId.value) : undefined,
+      minPrice: minPrice.value !== undefined ? String(minPrice.value) : undefined,
+      maxPrice: maxPrice.value !== undefined ? String(maxPrice.value) : undefined,
+      sortBy: sortBy.value !== 'created_at_desc' ? sortBy.value : undefined,
+      page: page.value > 1 ? String(page.value) : undefined,
+      size: size.value !== 12 ? String(size.value) : undefined
+    }
+  })
+}
+
 
 const categories = ref<Category[]>([])
 const flatCategories = ref<{ label: string; value: number }[]>([])
@@ -86,17 +142,20 @@ const fetchData = async () => {
 
 const handleSearch = () => {
   page.value = 1
+  syncRouteQuery()
   fetchData()
 }
 
 const handlePageChange = (pageNum: number) => {
   page.value = pageNum
+  syncRouteQuery()
   fetchData()
 }
 
 const handlePageSizeChange = (pageSize: number) => {
   size.value = pageSize
   page.value = 1
+  syncRouteQuery()
   fetchData()
 }
 
@@ -107,12 +166,14 @@ const goToDetail = (id: number) => {
 const handleCategoryChange = (value: any) => {
   categoryId.value = typeof value === 'number' ? value : undefined
   page.value = 1
+  syncRouteQuery()
   fetchData()
 }
 
 const handleSortChange = (value: any) => {
   sortBy.value = String(value || 'created_at_desc')
   page.value = 1
+  syncRouteQuery()
   fetchData()
 }
 
@@ -121,11 +182,13 @@ const handleKeywordInput = () => {
   if (searchTimer) clearTimeout(searchTimer)
   searchTimer = setTimeout(() => {
     page.value = 1
+    syncRouteQuery()
     fetchData()
   }, 500)
 }
 
 onMounted(() => {
+  initFiltersFromRoute()
   fetchCategories()
   fetchData()
 })

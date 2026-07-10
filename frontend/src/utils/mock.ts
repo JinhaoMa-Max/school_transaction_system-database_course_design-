@@ -244,7 +244,7 @@ export const mockStudentAuths: StudentAuth[] = [
     studentId: '2021001001',
     realName: '李小明',
     college: '计算机学院',
-    authStatus: 'approved',
+    authStatus: 'rejected',
     authTime: '2024-01-04 10:00:00'
   }
 ]
