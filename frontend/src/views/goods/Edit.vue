@@ -426,7 +426,7 @@ onMounted(async () => {
               <a-button type="primary" size="large" :loading="loading" @click="handleSubmit">
                 保存修改
               </a-button>
-              <a-button size="large" @click="router.back()">
+              <a-button size="large" @click="router.push(`/goods/${goodsId}`)">
                 取消
               </a-button>
             </a-space>

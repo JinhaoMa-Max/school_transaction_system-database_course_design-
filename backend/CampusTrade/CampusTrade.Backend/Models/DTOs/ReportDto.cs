@@ -11,6 +11,7 @@ public class ReportDto
     public int? ReportedOrderId { get; set; }
     public string? Reason { get; set; }
     public string Status { get; set; } = string.Empty;       // report_status → 前端 status
+    [System.Text.Json.Serialization.JsonPropertyName("reportTime")]
     public DateTime CreateTime { get; set; }                 // created_at → 前端 reportTime
 }
 

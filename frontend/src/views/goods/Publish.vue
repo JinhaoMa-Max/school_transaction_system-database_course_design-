@@ -268,7 +268,7 @@ onMounted(() => {
             <a-button type="primary" size="large" :loading="loading" @click="handleSubmit">
               发布商品
             </a-button>
-            <a-button size="large" @click="router.back()">
+            <a-button size="large" @click="router.push('/my/goods')">
               取消
             </a-button>
           </a-space>

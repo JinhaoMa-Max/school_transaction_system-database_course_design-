@@ -20,6 +20,22 @@ const goToOrders = () => {
 const goToProfile = () => {
   router.push('/profile')
 }
+
+const goToFavorites = () => {
+  router.push('/favorites')
+}
+
+const goToBargains = () => {
+  router.push('/bargains')
+}
+
+const goToChat = () => {
+  router.push('/chat')
+}
+
+const goToMyGoods = () => {
+  router.push('/my/goods')
+}
 </script>
 
 <template>
@@ -29,7 +45,11 @@ const goToProfile = () => {
       <nav>
         <button @click="goToGoods">商品广场</button>
         <button v-if="userStore.isLoggedIn" @click="goToPublish">发布商品</button>
+        <button v-if="userStore.isLoggedIn" @click="goToMyGoods">我的商品</button>
         <button v-if="userStore.isLoggedIn" @click="goToOrders">我的订单</button>
+        <button v-if="userStore.isLoggedIn" @click="goToFavorites">收藏夹</button>
+        <button v-if="userStore.isLoggedIn" @click="goToBargains">议价管理</button>
+        <button v-if="userStore.isLoggedIn" @click="goToChat">聊天</button>
         <button v-if="userStore.isLoggedIn" @click="goToProfile">个人中心</button>
         <button v-if="userStore.isLoggedIn" @click="userStore.logout">退出登录</button>
         <button v-else @click="router.push('/login')">登录</button>

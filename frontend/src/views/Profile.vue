@@ -68,6 +68,31 @@ const goToAdmin = () => {
   router.push('/admin/dashboard')
 }
 
+//跳转到收藏夹
+const goToFavorites = () => {
+  router.push('/favorites')
+}
+
+//跳转到议价管理
+const goToBargains = () => {
+  router.push('/bargains')
+}
+
+//跳转到聊天
+const goToChat = () => {
+  router.push('/chat')
+}
+
+//跳转到我的商品
+const goToMyGoods = () => {
+  router.push('/my/goods')
+}
+
+//跳转到我的订单
+const goToOrders = () => {
+  router.push('/orders')
+}
+
 //退出登录
 const handleLogout = () => {
   userStore.logout()
@@ -249,6 +274,26 @@ onMounted(() => {
 
           <a-button type = "primary" @click="goToEditProfile">
             编辑资料
+          </a-button>
+
+          <a-button @click="goToMyGoods" class="my-goods-button">
+            我的商品
+          </a-button>
+
+          <a-button @click="goToOrders" class="orders-button">
+            我的订单
+          </a-button>
+
+          <a-button @click="goToFavorites" class="favorites-button">
+            收藏夹
+          </a-button>
+
+          <a-button @click="goToBargains" class="bargains-button">
+            议价管理
+          </a-button>
+
+          <a-button @click="goToChat" class="chat-button">
+            聊天
           </a-button>
 
           <a-button v-if="user?.role !== 'admin'" @click="goToStudentAuth" class="student-auth-button">
@@ -493,6 +538,31 @@ onMounted(() => {
 
 .logout-button {
   background-color: #cc5c5d;
+  color: white;
+}
+
+.my-goods-button {
+  background-color: #4a90d9;
+  color: white;
+}
+
+.orders-button {
+  background-color: #f0a050;
+  color: white;
+}
+
+.favorites-button {
+  background-color: #e8738a;
+  color: white;
+}
+
+.bargains-button {
+  background-color: #5db39a;
+  color: white;
+}
+
+.chat-button {
+  background-color: #24bac2;
   color: white;
 }
 

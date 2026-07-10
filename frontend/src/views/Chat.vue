@@ -17,9 +17,13 @@ const messageListRef = ref<HTMLElement| null>(null)
 const userStore = useUserStore()
 const userMap = ref<Record<number, any>>({})
 
-//跳转回上一页
+//跳转回上一页（无历史记录时回首页）
 const goBack=()=>{
-  router.back()
+  if (window.history.length > 1) {
+    router.back()
+  } else {
+    router.push('/')
+  }
 }
 
 //跳转到主页

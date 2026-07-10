@@ -93,7 +93,7 @@ const handleSubmit = async ({ values }: { values: Record<string, any> }) => {
     await createReport(params)
     Message.success('举报提交成功，我们会尽快处理')
     setTimeout(() => {
-      router.back()
+      handleBack()
     }, 1500)
   } catch {
   } finally {
@@ -102,7 +102,12 @@ const handleSubmit = async ({ values }: { values: Record<string, any> }) => {
 }
 
 const handleBack = () => {
-  router.back()
+  // 如果有浏览器历史记录则返回上一页，否则跳转到首页
+  if (window.history.length > 1) {
+    router.back()
+  } else {
+    router.push('/')
+  }
 }
 
 const validateReportedId = (value: any, callback: (error?: string) => void) => {
