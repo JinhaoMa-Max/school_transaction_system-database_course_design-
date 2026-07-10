@@ -53,11 +53,18 @@ export const mockUsers: User[] = [
  */
 export const mockCategories: Category[] = [
   { categoryId: 1, categoryName: '数码产品', parentId: null, sortOrder: 1 },
-  { categoryId: 2, categoryName: '书籍文具', parentId: null, sortOrder: 2 },
-  { categoryId: 3, categoryName: '服饰鞋包', parentId: null, sortOrder: 3 },
-  { categoryId: 4, categoryName: '生活用品', parentId: null, sortOrder: 4 },
-  { categoryId: 5, categoryName: '手机', parentId: 1, sortOrder: 1 },
-  { categoryId: 6, categoryName: '电脑', parentId: 1, sortOrder: 2 }
+  { categoryId: 2, categoryName: '教材教辅', parentId: null, sortOrder: 2 },
+  { categoryId: 3, categoryName: '生活用品', parentId: null, sortOrder: 3 },
+  { categoryId: 4, categoryName: '服饰鞋包', parentId: null, sortOrder: 4 },
+  { categoryId: 5, categoryName: '其他', parentId: null, sortOrder: 99 },
+  { categoryId: 11, categoryName: '手机', parentId: 1, sortOrder: 1 },
+  { categoryId: 12, categoryName: '笔记本', parentId: 1, sortOrder: 2 },
+  { categoryId: 13, categoryName: '平板/配件', parentId: 1, sortOrder: 3 },
+  { categoryId: 21, categoryName: '专业教材', parentId: 2, sortOrder: 1 },
+  { categoryId: 22, categoryName: '考试资料', parentId: 2, sortOrder: 2 },
+  { categoryId: 23, categoryName: '文学小说', parentId: 2, sortOrder: 3 },
+  { categoryId: 31, categoryName: '宿舍用品', parentId: 3, sortOrder: 1 },
+  { categoryId: 32, categoryName: '运动健身', parentId: 3, sortOrder: 2 }
 ]
 
 /**

@@ -193,6 +193,7 @@ export interface PageResult<T> {
 export interface GoodsQuery {
   keyword?: string
   categoryId?: number
+  categoryIds?: string
   minPrice?: number
   maxPrice?: number
   condition?: string

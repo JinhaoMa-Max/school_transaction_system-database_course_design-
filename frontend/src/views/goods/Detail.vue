@@ -6,6 +6,7 @@ import { useUserStore } from '@/stores'
 import {
   getGoodsById,
   getGoodsImages,
+  getCategoryList,
   incrementViewCount,
   createFavorite,
   deleteFavorite,
@@ -14,7 +15,7 @@ import {
   createOrder
 } from '@/api'
 import { conditionMap, goodsStatusMap } from '@/constants'
-import type { Goods, GoodsImage } from '@/types'
+import type { Goods, GoodsImage, Category } from '@/types'
 
 const route = useRoute()
 const router = useRouter()
@@ -35,6 +36,19 @@ const buyVisible = ref(false)
 const buyLoading = ref(false)
 
 const dealPrice = ref(0)
+const categories = ref<Category[]>([])
+
+// 计算分类路径（如 "数码产品 > 手机"）
+const categoryPath = computed(() => {
+  if (!goods.value || categories.value.length === 0) return ''
+  const cat = categories.value.find(c => c.categoryId === goods.value!.categoryId)
+  if (!cat) return ''
+  if (cat.parentId) {
+    const parent = categories.value.find(c => c.categoryId === cat.parentId)
+    return parent ? `${parent.categoryName} > ${cat.categoryName}` : cat.categoryName
+  }
+  return cat.categoryName
+})
 
 const mainImage = computed(() => {
   if (images.value.length > 0) {
@@ -61,9 +75,11 @@ const canBuy = computed(() => {
 const fetchData = async () => {
   loading.value = true
   try {
+    // 同时加载分类数据，用于显示分类名称
     const [goodsRes, imagesRes] = await Promise.all([
       getGoodsById(goodsId),
-      getGoodsImages(goodsId).catch(() => ({ data: [] }))
+      getGoodsImages(goodsId).catch(() => ({ data: [] })),
+      getCategoryList().then(res => { categories.value = res.data }).catch(() => {})
     ])
     goods.value = goodsRes.data
     images.value = imagesRes.data || []
@@ -233,7 +249,7 @@ onMounted(fetchData)
             </a-descriptions-item>
             <a-descriptions-item label="浏览量">{{ goods.viewCount }}</a-descriptions-item>
             <a-descriptions-item label="发布时间">{{ goods.publishTime }}</a-descriptions-item>
-            <a-descriptions-item label="分类ID">{{ goods.categoryId }}</a-descriptions-item>
+            <a-descriptions-item label="商品分类">{{ categoryPath || goods.categoryId }}</a-descriptions-item>
           </a-descriptions>
 
           <div class="seller-card">

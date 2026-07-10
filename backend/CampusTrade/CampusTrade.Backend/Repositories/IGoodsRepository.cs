@@ -8,7 +8,9 @@ public interface IGoodsRepository
         int page, int size,
         int? sellerId,
         string? status,
-        int? categoryId, string? keyword,
+        int? categoryId,
+        string? categoryIds,
+        string? keyword,
         decimal? minPrice, decimal? maxPrice,
         string? sortBy, bool ascending);
 

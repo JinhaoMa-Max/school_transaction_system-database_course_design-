@@ -31,7 +31,9 @@ public class GoodsRepository : IGoodsRepository
         int page, int size,
         int? sellerId,
         string? status,
-        int? categoryId, string? keyword,
+        int? categoryId,
+        string? categoryIds,
+        string? keyword,
         decimal? minPrice, decimal? maxPrice,
         string? sortBy, bool ascending)
     {
@@ -53,7 +55,25 @@ public class GoodsRepository : IGoodsRepository
             parameters.Add(":Status", status);
         }
 
-        if (categoryId.HasValue)
+        if (!string.IsNullOrWhiteSpace(categoryIds))
+        {
+            // 支持多个分类ID（逗号分隔），用于父分类筛选
+            var ids = categoryIds.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                                 .Select(id => int.Parse(id.Trim()))
+                                 .ToList();
+            if (ids.Count > 0)
+            {
+                var inParams = new List<string>();
+                for (int i = 0; i < ids.Count; i++)
+                {
+                    var paramName = $":CatId{i}";
+                    inParams.Add(paramName);
+                    parameters.Add(paramName, ids[i]);
+                }
+                where.Add($"category_id IN ({string.Join(", ", inParams)})");
+            }
+        }
+        else if (categoryId.HasValue)
         {
             where.Add("category_id = :CategoryId");
             parameters.Add(":CategoryId", categoryId.Value);

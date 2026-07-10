@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, reactive } from 'vue'
+import { ref, onMounted, reactive, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { Message } from '@arco-design/web-vue'
 import { useUserStore } from '@/stores'
@@ -14,6 +14,28 @@ const formRef = ref()
 const loading = ref(false)
 const categories = ref<Category[]>([])
 const imageList = ref<{ url: string; uploadedUrl?: string; file?: File }[]>([])
+
+const selectedParentId = ref<number | undefined>(undefined)
+
+// 一级分类（顶级分类）
+const parentCategories = computed(() => {
+  return categories.value
+    .filter(c => c.parentId === null)
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+})
+
+// 当前选中一级分类下的二级分类
+const childCategories = computed(() => {
+  if (!selectedParentId.value) return []
+  return categories.value
+    .filter(c => c.parentId === selectedParentId.value)
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+})
+
+// 当前选中一级分类是否有子分类
+const selectedParentHasChildren = computed(() => {
+  return childCategories.value.length > 0
+})
 
 const form = reactive({
   title: '',
@@ -60,6 +82,24 @@ const fetchCategories = async () => {
   } catch {
     // 错误已由全局拦截器处理
   }
+}
+
+// 一级分类变更
+const handleParentChange = (value: any) => {
+  const parentId = typeof value === 'number' ? value : undefined
+  selectedParentId.value = parentId
+  if (parentId && childCategories.value.length === 0) {
+    // 选中的一级分类没有子分类，直接作为商品分类
+    form.categoryId = parentId
+  } else {
+    // 有子分类，需要用户继续选择二级分类
+    form.categoryId = undefined
+  }
+}
+
+// 二级分类变更
+const handleChildChange = (value: any) => {
+  form.categoryId = typeof value === 'number' ? value : undefined
 }
 
 const handleSubmit = async () => {
@@ -154,19 +194,38 @@ onMounted(() => {
         </a-form-item>
 
         <a-form-item field="categoryId" label="商品分类">
-          <a-select
-            v-model="form.categoryId"
-            placeholder="请选择商品分类"
-            style="width: 100%"
-          >
-            <a-option
-              v-for="cat in categories"
-              :key="cat.categoryId"
-              :value="cat.categoryId"
+          <div class="category-cascade">
+            <a-select
+              v-model="selectedParentId"
+              placeholder="请选择一级分类"
+              allow-clear
+              style="flex: 1"
+              @change="handleParentChange"
             >
-              {{ cat.categoryName }}
-            </a-option>
-          </a-select>
+              <a-option
+                v-for="cat in parentCategories"
+                :key="cat.categoryId"
+                :value="cat.categoryId"
+              >
+                {{ cat.categoryName }}
+              </a-option>
+            </a-select>
+            <a-select
+              v-if="selectedParentHasChildren"
+              v-model="form.categoryId"
+              placeholder="请选择二级分类"
+              style="flex: 1"
+              @change="handleChildChange"
+            >
+              <a-option
+                v-for="cat in childCategories"
+                :key="cat.categoryId"
+                :value="cat.categoryId"
+              >
+                {{ cat.categoryName }}
+              </a-option>
+            </a-select>
+          </div>
         </a-form-item>
 
         <a-form-item field="price" label="商品价格">
@@ -241,5 +300,11 @@ onMounted(() => {
 
 .form-card {
   border-radius: 8px;
+}
+
+.category-cascade {
+  display: flex;
+  gap: 12px;
+  width: 100%;
 }
 </style>
