@@ -71,3 +71,5 @@ temp/
 *.temp
 *.swp
 *.swo
+frontend/node_modules/.vite/deps_temp_3d8ecda8/package.json
+frontend/node_modules/.vite/deps/@arco-design_web-vue.js

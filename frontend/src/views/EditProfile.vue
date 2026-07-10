@@ -221,8 +221,6 @@ const saveAvatar = async () => {
 
 }
 
-
-
 //跳转到资料展示页面
 const goToProfile = () => {
   router.push('/profile')
@@ -451,6 +449,7 @@ const goToProfile = () => {
   border-radius: 20px;
   background: var(--color-bg-2);
   box-shadow: 0 8px 24px rgba(45, 54, 142, 0.06);
+  animation: fadeUp 0.6s ease both;
 }
 
 .avatar-edit {
@@ -476,5 +475,15 @@ const goToProfile = () => {
   cursor: default;
 }
 
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
 
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
 </style>

@@ -344,6 +344,7 @@ const scrollToBottom = async () =>{
   margin: 24px auto;
   border-radius: 20px;
   box-shadow: 0 8px 24px rgba(45, 54, 142, 0.06);
+  animation: fadeUp 0.6s ease both;
 }
 
 .chat-title {
@@ -382,6 +383,8 @@ const scrollToBottom = async () =>{
   width: 300px;
   flex-shrink: 0;
   border-radius: 20px;
+  animation: fadeUp 0.7s ease both;
+  animation-delay: 0.1s;
 }
 
 .chat-sidebar-title {
@@ -398,6 +401,8 @@ const scrollToBottom = async () =>{
   border-radius: 20px;
   display: flex;
   flex-direction: column;
+  animation: fadeUp 0.7s ease both;
+  animation-delay: 0.1s;
 }
 
 .chat-content-title {
@@ -490,4 +495,15 @@ const scrollToBottom = async () =>{
   border-top: 1px solid var(--color-border-2);
 }
 
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
 </style>

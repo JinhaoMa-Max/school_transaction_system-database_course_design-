@@ -3,6 +3,15 @@ import request from '@/utils/request'
 // 导入商品、商品图片、分页结果和商品查询的类型定义
 import type { Goods, GoodsImage, PageResult, GoodsQuery } from '@/types'
 
+//开发时期调用会话数据的妙妙工具#3
+import {
+  mockGoods,
+  getMockPageResult
+} from '@/utils/mock'
+
+const USE_MOCK_GOODS =
+  import.meta.env.DEV && import.meta.env.VITE_USE_MOCK_GOODS === 'true'
+
 /**
  * 上传图片到服务器
  * @param file 图片文件
@@ -22,6 +31,19 @@ export const uploadImage = (file: File) => {
  * @returns 商品分页结果
  */
 export const getGoodsList = (params?: GoodsQuery) => {
+
+  //测试数据
+  if (USE_MOCK_GOODS) {
+    let list = [...mockGoods] as Goods[]
+
+    const page = params?.page || 1
+    const size = params?.size || 8
+
+    return Promise.resolve(
+      getMockPageResult(list, page, size)
+    )
+  }
+  
   // 发送GET请求获取商品列表
   return request.get<PageResult<Goods>>('/goods', { params })
 }

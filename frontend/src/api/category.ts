@@ -3,11 +3,27 @@ import request from '@/utils/request'
 // 导入分类的类型定义
 import type { Category } from '@/types'
 
+//开发时期调用会话数据的妙妙工具#4
+import {
+  mockCategories,
+  getMockResponse
+} from '@/utils/mock'
+
+const USE_MOCK_GOODS =
+  import.meta.env.DEV && import.meta.env.VITE_USE_MOCK_GOODS === 'true'
+
 /**
  * 获取分类列表
  * @returns 分类列表
  */
 export const getCategoryList = () => {
+
+  //测试数据
+  if (USE_MOCK_GOODS) {
+    return Promise.resolve(
+      getMockResponse<Category[]>(mockCategories as Category[])
+    )
+  }
   // 发送GET请求获取分类列表
   return request.get<Category[]>('/categories')
 }
