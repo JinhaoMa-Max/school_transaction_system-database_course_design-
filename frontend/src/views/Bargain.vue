@@ -306,7 +306,7 @@ onMounted(() => {
 
             <template #actions="{ record }">
               <a-space size="small">
-                <template v-if="activeTab === 'seller' && record.status === 'active' && record.sellerResult === 'pending'">
+                <template v-if="activeTab === 'seller' && record.status === 'active' && (record.sellerResult === 'pending' || !record.sellerResult)">
                   <a-button type="primary" size="small" @click="handleAccept(record.bargainId)">
                     接受
                   </a-button>

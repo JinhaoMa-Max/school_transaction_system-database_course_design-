@@ -36,6 +36,7 @@ export const bargainStatusMap: Record<string, { text: string; color: string }> =
 }
 
 export const sellerResultMap: Record<string, { text: string; color: string }> = {
+  '': { text: '待处理', color: 'orange' },
   pending: { text: '待处理', color: 'orange' },
   accepted: { text: '已接受', color: 'green' },
   rejected: { text: '已拒绝', color: 'red' },

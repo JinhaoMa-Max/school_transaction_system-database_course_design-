@@ -18,14 +18,16 @@ public class GoodsService : IGoodsService
         int page, int size,
         int? sellerId,
         string? status,
-        int? categoryId, string? keyword,
+        int? categoryId,
+        string? categoryIds,
+        string? keyword,
         decimal? minPrice, decimal? maxPrice,
         string? sortBy, bool ascending)
     {
         page = Math.Max(1, page);
         size = Math.Clamp(size, 1, 100);
         var (items, total) = await _goodsRepository.GetPagedAsync(
-            page, size, sellerId, status, categoryId, keyword, minPrice, maxPrice, sortBy, ascending);
+            page, size, sellerId, status, categoryId, categoryIds, keyword, minPrice, maxPrice, sortBy, ascending);
         return new GoodsListResult
         {
             List = items,

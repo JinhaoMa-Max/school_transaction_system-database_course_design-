@@ -66,6 +66,18 @@ const goToFavorites = () => {
   router.push('/favorites')
 }
 
+const goToBargains = () => {
+  router.push('/bargains')
+}
+
+const goToChat = () => {
+  router.push('/chat')
+}
+
+const goToMyGoods = () => {
+  router.push('/my/goods')
+}
+
 //进入商品页面
 const goToGoodsDetail = (goodsId: number) => {
   router.push(`/goods/${goodsId}`)
@@ -141,12 +153,24 @@ onMounted(() => {
           发布商品
         </a-button>
 
+        <a-button v-if="userStore.isLoggedIn" type="text" @click="goToMyGoods">
+          我的商品
+        </a-button>
+
         <a-button v-if="userStore.isLoggedIn" type="text" @click="goToOrders">
           我的订单
         </a-button>
 
         <a-button v-if="userStore.isLoggedIn" type="text" @click="goToFavorites">
           我的收藏
+        </a-button>
+
+        <a-button v-if="userStore.isLoggedIn" type="text" @click="goToBargains">
+          议价管理
+        </a-button>
+
+        <a-button v-if="userStore.isLoggedIn" type="text" @click="goToChat">
+          聊天
         </a-button>
 
         <a-button v-if="userStore.isLoggedIn" type="text" @click="goToProfile">

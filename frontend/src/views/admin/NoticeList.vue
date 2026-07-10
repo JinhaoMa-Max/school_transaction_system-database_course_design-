@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { getNoticeList, createNotice, deleteNotice } from '@/api'
+import { getNoticeList, createNotice, updateNotice, deleteNotice } from '@/api'
 import type { Notice } from '@/types'
 
 const notices = ref<Notice[]>([])
@@ -10,21 +10,61 @@ const newNotice = ref({
   noticeType: 'system' as const
 })
 
-onMounted(async () => {
+// 编辑状态
+const editingId = ref<number | null>(null)
+const editForm = ref({
+  title: '',
+  content: '',
+  noticeType: 'system' as 'system' | 'transaction' | 'violation'
+})
+
+const fetchNotices = async () => {
   const res = await getNoticeList()
   notices.value = res.data.list
+}
+
+onMounted(() => {
+  fetchNotices()
 })
 
 const handleCreate = async () => {
-  await createNotice(newNotice.value)
+  if (!newNotice.value.title.trim() || !newNotice.value.content.trim()) return
+  await createNotice({
+    title: newNotice.value.title.trim(),
+    content: newNotice.value.content.trim(),
+    noticeType: newNotice.value.noticeType
+  })
+  newNotice.value = { title: '', content: '', noticeType: 'system' }
+  await fetchNotices()
 }
 
-const handleUpdate = async (_noticeId: number) => {
-  
+const startEdit = (notice: Notice) => {
+  editingId.value = notice.noticeId
+  editForm.value = {
+    title: notice.title,
+    content: notice.content,
+    noticeType: notice.noticeType
+  }
+}
+
+const cancelEdit = () => {
+  editingId.value = null
+}
+
+const handleUpdate = async (noticeId: number) => {
+  if (!editForm.value.title.trim() || !editForm.value.content.trim()) return
+  await updateNotice(noticeId, {
+    title: editForm.value.title.trim(),
+    content: editForm.value.content.trim(),
+    noticeType: editForm.value.noticeType
+  })
+  editingId.value = null
+  await fetchNotices()
 }
 
 const handleDelete = async (noticeId: number) => {
   await deleteNotice(noticeId)
+  await fetchNotices()
 }
 
 const getTypeText = (type: string) => {
@@ -73,15 +113,34 @@ const getTypeText = (type: string) => {
       </thead>
       <tbody>
         <tr v-for="item in notices" :key="item.noticeId">
-          <td>{{ item.noticeId }}</td>
-          <td>{{ item.title }}</td>
-          <td>{{ getTypeText(item.noticeType) }}</td>
-          <td>{{ item.publisherId }}</td>
-          <td>{{ item.publishTime }}</td>
-          <td>
-            <button @click="handleUpdate(item.noticeId)">编辑</button>
-            <button @click="handleDelete(item.noticeId)">删除</button>
-          </td>
+          <template v-if="editingId === item.noticeId">
+            <td>{{ item.noticeId }}</td>
+            <td><input v-model="editForm.title" type="text" class="edit-input" /></td>
+            <td>
+              <select v-model="editForm.noticeType" class="edit-input">
+                <option value="system">系统公告</option>
+                <option value="transaction">交易须知</option>
+                <option value="violation">违规提醒</option>
+              </select>
+            </td>
+            <td>{{ item.publisherId }}</td>
+            <td>{{ item.publishTime }}</td>
+            <td>
+              <button @click="handleUpdate(item.noticeId)">保存</button>
+              <button @click="cancelEdit">取消</button>
+            </td>
+          </template>
+          <template v-else>
+            <td>{{ item.noticeId }}</td>
+            <td>{{ item.title }}</td>
+            <td>{{ getTypeText(item.noticeType) }}</td>
+            <td>{{ item.publisherId }}</td>
+            <td>{{ item.publishTime }}</td>
+            <td>
+              <button @click="startEdit(item)">编辑</button>
+              <button @click="handleDelete(item.noticeId)">删除</button>
+            </td>
+          </template>
         </tr>
       </tbody>
     </table>
@@ -165,5 +224,18 @@ const getTypeText = (type: string) => {
 .notice-table button:last-child {
   background: #ff4d4f;
   color: white;
+}
+
+.edit-input {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid #d0d0d0;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.edit-input:focus {
+  outline: none;
+  border-color: #165dff;
 }
 </style>

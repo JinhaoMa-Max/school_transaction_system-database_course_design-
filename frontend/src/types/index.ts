@@ -34,6 +34,7 @@ export interface Goods {
   goodsId: number
   sellerId: number
   categoryId: number
+  categoryName?: string
   title: string
   description: string
   price: number
@@ -56,6 +57,11 @@ export interface Favorite {
   favoriteId: number
   userId: number
   goodsId: number
+  goodsTitle?: string
+  goodsPrice?: number
+  coverImage?: string
+  goodsStatus?: string
+  createTime?: string
   favoriteTime: string
   title?: string
   price?: number
@@ -79,11 +85,17 @@ export interface BargainOffer {
 export interface TradeOrder {
   orderId: number
   goodsId: number
+  goodsTitle?: string
   buyerId: number
+  buyerName?: string
   sellerId: number
+  sellerName?: string
   dealPrice: number
   status: 'pending_meet' | 'in_meet' | 'completed' | 'cancelled'
   createTime: string
+  meetTime?: string
+  meetLocation?: string
+  confirmCode?: string
   /** 买家评价数：0=未评, 1=首评, 2=首评+追评 */
   buyerReviewed?: number
   /** 卖家评价数：0=未评, 1=首评, 2=首评+追评 */
@@ -103,9 +115,11 @@ export interface Appointment {
 export interface ChatSession {
   sessionId: number
   goodsId: number
+  goodsTitle?: string
   buyerId: number
   sellerId: number
   createTime: string
+  unreadCount?: number
 }
 
 export interface ChatMessage {
@@ -197,6 +211,7 @@ export interface PageResult<T> {
 export interface GoodsQuery {
   keyword?: string
   categoryId?: number
+  categoryIds?: string
   minPrice?: number
   maxPrice?: number
   condition?: string

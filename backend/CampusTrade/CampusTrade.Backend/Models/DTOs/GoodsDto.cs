@@ -13,6 +13,7 @@ public class GoodsDto
     public string Condition { get; set; } = string.Empty; // 全新/几乎全新/轻微使用/明显痕迹
     public string Status { get; set; } = string.Empty;    // pending/approved/rejected/locked/sold/offline
     public int ViewCount { get; set; }
+    [System.Text.Json.Serialization.JsonPropertyName("publishTime")]
     public DateTime CreatedAt { get; set; }
     public string? ImageUrl { get; set; } // 封面图（第一张）
 }

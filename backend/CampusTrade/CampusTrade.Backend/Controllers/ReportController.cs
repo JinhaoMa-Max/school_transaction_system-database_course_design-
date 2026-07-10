@@ -32,6 +32,7 @@ public class ReportController : ControllerBase
     {
         try
         {
+            await _adminService.RequireAdminAsync(ResolveCurrentUserId());
             var result = await _reportService.GetReportsAsync(page, size, reportType, status);
             return Ok(result);
         }

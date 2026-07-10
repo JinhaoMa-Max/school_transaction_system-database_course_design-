@@ -1,12 +1,14 @@
 using CampusTrade.Backend.Models;
 using CampusTrade.Backend.Models.DTOs;
 using CampusTrade.Backend.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CampusTrade.Backend.Controllers;
 
 [ApiController]
 [Route("api/admin")]
+[Authorize]
 public class AdminController : ControllerBase
 {
     private readonly IAdminService _adminService;
@@ -16,6 +18,20 @@ public class AdminController : ControllerBase
     {
         _adminService = adminService;
         _authService = authService;
+    }
+
+    [HttpGet("stats")]
+    public async Task<IActionResult> GetStats()
+    {
+        try
+        {
+            var stats = await _adminService.GetStatsAsync(ResolveCurrentUserId());
+            return Ok(ApiResponse<AdminStatsDto>.Success(stats));
+        }
+        catch (Exception ex)
+        {
+            return ToErrorResult(ex);
+        }
     }
 
     [HttpGet("audit-logs")]

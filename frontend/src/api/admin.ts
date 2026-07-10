@@ -3,6 +3,21 @@ import request from '@/utils/request'
 // 导入审计日志、通知和分页结果的类型定义
 import type { AuditLog, Notice, PageResult } from '@/types'
 
+/** 仪表盘统计 */
+export interface AdminStats {
+  userCount: number
+  goodsCount: number
+  orderCount: number
+  reportCount: number
+}
+
+/**
+ * 获取仪表盘统计数据
+ */
+export const getAdminStats = () => {
+  return request.get<AdminStats>('/admin/stats')
+}
+
 /**
  * 获取审计日志列表
  * @param params 查询参数（可选）

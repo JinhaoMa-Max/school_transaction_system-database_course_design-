@@ -25,6 +25,28 @@ const categories = ref<Category[]>([])
 const existingImages = ref<GoodsImage[]>([])
 const newImageList = ref<{ url: string; uploadedUrl?: string }[]>([])
 
+const selectedParentId = ref<number | undefined>(undefined)
+
+// 一级分类（顶级分类）
+const parentCategories = computed(() => {
+  return categories.value
+    .filter(c => c.parentId === null)
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+})
+
+// 当前选中一级分类下的二级分类
+const childCategories = computed(() => {
+  if (!selectedParentId.value) return []
+  return categories.value
+    .filter(c => c.parentId === selectedParentId.value)
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+})
+
+// 当前选中一级分类是否有子分类
+const selectedParentHasChildren = computed(() => {
+  return childCategories.value.length > 0
+})
+
 const form = reactive({
   title: '',
   description: '',
@@ -82,6 +104,24 @@ const fetchCategories = async () => {
   }
 }
 
+// 一级分类变更
+const handleParentChange = (value: any) => {
+  const parentId = typeof value === 'number' ? value : undefined
+  selectedParentId.value = parentId
+  if (parentId && childCategories.value.length === 0) {
+    // 选中的一级分类没有子分类，直接作为商品分类
+    form.categoryId = parentId
+  } else {
+    // 有子分类，需要用户继续选择二级分类
+    form.categoryId = undefined
+  }
+}
+
+// 二级分类变更
+const handleChildChange = (value: any) => {
+  form.categoryId = typeof value === 'number' ? value : undefined
+}
+
 const fetchGoodsDetail = async () => {
   try {
     const res = await getGoodsById(goodsId)
@@ -91,6 +131,16 @@ const fetchGoodsDetail = async () => {
     form.price = res.data.price
     form.condition = res.data.condition
     form.categoryId = res.data.categoryId
+
+    // 解析分类层级，回显两级选择器
+    const cat = categories.value.find(c => c.categoryId === res.data.categoryId)
+    if (cat?.parentId) {
+      // 当前是二级分类：同时设置一级分类
+      selectedParentId.value = cat.parentId
+    } else {
+      // 当前是一级分类（无子分类的分类）
+      selectedParentId.value = res.data.categoryId
+    }
   } catch {
     // 错误已由全局拦截器处理
   }
@@ -206,7 +256,9 @@ const handleSubmit = async () => {
 onMounted(async () => {
   pageLoading.value = true
   try {
-    await Promise.all([fetchGoodsDetail(), fetchGoodsImages(), fetchCategories()])
+    // 先加载分类数据，fetchGoodsDetail 需要解析分类层级
+    await fetchCategories()
+    await Promise.all([fetchGoodsDetail(), fetchGoodsImages()])
   } finally {
     pageLoading.value = false
   }
@@ -249,19 +301,38 @@ onMounted(async () => {
           </a-form-item>
 
           <a-form-item field="categoryId" label="商品分类">
-            <a-select
-              v-model="form.categoryId"
-              placeholder="请选择商品分类"
-              style="width: 100%"
-            >
-              <a-option
-                v-for="cat in categories"
-                :key="cat.categoryId"
-                :value="cat.categoryId"
+            <div class="category-cascade">
+              <a-select
+                v-model="selectedParentId"
+                placeholder="请选择一级分类"
+                allow-clear
+                style="flex: 1"
+                @change="handleParentChange"
               >
-                {{ cat.categoryName }}
-              </a-option>
-            </a-select>
+                <a-option
+                  v-for="cat in parentCategories"
+                  :key="cat.categoryId"
+                  :value="cat.categoryId"
+                >
+                  {{ cat.categoryName }}
+                </a-option>
+              </a-select>
+              <a-select
+                v-if="selectedParentHasChildren"
+                v-model="form.categoryId"
+                placeholder="请选择二级分类"
+                style="flex: 1"
+                @change="handleChildChange"
+              >
+                <a-option
+                  v-for="cat in childCategories"
+                  :key="cat.categoryId"
+                  :value="cat.categoryId"
+                >
+                  {{ cat.categoryName }}
+                </a-option>
+              </a-select>
+            </div>
           </a-form-item>
 
           <a-form-item field="price" label="商品价格">
@@ -355,7 +426,7 @@ onMounted(async () => {
               <a-button type="primary" size="large" :loading="loading" @click="handleSubmit">
                 保存修改
               </a-button>
-              <a-button size="large" @click="router.back()">
+              <a-button size="large" @click="router.push(`/goods/${goodsId}`)">
                 取消
               </a-button>
             </a-space>
@@ -388,6 +459,12 @@ onMounted(async () => {
 
 .form-card {
   border-radius: 8px;
+}
+
+.category-cascade {
+  display: flex;
+  gap: 12px;
+  width: 100%;
 }
 
 .image-upload-area {

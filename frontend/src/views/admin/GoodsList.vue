@@ -1,13 +1,28 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { getGoodsList, auditGoods, offlineGoods } from '@/api'
-import type { Goods } from '@/types'
+import { getGoodsList, auditGoods, offlineGoods, getCategoryList } from '@/api'
+import type { Goods, Category } from '@/types'
 
 const goods = ref<Goods[]>([])
+const categories = ref<Category[]>([])
+
+const getCategoryPath = (categoryId: number): string => {
+  if (categories.value.length === 0) return String(categoryId)
+  const cat = categories.value.find(c => c.categoryId === categoryId)
+  if (!cat) return String(categoryId)
+  if (cat.parentId) {
+    const parent = categories.value.find(c => c.categoryId === cat.parentId)
+    return parent ? `${parent.categoryName} / ${cat.categoryName}` : cat.categoryName
+  }
+  return cat.categoryName
+}
 
 onMounted(async () => {
-  const res = await getGoodsList()
-  goods.value = res.data.list
+  const [goodsRes] = await Promise.all([
+    getGoodsList(),
+    getCategoryList().then(res => { categories.value = res.data }).catch(() => {})
+  ])
+  goods.value = goodsRes.data.list
 })
 
 const handleAudit = async (goodsId: number, status: 'approved' | 'rejected') => {
@@ -53,7 +68,7 @@ const getStatusText = (status: string) => {
           <td>{{ item.goodsId }}</td>
           <td>{{ item.title }}</td>
           <td>{{ item.sellerId }}</td>
-          <td>{{ item.categoryId }}</td>
+          <td>{{ getCategoryPath(item.categoryId) }}</td>
           <td>¥{{ item.price }}</td>
           <td>{{ getStatusText(item.status) }}</td>
           <td>{{ item.viewCount }}</td>

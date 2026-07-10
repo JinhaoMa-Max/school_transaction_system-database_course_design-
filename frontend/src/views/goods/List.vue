@@ -1,8 +1,7 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { useRouter,useRoute } from 'vue-router'
-import { getGoodsList } from '@/api/goods'
-import { getCategoryList } from '@/api/category'
+import { ref, computed, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { getGoodsList, getCategoryList } from '@/api'
 import type { Goods, Category } from '@/types'
 
 const router = useRouter()
@@ -15,67 +14,81 @@ const page = ref(1)
 const size = ref(12)
 
 const keyword = ref('')
-const categoryId = ref<number | undefined>(undefined)
+const selectedParentId = ref<number | undefined>(undefined)
+const selectedChildId = ref<number | undefined>(undefined)
 const minPrice = ref<number | undefined>(undefined)
 const maxPrice = ref<number | undefined>(undefined)
 const sortBy = ref('created_at_desc')
 
-//获取传入query
 const getQueryNumber = (value: unknown) => {
   const raw = Array.isArray(value) ? value[0] : value
+  if (raw === undefined || raw === null || raw === '') return undefined
 
-  if (raw === undefined || raw === null || raw === '') {
-    return undefined
-  }
-
-  const num = Number(raw)
-
-  return Number.isFinite(num) ? num : undefined
+  const parsed = Number(raw)
+  return Number.isFinite(parsed) ? parsed : undefined
 }
 
-//获取字符串
 const getQueryString = (value: unknown) => {
   const raw = Array.isArray(value) ? value[0] : value
-
   return typeof raw === 'string' ? raw : ''
 }
 
-//根据网页跳转初始化分类
 const initFiltersFromRoute = () => {
   keyword.value = getQueryString(route.query.keyword)
-
-  categoryId.value = getQueryNumber(
-    route.query.categoryId
-  )
-
   minPrice.value = getQueryNumber(route.query.minPrice)
   maxPrice.value = getQueryNumber(route.query.maxPrice)
-
   sortBy.value = getQueryString(route.query.sortBy) || 'created_at_desc'
-
   page.value = getQueryNumber(route.query.page) || 1
   size.value = getQueryNumber(route.query.size) || 12
+
+  const categoryId = getQueryNumber(route.query.categoryId)
+  if (categoryId) {
+    const category = categories.value.find(item => item.categoryId === categoryId)
+    if (category?.parentId) {
+      selectedParentId.value = category.parentId
+      selectedChildId.value = categoryId
+    } else {
+      selectedParentId.value = categoryId
+      selectedChildId.value = undefined
+    }
+  }
 }
 
-//页内转化分类栏的地址转换
 const syncRouteQuery = () => {
   router.replace({
     path: '/goods',
     query: {
       keyword: keyword.value || undefined,
-      categoryId: categoryId.value ? String(categoryId.value) : undefined,
-      minPrice: minPrice.value !== undefined ? String(minPrice.value) : undefined,
-      maxPrice: maxPrice.value !== undefined ? String(maxPrice.value) : undefined,
+      categoryId: selectedChildId.value ?? selectedParentId.value ?? undefined,
+      minPrice: minPrice.value,
+      maxPrice: maxPrice.value,
       sortBy: sortBy.value !== 'created_at_desc' ? sortBy.value : undefined,
-      page: page.value > 1 ? String(page.value) : undefined,
-      size: size.value !== 12 ? String(size.value) : undefined
+      page: page.value > 1 ? page.value : undefined,
+      size: size.value !== 12 ? size.value : undefined
     }
   })
 }
-
-
 const categories = ref<Category[]>([])
-const flatCategories = ref<{ label: string; value: number }[]>([])
+
+// 一级分类（顶级分类）
+const parentCategories = computed(() => {
+  return categories.value
+    .filter(c => c.parentId === null)
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+})
+
+// 当前选中一级分类下的二级分类
+const childCategories = computed(() => {
+  if (!selectedParentId.value) return []
+  return categories.value
+    .filter(c => c.parentId === selectedParentId.value)
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+})
+
+// 当前选中一级分类是否有子分类
+const selectedParentHasChildren = computed(() => {
+  return childCategories.value.length > 0
+})
 
 const conditionMap: Record<string, string> = {
   new: '全新',
@@ -95,10 +108,6 @@ const fetchCategories = async () => {
   try {
     const res = await getCategoryList()
     categories.value = res.data
-    flatCategories.value = categories.value.map(c => ({
-      label: c.categoryName,
-      value: c.categoryId
-    }))
   } catch {
     // 错误已由全局拦截器处理
   }
@@ -109,7 +118,7 @@ const fetchData = async () => {
   try {
     let sortByParam: string | undefined
     let ascendingParam: boolean | undefined
-    
+
     if (sortBy.value) {
       const lastIndex = sortBy.value.lastIndexOf('_')
       if (lastIndex !== -1) {
@@ -117,10 +126,9 @@ const fetchData = async () => {
         ascendingParam = sortBy.value.substring(lastIndex + 1) === 'asc'
       }
     }
-    
+
     const params: Record<string, any> = {
       keyword: keyword.value,
-      categoryId: categoryId.value,
       minPrice: minPrice.value,
       maxPrice: maxPrice.value,
       sortBy: sortByParam,
@@ -129,7 +137,23 @@ const fetchData = async () => {
       size: size.value,
       status: 'approved'
     }
-    
+
+    // 分类筛选逻辑
+    if (selectedChildId.value) {
+      // 选中了具体二级分类：精确匹配
+      params.categoryIds = String(selectedChildId.value)
+    } else if (selectedParentId.value) {
+      if (selectedParentHasChildren.value) {
+        // 只选了一级分类（有子分类）：筛选该一级分类下所有商品
+        const childIds = childCategories.value.map(c => c.categoryId)
+        params.categoryIds = childIds.join(',')
+      } else {
+        // 选了一级分类（无子分类）：直接使用该分类ID
+        params.categoryIds = String(selectedParentId.value)
+      }
+    }
+    // 都没选则不传 category 参数，显示全部
+
     const res = await getGoodsList(params)
     goodsList.value = res.data.list
     total.value = res.data.total
@@ -163,8 +187,18 @@ const goToDetail = (id: number) => {
   router.push(`/goods/${id}`)
 }
 
-const handleCategoryChange = (value: any) => {
-  categoryId.value = typeof value === 'number' ? value : undefined
+// 一级分类变更：清空二级分类，重新筛选
+const handleParentChange = (value: any) => {
+  selectedParentId.value = typeof value === 'number' ? value : undefined
+  selectedChildId.value = undefined  // 清空二级分类
+  page.value = 1
+  syncRouteQuery()
+  fetchData()
+}
+
+// 二级分类变更：重新筛选
+const handleChildChange = (value: any) => {
+  selectedChildId.value = typeof value === 'number' ? value : undefined
   page.value = 1
   syncRouteQuery()
   fetchData()
@@ -187,9 +221,9 @@ const handleKeywordInput = () => {
   }, 500)
 }
 
-onMounted(() => {
+onMounted(async () => {
+  await fetchCategories()
   initFiltersFromRoute()
-  fetchCategories()
   fetchData()
 })
 </script>
@@ -212,15 +246,38 @@ onMounted(() => {
               allow-clear
             />
           </div>
-          <div class="filter-item">
+          <div class="filter-item category-cascade">
             <a-select
-              v-model="categoryId"
+              v-model="selectedParentId"
               placeholder="全部分类"
-              :options="flatCategories"
               allow-clear
-              style="width: 160px"
-              @change="handleCategoryChange"
-            />
+              style="width: 150px"
+              @change="handleParentChange"
+            >
+              <a-option
+                v-for="cat in parentCategories"
+                :key="cat.categoryId"
+                :value="cat.categoryId"
+              >
+                {{ cat.categoryName }}
+              </a-option>
+            </a-select>
+            <a-select
+              v-model="selectedChildId"
+              :placeholder="selectedParentHasChildren ? '全部子分类' : '无子分类'"
+              :disabled="!selectedParentId || !selectedParentHasChildren"
+              allow-clear
+              style="width: 150px"
+              @change="handleChildChange"
+            >
+              <a-option
+                v-for="cat in childCategories"
+                :key="cat.categoryId"
+                :value="cat.categoryId"
+              >
+                {{ cat.categoryName }}
+              </a-option>
+            </a-select>
           </div>
           <div class="filter-item price-range">
             <a-input-number
@@ -345,6 +402,11 @@ onMounted(() => {
 .search-item {
   flex: 1;
   min-width: 280px;
+}
+
+.category-cascade {
+  display: flex;
+  gap: 8px;
 }
 
 .price-range {

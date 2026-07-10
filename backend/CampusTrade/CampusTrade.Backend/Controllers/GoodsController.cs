@@ -27,6 +27,7 @@ public class GoodsController : ControllerBase
         [FromQuery] int? sellerId = null,
         [FromQuery] string? status = null,
         [FromQuery] int? categoryId = null,
+        [FromQuery] string? categoryIds = null,
         [FromQuery] string? keyword = null,
         [FromQuery] decimal? minPrice = null,
         [FromQuery] decimal? maxPrice = null,
@@ -35,7 +36,7 @@ public class GoodsController : ControllerBase
     {
         try
         {
-            var result = await _goodsService.GetPagedAsync(page, size, sellerId, status, categoryId, keyword, minPrice, maxPrice, sortBy, ascending);
+            var result = await _goodsService.GetPagedAsync(page, size, sellerId, status, categoryId, categoryIds, keyword, minPrice, maxPrice, sortBy, ascending);
             return Ok(ApiResponse<GoodsListResult>.Success(result));
         }
         catch (Exception ex)
