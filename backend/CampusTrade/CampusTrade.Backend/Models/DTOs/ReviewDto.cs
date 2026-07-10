@@ -19,4 +19,7 @@ public class ReviewDto
 public class ReviewListResult { public List<ReviewDto> List { get; set; } = new(); public int Total { get; set; } public int Page { get; set; } public int Size { get; set; } }
 
 /// <summary>创建评价请求</summary>
-public class CreateReviewRequest { public int OrderId { get; set; } public int Rating { get; set; } public string? Content { get; set; } }
+public class CreateReviewRequest { public int OrderId { get; set; } public int ReviewedUserId { get; set; } public int Rating { get; set; } public string? Content { get; set; } }
+
+/// <summary>更新评价请求</summary>
+public class UpdateReviewRequest { public int Rating { get; set; } public string? Content { get; set; } }

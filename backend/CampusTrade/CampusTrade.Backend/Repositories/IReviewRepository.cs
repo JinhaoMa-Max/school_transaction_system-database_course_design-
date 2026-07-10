@@ -8,14 +8,14 @@ namespace CampusTrade.Backend.Repositories;
 /// </summary>
 public interface IReviewRepository
 {
-    /// <summary>评价列表（支持按被评价者/订单筛选）</summary>
-    Task<(List<ReviewDto> Items, int Total)> GetPagedAsync(int page, int size, int? reviewedUserId, int? orderId);
+    /// <summary>评价列表（支持按评价者/被评价者/订单筛选）</summary>
+Task<(List<ReviewDto> Items, int Total)> GetPagedAsync(int page, int size, int? reviewerId, int? reviewedUserId, int? orderId);
 
     /// <summary>评价详情</summary>
     Task<ReviewDto?> GetByIdAsync(int reviewId);
 
     /// <summary>创建评价 — 调用 sp_create_review（校验已完成、不重复、自动更新信用分）</summary>
-    Task<int> CreateAsync(int orderId, int reviewerId, int rating, string? content);
+    Task<int> CreateAsync(int orderId, int reviewerId, int reviewedUserId, int rating, string? content);
 
     /// <summary>检查某人对某订单是否已评价</summary>
     Task<bool> HasReviewedAsync(int orderId, int reviewerId);
@@ -24,5 +24,11 @@ public interface IReviewRepository
     Task<decimal> GetAvgRatingAsync(int userId);
 
     /// <summary>重算信用分 — 调用 fn_calc_credit</summary>
-    Task<int> RecalcCreditAsync(int userId);
+Task<int> RecalcCreditAsync(int userId);
+
+/// <summary>更新评价</summary>
+Task<bool> UpdateAsync(int reviewId, int rating, string? content);
+
+/// <summary>删除评价</summary>
+Task<bool> DeleteAsync(int reviewId);
 }
