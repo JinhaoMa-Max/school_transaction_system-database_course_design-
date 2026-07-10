@@ -35,7 +35,7 @@ export interface ApiResponse<T = unknown> {
   data: T
 }
 
-const USE_MOCK_FALLBACK = import.meta.env.DEV && import.meta.env.VITE_USE_MOCK_FALLBACK === 'true'
+const USE_MOCK_FALLBACK = import.meta.env.DEV && (import.meta.env.VITE_USE_MOCK_FALLBACK === 'true' || import.meta.env.VITE_USE_MOCK_FALLBACK === undefined)
 
 const service: AxiosInstance = axios.create({
   baseURL: '/api',
@@ -488,6 +488,33 @@ service.interceptors.request.use(
 service.interceptors.response.use(
   (response: AxiosResponse<ApiResponse>) => {
     const res = response.data
+    
+    if (typeof res === 'string') {
+      if (USE_MOCK_FALLBACK) {
+        const config = response.config
+        const url = config.url || ''
+        const method = (config.method || 'get').toLowerCase()
+        const params = config.params
+        const data = config.data ? JSON.parse(config.data) : null
+        try {
+          const mockData = getMockData(url, method, params, data)
+          if (mockData && mockData.code === 200) {
+            console.log('[Mock Fallback] Using mock data for:', method, url)
+            return Promise.resolve({
+              data: mockData.data,
+              status: 200,
+              statusText: 'OK',
+              headers: {},
+              config: config
+            })
+          }
+        } catch (e) {
+          console.warn('Mock data fallback failed:', e)
+        }
+      }
+      return Promise.reject(new Error('请求失败'))
+    }
+    
     if (res.code !== 200) {
       Message.error(res.message || '请求失败')
       if (res.code === 401) {
@@ -497,7 +524,10 @@ service.interceptors.response.use(
       }
       return Promise.reject(new Error(res.message || '请求失败'))
     }
-    return response.data as unknown as AxiosResponse
+    return {
+      ...response,
+      data: res.data
+    } as AxiosResponse<any, any, {}>
   },
   (error) => {
     const isNetworkError = error.code === 'ECONNREFUSED' ||
@@ -505,9 +535,9 @@ service.interceptors.response.use(
       error.message?.includes('ERR_NETWORK') ||
       error.code === 'ERR_NETWORK'
 
-    const is500Error = error.response?.status === 500 || error.response?.status === 502 || error.response?.status === 503 || error.response?.status === 504
+    const isServerError = error.response?.status >= 400
 
-    if (USE_MOCK_FALLBACK && (isNetworkError || is500Error)) {
+    if (USE_MOCK_FALLBACK && (isNetworkError || isServerError)) {
       const config = error.config
       const url = config.url || ''
       const method = (config.method || 'get').toLowerCase()
@@ -518,7 +548,13 @@ service.interceptors.response.use(
         const mockData = getMockData(url, method, params, data)
         if (mockData && mockData.code === 200) {
           console.log('[Mock Fallback] Using mock data for:', method, url)
-          return Promise.resolve(mockData)
+          return Promise.resolve({
+            data: mockData.data,
+            status: 200,
+            statusText: 'OK',
+            headers: {},
+            config: config
+          })
         }
       } catch (e) {
         console.warn('Mock data fallback failed:', e)

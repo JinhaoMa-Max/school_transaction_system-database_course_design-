@@ -2,8 +2,10 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Message, Modal } from '@arco-design/web-vue'
-import { getBargainList, handleBargain, handleBargainByBuyer, closeBargain } from '@/api'
+import { getBargainList, handleBargain, handleBargainByBuyer, closeBargain, getBargainById } from '@/api'
+import { createOrder } from '@/api'
 import { useUserStore } from '@/stores'
+import { bargainStatusMap, sellerResultMap } from '@/constants'
 import type { BargainOffer } from '@/types'
 
 const router = useRouter()
@@ -21,25 +23,10 @@ const counterPrice = ref(0)
 const currentBargainId = ref<number | null>(null)
 const counterLoading = ref(false)
 
-// 买家还价相关状态
 const buyerCounterVisible = ref(false)
 const buyerCounterPrice = ref(0)
 const buyerCurrentBargainId = ref<number | null>(null)
 const buyerCounterLoading = ref(false)
-
-const sellerResultMap: Record<string, { text: string; color: string }> = {
-  pending: { text: '待处理', color: 'orange' },
-  accepted: { text: '已接受', color: 'green' },
-  rejected: { text: '已拒绝', color: 'red' },
-  countered: { text: '已还价', color: 'blue' }
-}
-
-const bargainStatusMap: Record<string, { text: string; color: string }> = {
-  active: { text: '进行中', color: 'blue' },
-  accepted: { text: '已达成', color: 'green' },
-  rejected: { text: '已拒绝', color: 'red' },
-  closed: { text: '已关闭', color: 'gray' }
-}
 
 const columns = [
   { title: '商品信息', dataIndex: 'goodsId', width: 240 },
@@ -105,13 +92,22 @@ const openCounter = (bargainId: number) => {
 const handleAccept = (bargainId: number) => {
   Modal.confirm({
     title: '确认接受',
-    content: '确定接受该议价吗？接受后将生成订单。',
+    content: '确定接受该议价吗？接受后将自动生成订单。',
     okText: '确认接受',
     cancelText: '取消',
     onOk: async () => {
       try {
+        const bargainRes = await getBargainById(bargainId)
+        const bargain = bargainRes.data
+        
         await handleBargain(bargainId, { sellerResult: 'accepted' })
-        Message.success('已接受议价')
+        
+        await createOrder({
+          goodsId: bargain.goodsId,
+          dealPrice: bargain.counterPrice || bargain.offerPrice
+        })
+        
+        Message.success('议价已接受，订单已生成')
         fetchBargainList()
       } catch {
         // 错误已由全局拦截器处理
@@ -177,7 +173,6 @@ const handleClose = (bargainId: number) => {
   })
 }
 
-// ---------- 买家操作：对卖家还价做出回应 ----------
 const openBuyerCounter = (bargainId: number) => {
   buyerCurrentBargainId.value = bargainId
   buyerCounterPrice.value = 0
@@ -311,7 +306,6 @@ onMounted(() => {
 
             <template #actions="{ record }">
               <a-space size="small">
-                <!-- 卖家操作：待处理 -->
                 <template v-if="activeTab === 'seller' && record.status === 'active' && record.sellerResult === 'pending'">
                   <a-button type="primary" size="small" @click="handleAccept(record.bargainId)">
                     接受
@@ -323,7 +317,6 @@ onMounted(() => {
                     还价
                   </a-button>
                 </template>
-                <!-- 买家操作：卖家已还价，买家做出回应 -->
                 <template v-else-if="activeTab === 'buyer' && record.status === 'active' && record.sellerResult === 'countered'">
                   <a-button type="primary" size="small" @click="handleBuyerAccept(record.bargainId)">
                     接受还价
@@ -335,7 +328,6 @@ onMounted(() => {
                     继续还价
                   </a-button>
                 </template>
-                <!-- 买家操作：普通进行中（非 countered 状态） -->
                 <template v-else-if="activeTab === 'buyer' && record.status === 'active'">
                   <a-button type="text" size="small" status="danger" @click="handleClose(record.bargainId)">
                     关闭议价
@@ -390,7 +382,6 @@ onMounted(() => {
       </div>
     </a-modal>
 
-    <!-- 买家继续还价弹窗 -->
     <a-modal
       v-model:visible="buyerCounterVisible"
       title="继续还价"

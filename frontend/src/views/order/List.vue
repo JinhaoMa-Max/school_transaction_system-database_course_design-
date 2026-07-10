@@ -2,10 +2,11 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Message, Modal } from '@arco-design/web-vue'
-import { getOrderList, cancelOrder, completeOrder } from '@/api'
+import { getOrderList, cancelOrder, completeOrder, getGoodsById } from '@/api'
 import { verifyConfirmCode } from '@/api'
 import { useUserStore } from '@/stores'
-import type { TradeOrder } from '@/types'
+import { orderStatusMap } from '@/constants'
+import type { TradeOrder, Goods } from '@/types'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -17,6 +18,7 @@ const page = ref(1)
 const pageSize = ref(10)
 const activeTab = ref('buy')
 const statusFilter = ref('')
+const goodsMap = ref<Record<number, Goods>>({})
 
 const verifyVisible = ref(false)
 const verifyCode = ref('')
@@ -31,12 +33,7 @@ const statusOptions = [
   { label: '已取消', value: 'cancelled' }
 ]
 
-const orderStatusMap: Record<string, { text: string; color: string }> = {
-  pending_meet: { text: '待面交', color: 'orange' },
-  in_meet: { text: '面交中', color: 'blue' },
-  completed: { text: '已完成', color: 'green' },
-  cancelled: { text: '已取消', color: 'gray' }
-}
+
 
 const columns = [
   { title: '商品信息', dataIndex: 'goodsId', width: 280 },
@@ -59,11 +56,26 @@ const fetchOrderList = async () => {
     if (statusFilter.value) {
       params.status = statusFilter.value
     }
+    if (activeTab.value === 'buy') {
+      params.buyerId = userStore.user.userId
+    } else {
+      params.sellerId = userStore.user.userId
+    }
     const res = await getOrderList(params)
     orderList.value = res.data.list
     total.value = res.data.total
-  } catch {
-    // 错误已由全局拦截器处理
+
+    const goodsIds = [...new Set(orderList.value.map(order => order.goodsId))]
+    goodsMap.value = {}
+    for (const goodsId of goodsIds) {
+      try {
+        const goodsRes = await getGoodsById(goodsId)
+        goodsMap.value[goodsId] = goodsRes.data
+      } catch {
+      }
+    }
+  } catch (error: any) {
+    Message.error(error?.response?.data?.message || error?.message || '获取订单列表失败')
   } finally {
     loading.value = false
   }
@@ -119,8 +131,8 @@ const handleCancel = (orderId: number) => {
         await cancelOrder(orderId)
         Message.success('订单已取消')
         fetchOrderList()
-      } catch {
-        // 错误已由全局拦截器处理
+      } catch (error: any) {
+        Message.error(error?.response?.data?.message || '取消订单失败')
       }
     }
   })
@@ -146,8 +158,8 @@ const handleVerify = async () => {
     Message.success('确认码验证成功')
     verifyVisible.value = false
     fetchOrderList()
-  } catch {
-    // 错误已由全局拦截器处理
+  } catch (error: any) {
+    Message.error(error?.response?.data?.message || '确认码验证失败')
   } finally {
     verifyLoading.value = false
   }
@@ -213,8 +225,16 @@ onMounted(() => {
           >
             <template #goodsId="{ record }">
               <div class="goods-info" @click="goToGoodsDetail(record.goodsId)">
-                <div class="goods-name">商品 #{{ record.goodsId }}</div>
-                <div class="goods-hint">点击查看商品</div>
+                <div class="goods-image">
+                  <img
+                    :src="goodsMap[record.goodsId]?.imageUrl || 'https://via.placeholder.com/60x60?text=No+Image'"
+                    :alt="goodsMap[record.goodsId]?.title || '商品图片'"
+                  />
+                </div>
+                <div class="goods-detail">
+                  <div class="goods-name">{{ goodsMap[record.goodsId]?.title || `商品 #${record.goodsId}` }}</div>
+                  <div class="goods-hint">点击查看商品</div>
+                </div>
               </div>
             </template>
 
@@ -346,6 +366,29 @@ onMounted(() => {
 
 .goods-info {
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.goods-image {
+  width: 60px;
+  height: 60px;
+  border-radius: 6px;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: #f2f3f5;
+}
+
+.goods-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.goods-detail {
+  flex: 1;
+  min-width: 0;
 }
 
 .goods-name {
@@ -353,6 +396,9 @@ onMounted(() => {
   color: #1d2129;
   margin-bottom: 4px;
   transition: color 0.2s;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .goods-info:hover .goods-name {

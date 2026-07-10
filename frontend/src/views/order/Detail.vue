@@ -12,6 +12,7 @@ import {
   getAppointmentByOrderId,
   verifyConfirmCode
 } from '@/api'
+import { orderStatusMap, appointmentStatusMap } from '@/constants'
 import type { TradeOrder, Appointment } from '@/types'
 
 const route = useRoute()
@@ -27,24 +28,11 @@ const verifyVisible = ref(false)
 const verifyCode = ref('')
 const verifyLoading = ref(false)
 
-const orderStatusMap: Record<string, { text: string; color: string }> = {
-  pending_meet: { text: '待面交', color: 'orange' },
-  in_meet: { text: '面交中', color: 'blue' },
-  completed: { text: '已完成', color: 'green' },
-  cancelled: { text: '已取消', color: 'gray' }
-}
 
-const appointmentStatusMap: Record<string, { text: string; color: string }> = {
-  pending: { text: '待确认', color: 'orange' },
-  confirmed: { text: '已确认', color: 'blue' },
-  completed: { text: '已完成', color: 'green' },
-  cancelled: { text: '已取消', color: 'gray' }
-}
 
 const isBuyer = computed(() => {
   return userStore.user?.userId === order.value?.buyerId
 })
-
 
 const fetchData = async () => {
   loading.value = true

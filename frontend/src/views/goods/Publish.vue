@@ -2,15 +2,18 @@
 import { ref, onMounted, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { Message } from '@arco-design/web-vue'
+import { useUserStore } from '@/stores'
 import { getCategoryList, createGoods, uploadGoodsImage, uploadImage } from '@/api'
+import ImageUpload from '@/components/common/ImageUpload.vue'
+import { conditionMap } from '@/constants'
 import type { Category } from '@/types'
 
 const router = useRouter()
+const userStore = useUserStore()
 const formRef = ref()
 const loading = ref(false)
 const categories = ref<Category[]>([])
 const imageList = ref<{ url: string; uploadedUrl?: string; file?: File }[]>([])
-const fileInput = ref<HTMLInputElement | null>(null)
 
 const form = reactive({
   title: '',
@@ -45,12 +48,10 @@ const rules = {
   categoryId: [{ required: true, message: '请选择商品分类' }]
 }
 
-const conditionOptions = [
-  { label: '全新', value: 'new' },
-  { label: '几乎全新', value: 'like_new' },
-  { label: '轻微使用', value: 'slight_use' },
-  { label: '明显痕迹', value: 'obvious_trace' }
-]
+const conditionOptions = Object.entries(conditionMap).map(([value, label]) => ({
+  label,
+  value
+}))
 
 const fetchCategories = async () => {
   try {
@@ -59,35 +60,6 @@ const fetchCategories = async () => {
   } catch {
     // 错误已由全局拦截器处理
   }
-}
-
-const handleImageUpload = (fileList: any[]) => {
-  if (imageList.value.length + fileList.length > 6) {
-    Message.warning('最多上传6张图片')
-    return
-  }
-  for (const file of fileList) {
-    if (file.size > 5 * 1024 * 1024) {
-      Message.warning('单张图片不能超过5MB')
-      continue
-    }
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      imageList.value.push({
-        url: e.target?.result as string,
-        file: file.originFile || file
-      })
-    }
-    reader.readAsDataURL(file.originFile || file)
-  }
-}
-
-const removeImage = (index: number) => {
-  imageList.value.splice(index, 1)
-}
-
-const triggerFileInput = () => {
-  fileInput.value?.click()
 }
 
 const handleSubmit = async () => {
@@ -106,6 +78,7 @@ const handleSubmit = async () => {
   loading.value = true
   try {
     const res = await createGoods({
+      sellerId: userStore.user?.userId,
       title: form.title,
       description: form.description,
       price: form.price,
@@ -131,8 +104,9 @@ const handleSubmit = async () => {
       }
 
       try {
+        const imageUrl = imageList.value[i].uploadedUrl || imageList.value[i].url
         await uploadGoodsImage(goodsId, {
-          imageUrl: imageUrl!,
+          imageUrl,
           sortOrder: i + 1
         })
       } catch {
@@ -142,8 +116,8 @@ const handleSubmit = async () => {
 
     Message.success('商品发布成功，等待审核')
     router.push(`/goods/${goodsId}`)
-  } catch {
-    // 错误已由全局拦截器处理
+  } catch (error: any) {
+    Message.error(error?.response?.data?.message || error?.message || '发布商品失败')
   } finally {
     loading.value = false
   }
@@ -167,8 +141,8 @@ onMounted(() => {
         :model="form"
         :rules="rules"
         layout="vertical"
-        :label-col-style="{ flex: '0 0 120px' }"
-        :wrapper-col-style="{ flex: '1' }"
+        :label-col-props="{ style: { flex: '0 0 120px' } }"
+        :wrapper-col-props="{ style: { flex: '1' } }"
       >
         <a-form-item field="title" label="商品标题">
           <a-input
@@ -227,41 +201,7 @@ onMounted(() => {
         </a-form-item>
 
         <a-form-item label="商品图片">
-          <div class="image-upload-area">
-            <div class="image-list">
-              <div
-                v-for="(img, index) in imageList"
-                :key="index"
-                class="image-item"
-              >
-                <img :src="img.url" :alt="`商品图片${index + 1}`" />
-                <button class="remove-btn" @click="removeImage(index)">
-                  <icon-close />
-                </button>
-              </div>
-              <div
-                v-if="imageList.length < 6"
-                class="upload-btn"
-                @click="triggerFileInput"
-              >
-                <icon-plus />
-                <span>上传图片</span>
-                <span class="upload-hint">最多6张</span>
-              </div>
-            </div>
-            <input
-              id="file-input"
-              ref="fileInput"
-              type="file"
-              accept="image/jpeg,image/png,image/jpg"
-              multiple
-              style="display: none"
-              @change="(e: any) => handleImageUpload(Array.from(e.target.files))"
-            />
-          </div>
-          <div class="image-tips">
-            支持 JPG、PNG 格式，单张不超过 5MB，建议尺寸 800x800 以上
-          </div>
+          <ImageUpload v-model="imageList" />
         </a-form-item>
 
         <a-form-item>
@@ -301,80 +241,5 @@ onMounted(() => {
 
 .form-card {
   border-radius: 8px;
-}
-
-.image-upload-area {
-  width: 100%;
-}
-
-.image-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-
-.image-item {
-  position: relative;
-  width: 120px;
-  height: 120px;
-  border-radius: 6px;
-  overflow: hidden;
-  border: 1px solid #e5e6eb;
-}
-
-.image-item img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.remove-btn {
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  width: 24px;
-  height: 24px;
-  border: none;
-  border-radius: 50%;
-  background: rgba(0, 0, 0, 0.5);
-  color: white;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  font-size: 14px;
-}
-
-.upload-btn {
-  width: 120px;
-  height: 120px;
-  border: 2px dashed #c9cdd4;
-  border-radius: 6px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: border-color 0.2s;
-  color: #86909c;
-  font-size: 12px;
-  gap: 4px;
-}
-
-.upload-btn:hover {
-  border-color: #165dff;
-  color: #165dff;
-}
-
-.upload-hint {
-  font-size: 10px;
-  color: #c9cdd4;
-}
-
-.image-tips {
-  margin-top: 8px;
-  font-size: 12px;
-  color: #86909c;
 }
 </style>

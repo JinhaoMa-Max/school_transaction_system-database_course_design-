@@ -2,9 +2,11 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { getGoodsList, getCategoryList } from '@/api'
+import { useUserStore } from '@/stores'
 import type { Goods, Category } from '@/types'
 
 const router = useRouter()
+const userStore = useUserStore()
 
 const goodsList = ref<Goods[]>([])
 const loading = ref(false)
@@ -51,9 +53,9 @@ const fetchCategories = async () => {
 const fetchData = async () => {
   loading.value = true
   try {
-    // 解析排序参数
     let sortByParam: string | undefined
-    let ascendingParam: boolean = false
+    let ascendingParam: boolean | undefined
+    
     if (sortBy.value) {
       const lastIndex = sortBy.value.lastIndexOf('_')
       if (lastIndex !== -1) {
@@ -61,18 +63,25 @@ const fetchData = async () => {
         ascendingParam = sortBy.value.substring(lastIndex + 1) === 'asc'
       }
     }
-
-    const res = await getGoodsList({
+    
+    const params: Record<string, any> = {
       keyword: keyword.value,
       categoryId: categoryId.value,
       minPrice: minPrice.value,
       maxPrice: maxPrice.value,
-      page: page.value,
-      size: size.value,
-      status: 'approved',
       sortBy: sortByParam,
-      ascending: ascendingParam
-    })
+      ascending: ascendingParam,
+      page: page.value,
+      size: size.value
+    }
+    
+    if (userStore.isSeller && userStore.user?.userId) {
+      params.sellerId = userStore.user.userId
+    } else {
+      params.status = 'approved'
+    }
+    
+    const res = await getGoodsList(params)
     goodsList.value = res.data.list
     total.value = res.data.total
   } catch {

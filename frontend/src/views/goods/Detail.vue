@@ -13,6 +13,7 @@ import {
   createBargain,
   createOrder
 } from '@/api'
+import { conditionMap, goodsStatusMap } from '@/constants'
 import type { Goods, GoodsImage } from '@/types'
 
 const route = useRoute()
@@ -33,21 +34,7 @@ const bargainLoading = ref(false)
 const buyVisible = ref(false)
 const buyLoading = ref(false)
 
-const conditionMap: Record<string, string> = {
-  new: '全新',
-  like_new: '几乎全新',
-  slight_use: '轻微使用',
-  obvious_trace: '明显痕迹'
-}
-
-const statusMap: Record<string, { text: string; color: string }> = {
-  pending: { text: '待审核', color: 'orange' },
-  approved: { text: '已上架', color: 'green' },
-  rejected: { text: '已驳回', color: 'red' },
-  locked: { text: '已锁定', color: 'gold' },
-  sold: { text: '已售出', color: 'cyan' },
-  offline: { text: '已下架', color: 'gray' }
-}
+const dealPrice = ref(0)
 
 const mainImage = computed(() => {
   if (images.value.length > 0) {
@@ -138,9 +125,13 @@ const handleBargain = async () => {
   }
   bargainLoading.value = true
   try {
-    await createBargain({ goodsId, offerPrice: bargainPrice.value })
+    const res = await createBargain({ goodsId, offerPrice: bargainPrice.value })
     Message.success('议价申请已发送')
     bargainVisible.value = false
+    const bargain = res.data
+    if (bargain?.counterPrice) {
+      dealPrice.value = bargain.counterPrice
+    }
   } catch {
     // 错误已由全局拦截器处理
   } finally {
@@ -159,9 +150,10 @@ const openBuy = () => {
 const handleBuy = async () => {
   buyLoading.value = true
   try {
+    const finalPrice = dealPrice.value || goods.value?.price || 0
     const res = await createOrder({
       goodsId,
-      dealPrice: goods.value?.price || 0
+      dealPrice: finalPrice
     })
     Message.success('订单创建成功')
     buyVisible.value = false
@@ -178,7 +170,15 @@ const handleContact = () => {
     router.push(`/login?redirect=${encodeURIComponent(route.fullPath)}`)
     return
   }
-  Message.info('私信功能开发中')
+  if (goods.value?.sellerId) {
+    router.push({
+      path: '/chat',
+      query: {
+        sellerId: goods.value.sellerId,
+        goodsId: goods.value.goodsId
+      }
+    })
+  }
 }
 
 const goToReport = () => {
@@ -215,8 +215,8 @@ onMounted(fetchData)
         <div class="info-section">
           <div class="goods-header">
             <h1 class="goods-title">{{ goods.title }}</h1>
-            <a-tag :color="statusMap[goods.status]?.color || 'default'">
-              {{ statusMap[goods.status]?.text || goods.status }}
+            <a-tag :color="goodsStatusMap[goods.status]?.color || 'default'">
+              {{ goodsStatusMap[goods.status]?.text || goods.status }}
             </a-tag>
           </div>
 
@@ -265,7 +265,7 @@ onMounted(fetchData)
             </a-button>
             <a-button
               v-if="canBuy"
-              type="primary"
+              type="outline"
               status="warning"
               size="large"
               @click="openBargain"
@@ -340,8 +340,11 @@ onMounted(fetchData)
       ok-text="确认购买"
     >
       <div class="buy-confirm">
-        <p>您确定要以 <strong class="price">¥{{ goods?.price }}</strong> 的价格购买该商品吗？</p>
-        <a-alert type="info">
+        <p>您确定要以 <strong class="price">¥{{ dealPrice || goods?.price }}</strong> 的价格购买该商品吗？</p>
+        <a-alert v-if="dealPrice && dealPrice !== goods?.price" type="success">
+          <p>该价格为议价后的成交价格</p>
+        </a-alert>
+        <a-alert v-else type="info">
           <p>购买后将生成订单，请及时与卖家联系完成面交。</p>
         </a-alert>
       </div>
