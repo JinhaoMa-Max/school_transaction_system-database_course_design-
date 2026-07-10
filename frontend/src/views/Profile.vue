@@ -53,6 +53,11 @@ const goToHome = () => {
   router.push('/')
 }
 
+//跳转到我的收藏
+const goToFavorites = () => {
+  router.push('/favorites')
+}
+
 //跳转到资料编辑页面
 const goToEditProfile = () => {
   router.push('/profile/edit')
@@ -246,6 +251,10 @@ onMounted(() => {
 
         <!--右边按钮-->
         <a-space class = "profile-actions-right">
+
+          <a-button @click="goToFavorites">
+            我的收藏
+          </a-button>
 
           <a-button type = "primary" @click="goToEditProfile">
             编辑资料
