@@ -70,16 +70,26 @@ public class BargainRepository : IBargainRepository
         return (await GetByIdAsync(Convert.ToInt32(outP.Value?.ToString())))!;
     }
 
-    /// <summary>卖家回复 — sp_respond_bargain: 校验卖家身份→更新状态（accepted/rejected/countered）</summary>
+    /// <summary>卖家回复 — sp_respond_bargain: 校验卖家身份→原子更新状态（accepted/rejected/countered）</summary>
     public async Task<BargainOfferDto> RespondAsync(int bargainId, string sellerResult, decimal? counterPrice)
     {
         using var connection = _connectionFactory.CreateConnection();
-        var newStatus = sellerResult switch { "accepted" => "accepted", "rejected" => "rejected", "countered" => "active", _ => throw new ArgumentException($"无效回复类型: {sellerResult}") };
+        if (connection is not OracleConnection oc) throw new InvalidOperationException("Expected OracleConnection");
+        await oc.OpenAsync();
+
+        // 接口未传 seller_id，先从 goods 查出真正卖家，保证存储过程身份校验通过
+        var sellerId = await connection.QueryFirstOrDefaultAsync<int?>(
+            "SELECT g.seller_id FROM bargain_offer b JOIN goods g ON b.goods_id=g.goods_id WHERE b.offer_id=:id", new { id = bargainId });
+
         const string sql = """
-            UPDATE bargain_offer SET seller_response=:sr, counter_price=:cp, offer_status=:ns, updated_at=SYSDATE
-            WHERE offer_id=:id
+            BEGIN sp_respond_bargain(p_offer_id=>:oid, p_seller_id=>:sid, p_response=>:r, p_counter_price=>:cp); END;
             """;
-        await connection.ExecuteAsync(sql, new { id = bargainId, sr = sellerResult, cp = counterPrice ?? (object)DBNull.Value, ns = newStatus });
+        await using var cmd = new OracleCommand(sql, oc) { BindByName = true };
+        cmd.Parameters.Add(new OracleParameter("oid", OracleDbType.Int32) { Value = bargainId });
+        cmd.Parameters.Add(new OracleParameter("sid", OracleDbType.Int32) { Value = sellerId ?? 0 });
+        cmd.Parameters.Add(new OracleParameter("r", OracleDbType.Varchar2, 20) { Value = sellerResult });
+        cmd.Parameters.Add(new OracleParameter("cp", OracleDbType.Decimal) { Value = counterPrice ?? (object)DBNull.Value });
+        await cmd.ExecuteNonQueryAsync();
         return (await GetByIdAsync(bargainId))!;
     }
 

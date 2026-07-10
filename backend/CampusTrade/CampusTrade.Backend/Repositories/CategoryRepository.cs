@@ -14,18 +14,16 @@ public class CategoryRepository : ICategoryRepository
         _connectionFactory = connectionFactory;
     }
 
+    /// <summary>分类列表 — 查 v_category_tree 视图（含层级、父分类名、商品数）</summary>
     public async Task<List<CategoryDto>> GetAllAsync()
     {
         using var connection = _connectionFactory.CreateConnection();
         const string sql = """
-            SELECT
-                category_id AS CategoryId,
-                category_name AS CategoryName,
-                parent_id AS ParentId,
-                sort_order AS SortOrder
-            FROM category
-            ORDER BY sort_order ASC, category_id ASC
-        """;
+            SELECT category_id AS CategoryId, category_name AS CategoryName,
+                   parent_id AS ParentId, sort_order AS SortOrder
+            FROM v_category_tree
+            ORDER BY parent_id NULLS FIRST, sort_order, category_id
+            """;
         var categories = await connection.QueryAsync<CategoryDto>(sql);
         return categories.ToList();
     }

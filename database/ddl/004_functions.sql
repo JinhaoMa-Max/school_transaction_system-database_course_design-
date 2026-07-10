@@ -27,28 +27,6 @@ END;
 -- 测试：SELECT fn_avg_rating(1) FROM dual;
 
 
-/* =========================
-   2. 计算卖家已售商品数
-   入参：seller_id
-   返回：已完成的订单数
-   ========================= */
-CREATE OR REPLACE FUNCTION fn_sold_count(
-    p_seller_id IN NUMBER
-) RETURN NUMBER
-IS
-    v_count NUMBER;
-BEGIN
-    SELECT COUNT(*)
-    INTO v_count
-    FROM trade_order
-    WHERE seller_id = p_seller_id
-      AND order_status = 'completed';
-
-    RETURN v_count;
-END;
-/
-
--- 测试：SELECT fn_sold_count(2) FROM dual;
 
 
 /* =========================
@@ -135,78 +113,8 @@ END;
 -- 测试：SELECT fn_unread_count(1) FROM dual;
 
 
-/* =========================
-   5. 状态码转中文
-   用途：让前端/Service 直接拿到可读文本
-   ========================= */
-CREATE OR REPLACE FUNCTION fn_status_text(
-    p_status IN VARCHAR2,
-    p_type   IN VARCHAR2 DEFAULT 'goods'
-) RETURN VARCHAR2
-IS
-BEGIN
-    IF p_type = 'goods' THEN
-        RETURN CASE p_status
-            WHEN 'pending'   THEN '待审核'
-            WHEN 'approved'  THEN '已上架'
-            WHEN 'rejected'  THEN '审核拒绝'
-            WHEN 'locked'    THEN '已锁定'
-            WHEN 'sold'      THEN '已售出'
-            WHEN 'offline'   THEN '已下架'
-            ELSE p_status
-        END;
-    ELSIF p_type = 'order' THEN
-        RETURN CASE p_status
-            WHEN 'pending_meet' THEN '待面交'
-            WHEN 'in_meet'      THEN '面交中'
-            WHEN 'completed'    THEN '已完成'
-            WHEN 'cancelled'    THEN '已取消'
-            ELSE p_status
-        END;
-    ELSIF p_type = 'auth' THEN
-        RETURN CASE p_status
-            WHEN 'pending'  THEN '待审核'
-            WHEN 'approved' THEN '已认证'
-            WHEN 'rejected' THEN '认证拒绝'
-            ELSE p_status
-        END;
-    ELSE
-        RETURN p_status;
-    END IF;
-END;
-/
-
--- 测试：
--- SELECT fn_status_text('pending', 'goods') FROM dual;  → 待审核
--- SELECT fn_status_text('in_meet', 'order') FROM dual;  → 面交中
 
 
-/* =========================
-   6. 检查用户是否已认证
-   返回：1=已认证，0=未认证/待审核
-   ========================= */
-CREATE OR REPLACE FUNCTION fn_is_verified(
-    p_user_id IN NUMBER
-) RETURN NUMBER
-IS
-    v_status VARCHAR2(20);
-BEGIN
-    SELECT auth_status INTO v_status
-    FROM student_auth
-    WHERE user_id = p_user_id;
-
-    IF v_status = 'approved' THEN
-        RETURN 1;
-    ELSE
-        RETURN 0;
-    END IF;
-EXCEPTION
-    WHEN NO_DATA_FOUND THEN
-        RETURN 0;
-END;
-/
-
--- 测试：SELECT fn_is_verified(1) FROM dual;
 
 
 /* =========================

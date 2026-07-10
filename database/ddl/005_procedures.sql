@@ -6,38 +6,7 @@
 -- ============================================================
 
 /* =========================
-   1. 用户注册
-   入参：用户名、密码、昵称、手机、邮箱
-   出参：新用户ID
-   校验：用户名不能重复
-   ========================= */
-CREATE OR REPLACE PROCEDURE sp_register_user(
-    p_username IN VARCHAR2,
-    p_password IN VARCHAR2,
-    p_nickname IN VARCHAR2 DEFAULT '新用户',
-    p_phone    IN VARCHAR2 DEFAULT NULL,
-    p_email    IN VARCHAR2 DEFAULT NULL,
-    p_user_id  OUT NUMBER
-)
-IS
-BEGIN
-    -- 检查用户名是否已存在
-    SELECT COUNT(*) INTO p_user_id FROM app_user WHERE username = p_username;
-    IF p_user_id > 0 THEN
-        RAISE_APPLICATION_ERROR(-20001, '用户名已存在');
-    END IF;
-
-    INSERT INTO app_user (username, password, nickname, phone, email)
-    VALUES (p_username, p_password, p_nickname, p_phone, p_email)
-    RETURNING user_id INTO p_user_id;
-
-    COMMIT;
-END;
-/
-
-
-/* =========================
-   2. 下订单（核心交易流程 F15-F16）
+   1. 下订单（核心交易流程 F15-F16）
    入参：商品ID、买家ID、成交价
 
    原子事务（全部在一个 COMMIT 中，任一步失败自动回滚）：
