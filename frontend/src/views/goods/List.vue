@@ -2,11 +2,9 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { getGoodsList, getCategoryList } from '@/api'
-import { useUserStore } from '@/stores'
 import type { Goods, Category } from '@/types'
 
 const router = useRouter()
-const userStore = useUserStore()
 
 const goodsList = ref<Goods[]>([])
 const loading = ref(false)
@@ -72,13 +70,8 @@ const fetchData = async () => {
       sortBy: sortByParam,
       ascending: ascendingParam,
       page: page.value,
-      size: size.value
-    }
-    
-    if (userStore.isSeller && userStore.user?.userId) {
-      params.sellerId = userStore.user.userId
-    } else {
-      params.status = 'approved'
+      size: size.value,
+      status: 'approved'
     }
     
     const res = await getGoodsList(params)
