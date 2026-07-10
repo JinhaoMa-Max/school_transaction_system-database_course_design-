@@ -55,9 +55,25 @@ public class GoodsRepository : IGoodsRepository
 
         if (categoryId.HasValue)
         {
-            where.Add("category_id = :CategoryId");
-            parameters.Add(":CategoryId", categoryId.Value);
+            // 获取该分类及其所有子分类的 ID 列表
+            var childIds = await GetCategoryIdsWithChildrenAsync(categoryId.Value);
+            if (childIds.Any())
+            {
+                // 构建 IN 条件，使用字符串拼接占位符（数量可控，分类数量不大）
+                var idsPlaceholder = string.Join(",", childIds.Select((_, i) => $":CatId{i}"));
+                where.Add($"category_id IN ({idsPlaceholder})");
+                for (int i = 0; i < childIds.Count; i++)
+                {
+                    parameters.Add($":CatId{i}", childIds[i]);
+                }
+            }
+            else
+            {
+                // 理论上不会发生，但以防万一
+                where.Add("1 = 0"); // 无匹配
+            }
         }
+
         if (!string.IsNullOrWhiteSpace(keyword))
         {
             where.Add("title LIKE :Keyword");
@@ -391,4 +407,24 @@ public class GoodsRepository : IGoodsRepository
         var affected = await connection.ExecuteAsync(sql, new { GoodsId = goodsId });
         return affected > 0;
     }
+
+    /// <summary>
+    /// 获取指定分类及其所有子分类的 ID 列表（递归查询）
+    /// </summary>
+    /// <param name="categoryId">分类ID</param>
+    /// <returns>包含自身及所有后代分类的ID列表</returns>
+    private async Task<List<int>> GetCategoryIdsWithChildrenAsync(int categoryId)
+    {
+        using var connection = _connectionFactory.CreateConnection();
+        const string sql = @"
+            SELECT category_id
+            FROM category
+            START WITH category_id = :CategoryId
+            CONNECT BY PRIOR category_id = parent_id
+        ";
+        var ids = await connection.QueryAsync<int>(sql, new { CategoryId = categoryId });
+        return ids.ToList();
+    }
 }
+
+
