@@ -261,7 +261,8 @@ onMounted(() => {
               @click="goToGoodsDetail(item.goodsId)"
               >
               <div class = "goods-image">
-                暂无图片
+                <img v-if="item.imageUrl" :src="item.imageUrl" :alt="item.title" />
+                <span v-else>暂无图片</span>
               </div>
 
               <div class = "goods-title">
@@ -501,6 +502,12 @@ onMounted(() => {
   border-radius: 12px;
   background: var(--color-fill-2);
   color: var(--color-text-3);
+}
+
+.goods-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .goods-title {

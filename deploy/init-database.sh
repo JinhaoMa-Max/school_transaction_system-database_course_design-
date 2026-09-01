@@ -28,4 +28,12 @@ done
 echo "Loading seed data"
 "${compose[@]}" exec -T oracle sqlplus -L -s "$connection" "@/opt/campus-trade/seed/seed_data.sql"
 
+for script in \
+  008_fix_report_trigger.sql \
+  009_drop_legacy_review_unique.sql
+do
+  echo "Applying compatibility fix $script"
+  "${compose[@]}" exec -T oracle sqlplus -L -s "$connection" "@/opt/campus-trade/ddl/$script"
+done
+
 echo "Database initialization completed."

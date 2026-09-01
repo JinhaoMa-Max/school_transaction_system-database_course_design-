@@ -4,6 +4,9 @@
 --       本脚本仅做补充授权（首次启动时自动执行）
 -- =============================================================
 
+-- 初始化脚本默认以 SYS 连接到 CDB 根容器 FREE；CAMPUS 位于 FREEPDB1。
+ALTER SESSION SET CONTAINER = FREEPDB1;
+
 -- 补充授予表空间配额
 ALTER USER CAMPUS QUOTA UNLIMITED ON USERS;
 
