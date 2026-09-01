@@ -1,21 +1,30 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { Message } from '@arco-design/web-vue'
 import { getUserList, banUser, unbanUser } from '@/api'
 import type { User } from '@/types'
 
 const users = ref<User[]>([])
 
-onMounted(async () => {
+const fetchUsers = async () => {
   const res = await getUserList()
   users.value = res.data.list
-})
+}
+
+onMounted(fetchUsers)
 
 const handleBan = async (userId: number) => {
   await banUser(userId)
+  const user = users.value.find(item => item.userId === userId)
+  if (user) user.status = 'banned'
+  Message.success('用户已封禁')
 }
 
 const handleUnban = async (userId: number) => {
   await unbanUser(userId)
+  const user = users.value.find(item => item.userId === userId)
+  if (user) user.status = 'normal'
+  Message.success('用户已解封')
 }
 
 const getRoleText = (role: string) => {
@@ -61,8 +70,11 @@ const getStatusText = (status: string) => {
           <td>{{ item.creditScore }}</td>
           <td>{{ item.registerTime }}</td>
           <td>
-            <button v-if="item.status === 'normal'" @click="handleBan(item.userId)">封禁</button>
-            <button v-else @click="handleUnban(item.userId)">解封</button>
+            <template v-if="item.role !== 'admin'">
+              <button v-if="item.status === 'normal'" @click="handleBan(item.userId)">封禁</button>
+              <button v-else @click="handleUnban(item.userId)">解封</button>
+            </template>
+            <span v-else>-</span>
           </td>
         </tr>
       </tbody>

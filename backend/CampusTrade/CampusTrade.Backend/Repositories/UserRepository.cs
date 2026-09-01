@@ -18,6 +18,7 @@ public interface IUserRepository
     Task<User> CreateUserWithStudentBindingAsync(RegisterRequestDto request, string hashedPassword);
     Task<StudentAuthDto?> GetStudentAuthByUserIdAsync(int userId);
     Task<StudentAuthDto?> GetStudentAuthByAuthIdAsync(int authId);
+    Task<PageResult<StudentAuthAdminDto>> GetPagedStudentAuthAsync(int page, int size, string? status);
     Task<StudentAuthDto> UpsertStudentAuthAsync(StudentAuthRequestDto request);
     Task<StudentAuthDto?> UpdateStudentAuthAsync(int authId, StudentAuthRequestDto request);
 
@@ -210,6 +211,40 @@ public class UserRepository : IUserRepository
             """;
 
         return await connection.QuerySingleOrDefaultAsync<StudentAuthDto>(sql, new { AuthId = authId });
+    }
+
+    public async Task<PageResult<StudentAuthAdminDto>> GetPagedStudentAuthAsync(int page, int size, string? status)
+    {
+        using var connection = _connectionFactory.CreateConnection();
+        var normalizedPage = Math.Max(1, page);
+        var normalizedSize = Math.Clamp(size, 1, 100);
+        var offset = (normalizedPage - 1) * normalizedSize;
+        var where = string.IsNullOrWhiteSpace(status) ? string.Empty : "WHERE sa.auth_status = :Status";
+        var parameters = new { Status = string.IsNullOrWhiteSpace(status) ? null : status.Trim() };
+
+        var total = await connection.ExecuteScalarAsync<int>(
+            $"SELECT COUNT(1) FROM student_auth sa {where}", parameters);
+        var sql = $"""
+            SELECT sa.auth_id AS AuthId, sa.user_id AS UserId,
+                   sa.student_id AS StudentId, sa.real_name AS RealName,
+                   sa.college AS College, sa.auth_status AS AuthStatus,
+                   sa.auth_time AS AuthTime, u.username AS Username,
+                   u.nickname AS Nickname
+            FROM student_auth sa
+            JOIN app_user u ON u.user_id = sa.user_id
+            {where}
+            ORDER BY CASE sa.auth_status WHEN 'pending' THEN 0 ELSE 1 END,
+                     sa.auth_id DESC
+            OFFSET {offset} ROWS FETCH NEXT {normalizedSize} ROWS ONLY
+            """;
+        var items = (await connection.QueryAsync<StudentAuthAdminDto>(sql, parameters)).ToList();
+        return new PageResult<StudentAuthAdminDto>
+        {
+            List = items,
+            Total = total,
+            Page = normalizedPage,
+            Size = normalizedSize
+        };
     }
 
     public async Task<StudentAuthDto> UpsertStudentAuthAsync(StudentAuthRequestDto request)

@@ -7,11 +7,13 @@ public class BargainService : IBargainService
 {
     private readonly IBargainRepository _bargainRepository;
     private readonly IGoodsRepository _goodsRepository;
+    private readonly IOrderRepository _orderRepository;
 
-    public BargainService(IBargainRepository bargainRepository, IGoodsRepository goodsRepository)
+    public BargainService(IBargainRepository bargainRepository, IGoodsRepository goodsRepository, IOrderRepository orderRepository)
     {
         _bargainRepository = bargainRepository;
         _goodsRepository = goodsRepository;
+        _orderRepository = orderRepository;
     }
 
     public async Task<BargainListResult> GetPagedAsync(
@@ -24,7 +26,7 @@ public class BargainService : IBargainService
     {
         // 参数兜底校验（避免无意义分页与潜在数据库压力）
         if (page < 1) throw new ArgumentException("page 必须从 1 开始");
-        if (size < 1) throw new ArgumentException("size 必须大于 0");
+        if (size < 1 || size > 100) throw new ArgumentException("size 必须在 1-100 之间");
 
         var (items, total) = await _bargainRepository.GetPagedAsync(page, size, goodsId, buyerId, sellerId, status);
         return new BargainListResult
@@ -56,6 +58,8 @@ public class BargainService : IBargainService
         var goods = await _goodsRepository.GetByIdAsync(request.GoodsId);
         if (goods == null) throw new ArgumentException("商品不存在");
         if (goods.SellerId == currentBuyerId.Value) throw new InvalidOperationException("不能对自己发布的商品发起议价");
+        if (goods.Status != "approved") throw new InvalidOperationException("当前商品不可议价");
+        if (request.OfferPrice > goods.Price) throw new ArgumentException("议价金额不能高于商品原价");
 
         return await _bargainRepository.CreateAsync(request.GoodsId, currentBuyerId.Value, request.OfferPrice);
     }
@@ -95,7 +99,22 @@ public class BargainService : IBargainService
             throw new UnauthorizedAccessException("只有卖家本人可以处理议价");
         }
 
-        return await _bargainRepository.RespondAsync(bargainId, sellerResult, request.CounterPrice);
+        if (bargain.Status != "active")
+            throw new InvalidOperationException("该议价已处理，不能重复操作");
+        if (goods.Status != "approved")
+            throw new InvalidOperationException("当前商品不可交易");
+        if (request.CounterPrice.HasValue && request.CounterPrice.Value > goods.Price)
+            throw new ArgumentException("还价金额不能高于商品原价");
+        if (sellerResult == "accepted" && !await _orderRepository.CanPurchaseAsync(bargain.BuyerId, bargain.GoodsId))
+            throw new InvalidOperationException("商品已无法购买");
+
+        var updated = await _bargainRepository.RespondAsync(bargainId, sellerResult, request.CounterPrice);
+        if (sellerResult == "accepted")
+        {
+            await _orderRepository.CreateAsync(bargain.GoodsId, bargain.BuyerId, bargain.OfferPrice);
+        }
+
+        return updated;
     }
 
     public async Task<BargainOfferDto> BuyerHandleAsync(int bargainId, BuyerHandleBargainRequest request, int? currentUserId)
@@ -134,7 +153,23 @@ public class BargainService : IBargainService
             throw new InvalidOperationException("当前议价未处于卖家还价状态，无法进行买家响应");
         }
 
-        return await _bargainRepository.BuyerHandleAsync(bargainId, buyerResult, request.OfferPrice);
+        var goods = await _goodsRepository.GetByIdAsync(bargain.GoodsId)
+            ?? throw new ArgumentException("关联商品不存在");
+        if (bargain.Status != "active" || goods.Status != "approved")
+            throw new InvalidOperationException("该议价已无法继续处理");
+        if (request.OfferPrice.HasValue && request.OfferPrice.Value > goods.Price)
+            throw new ArgumentException("出价金额不能高于商品原价");
+        if (buyerResult == "accepted" && !await _orderRepository.CanPurchaseAsync(bargain.BuyerId, bargain.GoodsId))
+            throw new InvalidOperationException("商品已无法购买");
+
+        var updated = await _bargainRepository.BuyerHandleAsync(bargainId, buyerResult, request.OfferPrice);
+        if (buyerResult == "accepted"
+            && bargain.CounterPrice.HasValue)
+        {
+            await _orderRepository.CreateAsync(bargain.GoodsId, bargain.BuyerId, bargain.CounterPrice.Value);
+        }
+
+        return updated;
     }
 
     public async Task<bool> CloseAsync(int bargainId, int? currentUserId)

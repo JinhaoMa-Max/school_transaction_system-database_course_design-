@@ -22,6 +22,11 @@ export interface StudentAuth {
   authTime: string
 }
 
+export interface StudentAuthAdmin extends StudentAuth {
+  username: string
+  nickname: string
+}
+
 export interface Category {
   categoryId: number
   categoryName: string
@@ -44,6 +49,7 @@ export interface Goods {
   publishTime: string
   imageUrl?: string
   sellerNickname?: string
+  sellerCreditScore?: number
 }
 
 export interface GoodsImage {

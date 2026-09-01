@@ -60,11 +60,14 @@ public class ReportRepository : IReportRepository
             RETURNING report_id INTO :NewId
             """;
         var p = new DynamicParameters();
-        p.Add(":Rid", reporterId); p.Add(":RT", reportType);
-        p.Add(":TGid", targetGoodsId ?? (object)DBNull.Value);
-        p.Add(":TUid", targetUserId ?? (object)DBNull.Value);
-        p.Add(":TOid", targetOrderId ?? (object)DBNull.Value);
-        p.Add(":Reason", reason);
+        p.Add(":Rid", reporterId);
+        p.Add(":RT", reportType);
+        // Explicit DbType is required for nullable values. Passing DBNull as
+        // an object makes Dapper try to map System.DBNull and throws before SQL runs.
+        p.Add(":TGid", targetGoodsId, System.Data.DbType.Int32);
+        p.Add(":TUid", targetUserId, System.Data.DbType.Int32);
+        p.Add(":TOid", targetOrderId, System.Data.DbType.Int32);
+        p.Add(":Reason", reason, System.Data.DbType.String);
         p.Add(":NewId", dbType: System.Data.DbType.Int32, direction: System.Data.ParameterDirection.Output);
         await connection.ExecuteAsync(sql, p);
         return p.Get<int>(":NewId");

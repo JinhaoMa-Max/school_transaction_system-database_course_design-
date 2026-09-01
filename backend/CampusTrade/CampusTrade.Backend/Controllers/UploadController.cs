@@ -9,10 +9,12 @@ namespace CampusTrade.Backend.Controllers;
 public class UploadController : ControllerBase
 {
     private readonly IUploadService _uploadService;
+    private readonly IAuthService _authService;
 
-    public UploadController(IUploadService uploadService)
+    public UploadController(IUploadService uploadService, IAuthService authService)
     {
         _uploadService = uploadService;
+        _authService = authService;
     }
 
     [HttpPost("image")]
@@ -20,6 +22,14 @@ public class UploadController : ControllerBase
     {
         try
         {
+            var token = Request.Headers.Authorization.ToString();
+            if (!_authService.TryGetUserIdFromToken(token.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)
+                    ? token[7..].Trim()
+                    : token.Trim()).HasValue)
+            {
+                return Unauthorized(ApiResponse<object>.Fail(401, "login required"));
+            }
+
             var fileName = await _uploadService.UploadImageAsync(file);
             var url = _uploadService.GetImageUrl(fileName);
             return Ok(ApiResponse<object>.Success(new { fileName, url }, "图片上传成功"));

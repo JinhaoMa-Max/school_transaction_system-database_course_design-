@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getGoodsList, getCategoryList } from '@/api'
 import type { Goods, Category } from '@/types'
+import { flattenCategories } from '@/utils/categories'
 
 const router = useRouter()
 const route = useRoute()
@@ -107,7 +108,7 @@ const sortOptions = [
 const fetchCategories = async () => {
   try {
     const res = await getCategoryList()
-    categories.value = res.data
+    categories.value = flattenCategories(res.data)
   } catch {
     // 错误已由全局拦截器处理
   }

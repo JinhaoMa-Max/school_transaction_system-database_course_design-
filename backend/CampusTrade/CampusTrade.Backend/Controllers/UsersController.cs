@@ -11,11 +11,13 @@ public class UsersController : ControllerBase
 {
     private readonly IUserService _userService;
     private readonly IAuthService _authService;
+    private readonly IAdminService _adminService;
 
-    public UsersController(IUserService userService, IAuthService authService)
+    public UsersController(IUserService userService, IAuthService authService, IAdminService adminService)
     {
         _userService = userService;
         _authService = authService;
+        _adminService = adminService;
     }
 
     // 1. GET /api/users - 获取用户列表（支持分页、角色筛选）
@@ -28,6 +30,7 @@ public class UsersController : ControllerBase
         try
         {
             // 仿照 Bargains 风格，返回封装好的分页结果
+            await _adminService.RequireAdminAsync(ResolveCurrentUserId());
             var result = await _userService.GetPagedUsersAsync(page, size, role);
             return Ok(ApiResponse<PageResult<UserDto>>.Success(result));
         }
@@ -46,6 +49,13 @@ public class UsersController : ControllerBase
             var user = await _userService.GetByIdAsync(userId);
             if (user == null)
                 return NotFound(ApiResponse<object>.Fail(404, "用户不存在"));
+
+            var currentUserId = ResolveCurrentUserId();
+            if (currentUserId != userId && !await _adminService.IsAdminAsync(currentUserId))
+            {
+                user.Phone = string.Empty;
+                user.Email = string.Empty;
+            }
 
             return Ok(ApiResponse<UserDto>.Success(user));
         }
@@ -169,10 +179,17 @@ public class UsersController : ControllerBase
     {
         return ex switch
         {
-            UnauthorizedAccessException uae => Unauthorized(ApiResponse<object>.Fail(401, uae.Message)),
+            UnauthorizedAccessException uae when IsAuthenticationFailure(uae.Message)
+                => Unauthorized(ApiResponse<object>.Fail(401, uae.Message)),
+            UnauthorizedAccessException uae => StatusCode(403, ApiResponse<object>.Fail(403, uae.Message)),
             ArgumentException ae => BadRequest(ApiResponse<object>.Fail(400, ae.Message)),
             InvalidOperationException ioe => BadRequest(ApiResponse<object>.Fail(400, ioe.Message)),
             _ => StatusCode(500, ApiResponse<object>.Fail(500, "服务器内部错误"))
         };
     }
+
+    private static bool IsAuthenticationFailure(string message) =>
+        message.Contains("login", StringComparison.OrdinalIgnoreCase)
+        || message.Contains("未登录", StringComparison.OrdinalIgnoreCase)
+        || message.Contains("banned", StringComparison.OrdinalIgnoreCase);
 }

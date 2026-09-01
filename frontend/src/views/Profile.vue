@@ -93,9 +93,13 @@ const goToOrders = () => {
   router.push('/orders')
 }
 
+const goToAppointments = () => {
+  router.push('/appointments')
+}
+
 //退出登录
-const handleLogout = () => {
-  userStore.logout()
+const handleLogout = async () => {
+  await userStore.logout().catch(() => undefined)
   router.push('/login')
 }
 
@@ -282,6 +286,10 @@ onMounted(() => {
 
           <a-button @click="goToOrders" class="orders-button">
             我的订单
+          </a-button>
+
+          <a-button @click="goToAppointments">
+            我的预约
           </a-button>
 
           <a-button @click="goToFavorites" class="favorites-button">

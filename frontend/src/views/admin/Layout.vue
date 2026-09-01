@@ -9,6 +9,7 @@ const userStore = useUserStore()
 const menuItems = [
   { path: '/admin/dashboard', name: '仪表盘' },
   { path: '/admin/users', name: '用户管理' },
+  { path: '/admin/student-auth', name: '学生认证' },
   { path: '/admin/goods', name: '商品管理' },
   { path: '/admin/orders', name: '订单管理' },
   { path: '/admin/reports', name: '举报管理' },
@@ -20,8 +21,8 @@ const handleNav = (path: string) => {
   router.push(path)
 }
 
-const handleLogout = () => {
-  userStore.logout()
+const handleLogout = async () => {
+  await userStore.logout()
   router.push('/login')
 }
 </script>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted,nextTick,computed } from 'vue'
-import { getSessionList, getMessages, sendMessage,getUserById } from '@/api'
+import { useRoute } from 'vue-router'
+import { getSessionList, getMessages, sendMessage, getUserById, createSession } from '@/api'
 import type { ChatSession, ChatMessage } from '@/types'
 import router from '@/router'
 import{Message} from '@arco-design/web-vue'
@@ -15,6 +16,7 @@ const messageLoading = ref(false)
 const sending = ref(false)
 const messageListRef = ref<HTMLElement| null>(null)
 const userStore = useUserStore()
+const route = useRoute()
 const userMap = ref<Record<number, any>>({})
 
 //跳转回上一页（无历史记录时回首页）
@@ -83,7 +85,22 @@ const loadsessions = async () =>{
 }
 
 onMounted(async () => {
-  loadsessions()
+  await loadsessions()
+
+  const goodsId = Number(route.query.goodsId)
+  const sellerId = Number(route.query.sellerId)
+  if (Number.isInteger(goodsId) && goodsId > 0 && Number.isInteger(sellerId) && sellerId > 0) {
+    try {
+      const existing = sessions.value.find(
+        item => item.goodsId === goodsId && item.sellerId === sellerId
+      )
+      const session = existing ?? (await createSession({ goodsId, sellerId })).data
+      if (!existing) sessions.value.unshift(session)
+      await selectSession(session)
+    } catch {
+      Message.error('创建聊天会话失败')
+    }
+  }
 })
 
 //加载消息

@@ -1,5 +1,5 @@
 // 导入请求工具
-import request, {type ApiResponse} from '@/utils/request'
+import request from '@/utils/request'
 // 导入聊天会话、聊天消息和分页结果的类型定义
 import type { ChatSession, ChatMessage, PageResult } from '@/types'
 
@@ -20,7 +20,7 @@ export const getSessionList = () => {
   }
 
   // 发送GET请求获取聊天会话列表
- return request.get<ApiResponse<ChatSession[]>, ApiResponse<ChatSession[]>>('/chat/sessions')
+ return request.get<ChatSession[]>('/chat/sessions')
 }
 
 /**
@@ -30,7 +30,7 @@ export const getSessionList = () => {
  */
 export const getSessionById = (sessionId: number) => {
   // 发送GET请求获取单个会话
-  return request.get<ApiResponse<ChatSession[]>, ApiResponse<ChatSession[]>>(`/chat/sessions/${sessionId}`)
+  return request.get<ChatSession>(`/chat/sessions/${sessionId}`)
 }
 
 /**
@@ -42,7 +42,7 @@ export const getSessionById = (sessionId: number) => {
  */
 export const createSession = (params: { goodsId: number; sellerId: number }) => {
   // 发送POST请求创建会话
-  return request.post<ApiResponse<ChatSession[]>, ApiResponse<ChatSession[]>>('/chat/sessions', params)
+  return request.post<ChatSession>('/chat/sessions', params)
 }
 
 /**
@@ -53,7 +53,7 @@ export const createSession = (params: { goodsId: number; sellerId: number }) => 
  * @param params.size 每页数量（可选）
  * @returns 消息分页结果
  */
-export const getMessages = (sessionId: number, params?: { page?: number; size?: number }): Promise<ApiResponse<PageResult<ChatMessage>>> => {
+export const getMessages = (sessionId: number, params?: { page?: number; size?: number }) => {
 
 
   //测试数据
@@ -81,7 +81,7 @@ export const getMessages = (sessionId: number, params?: { page?: number; size?: 
   }))
   }
   // 发送GET请求获取会话消息
-  return request.get<ApiResponse<PageResult<ChatMessage>>, ApiResponse<PageResult<ChatMessage>>>(`/chat/sessions/${sessionId}/messages`, { params })
+  return request.get<PageResult<ChatMessage>>(`/chat/sessions/${sessionId}/messages`, { params })
 }
 
 /**
@@ -91,7 +91,7 @@ export const getMessages = (sessionId: number, params?: { page?: number; size?: 
  * @param params.content 消息内容
  * @returns 发送的消息信息
  */
-export const sendMessage = (params: { sessionId: number; content: string;senderId?: number }) :Promise<ApiResponse<ChatMessage>>=> {
+export const sendMessage = (params: { sessionId: number; content: string;senderId?: number }) => {
  
   //测试数据
   if (USE_MOCK_CHAT) {
@@ -108,7 +108,7 @@ export const sendMessage = (params: { sessionId: number; content: string;senderI
   }
 
  // 发送POST请求发送消息
-  return request.post<ApiResponse<ChatMessage>, ApiResponse<ChatMessage>>(
+  return request.post<number>(
     '/chat/messages', {
       sessionId: params.sessionId,
       content: params.content
@@ -133,7 +133,7 @@ export const markAsRead = (sessionId: number) => {
     return Promise.resolve(getMockResponse<boolean>(true))
   }
   // 发送PUT请求标记已读
-   return request.put<ApiResponse<boolean>, ApiResponse<boolean>>(
+   return request.put<boolean>(
     `/chat/sessions/${sessionId}/read`
   )
 }
@@ -152,7 +152,7 @@ export const getUnreadCount = () => {
    return Promise.resolve(getMockResponse<number>(count))
   }
   // 发送GET请求获取未读消息数
-  return request.get<ApiResponse<number>, ApiResponse<number>>(
+  return request.get<number>(
     '/chat/unread-count'
   )
 }

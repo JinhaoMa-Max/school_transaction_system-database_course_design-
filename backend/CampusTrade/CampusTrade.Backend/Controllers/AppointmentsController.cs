@@ -19,6 +19,20 @@ public class AppointmentsController : ControllerBase
         _authService = authService;
     }
 
+    [HttpGet]
+    public async Task<IActionResult> GetList([FromQuery] int page = 1, [FromQuery] int size = 20)
+    {
+        try
+        {
+            var result = await _appointmentService.GetPagedAsync(page, size, ResolveCurrentUserId());
+            return Ok(ApiResponse<PageResult<AppointmentDto>>.Success(result));
+        }
+        catch (Exception ex)
+        {
+            return ToErrorResult(ex);
+        }
+    }
+
     // GET /api/appointments/order/{orderId}
     [HttpGet("order/{orderId:int}")]
     public async Task<IActionResult> GetByOrderId(int orderId)
@@ -149,10 +163,16 @@ public class AppointmentsController : ControllerBase
     {
         return ex switch
         {
-            UnauthorizedAccessException uae => Unauthorized(ApiResponse<object>.Fail(401, uae.Message)),
+            UnauthorizedAccessException uae when IsAuthenticationFailure(uae.Message) => Unauthorized(ApiResponse<object>.Fail(401, uae.Message)),
+            UnauthorizedAccessException uae => StatusCode(403, ApiResponse<object>.Fail(403, uae.Message)),
             ArgumentException ae => BadRequest(ApiResponse<object>.Fail(400, ae.Message)),
             InvalidOperationException ioe => BadRequest(ApiResponse<object>.Fail(400, ioe.Message)),
             _ => StatusCode(500, ApiResponse<object>.Fail(500, "服务器内部错误"))
         };
     }
+
+    private static bool IsAuthenticationFailure(string message) =>
+        message.Contains("login", StringComparison.OrdinalIgnoreCase)
+        || message.Contains("未登录", StringComparison.OrdinalIgnoreCase)
+        || message.Contains("banned", StringComparison.OrdinalIgnoreCase);
 }

@@ -7,6 +7,7 @@ namespace CampusTrade.Backend.Services;
 /// </summary>
 public interface IAppointmentService
 {
+    Task<PageResult<AppointmentDto>> GetPagedAsync(int page, int size, int? currentUserId);
     /// <summary>
     /// 根据订单获取预约信息
     /// </summary>

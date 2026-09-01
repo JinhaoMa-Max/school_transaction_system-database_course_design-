@@ -23,6 +23,7 @@ public interface IGoodsRepository
     Task<bool> IncrementViewCountAsync(int goodsId);
 
     Task<IEnumerable<GoodsImageDto>> GetImagesAsync(int goodsId);
+    Task<GoodsImageDto?> GetImageByIdAsync(int imageId);
     Task<int> AddImageAsync(int goodsId, string imageUrl, int sortOrder);
     Task<bool> DeleteImageAsync(int imageId);
 }

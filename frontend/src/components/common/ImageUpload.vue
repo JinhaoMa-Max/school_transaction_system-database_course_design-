@@ -6,6 +6,7 @@ import { uploadImageFile } from '@/api'
 interface ImageItem {
   url: string
   uploadedUrl?: string
+  file?: File
 }
 
 const props = defineProps<{
@@ -20,36 +21,43 @@ const emit = defineEmits<{
 
 const maxCount = computed(() => props.maxCount || 6)
 
+const readAsDataUrl = (file: File) => new Promise<string>((resolve, reject) => {
+  const reader = new FileReader()
+  reader.onload = event => resolve(event.target?.result as string)
+  reader.onerror = () => reject(reader.error)
+  reader.readAsDataURL(file)
+})
+
 const handleImageUpload = async (fileList: File[]) => {
   if (props.modelValue.length + fileList.length > maxCount.value) {
     Message.warning(`最多上传${maxCount.value}张图片`)
     return
   }
+  const currentList = [...props.modelValue]
   for (const file of fileList) {
     if (file.size > 5 * 1024 * 1024) {
       Message.warning('单张图片不能超过5MB')
       continue
     }
-    const reader = new FileReader()
-    reader.onload = async (e) => {
-      const base64Url = e.target?.result as string
-      const newList = [...props.modelValue, { url: base64Url }]
-      emit('update:modelValue', newList)
-      
-      try {
-        const uploadRes = await uploadImageFile(file)
-        const currentList = [...props.modelValue]
-        const imgIndex = currentList.findIndex(img => img.url === base64Url)
-        if (imgIndex >= 0) {
-          currentList[imgIndex].uploadedUrl = uploadRes.imageUrl
-          emit('update:modelValue', [...currentList])
-        }
-      } catch {
-        Message.warning('图片上传失败，请稍后重试')
-      }
+    try {
+      const base64Url = await readAsDataUrl(file)
+      const item: ImageItem = { url: base64Url, file }
+      currentList.push(item)
+      emit('update:modelValue', [...currentList])
+
+      const uploadRes = await uploadImageFile(file)
+      item.uploadedUrl = uploadRes.imageUrl
+      emit('update:modelValue', [...currentList])
+    } catch {
+      Message.warning('图片上传失败，提交时将自动重试')
     }
-    reader.readAsDataURL(file)
   }
+}
+
+const handleInputChange = async (event: Event) => {
+  const input = event.target as HTMLInputElement
+  await handleImageUpload(Array.from(input.files || []))
+  input.value = ''
 }
 
 const removeImage = (index: number) => {
@@ -97,7 +105,7 @@ const triggerFileInput = () => {
       accept="image/jpeg,image/png,image/jpg"
       multiple
       style="display: none"
-      @change="(e: any) => handleImageUpload(Array.from(e.target.files))"
+      @change="handleInputChange"
     />
     <div class="image-tips">
       支持 JPG、PNG 格式，单张不超过 5MB，建议尺寸 800x800 以上

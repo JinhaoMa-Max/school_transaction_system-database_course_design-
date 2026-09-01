@@ -11,11 +11,13 @@ public class AuthController : ControllerBase
 {
     private readonly IAuthService _authService;
     private readonly IUploadService _uploadService;
+    private readonly IAdminService _adminService;
 
-    public AuthController(IAuthService authService, IUploadService uploadService)
+    public AuthController(IAuthService authService, IUploadService uploadService, IAdminService adminService)
     {
         _authService = authService;
         _uploadService = uploadService;
+        _adminService = adminService;
     }
 
     [HttpPost("login")]
@@ -29,6 +31,10 @@ public class AuthController : ControllerBase
         catch (AuthException ex)
         {
             return ToErrorResult(ex);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(403, ApiResponse<object>.Fail(403, ex.Message));
         }
         catch
         {
@@ -96,11 +102,43 @@ public class AuthController : ControllerBase
         }
     }
 
+    [HttpGet("student-auth")]
+    public async Task<IActionResult> GetStudentAuthList(
+        [FromQuery] int page = 1,
+        [FromQuery] int size = 20,
+        [FromQuery] string? status = null)
+    {
+        try
+        {
+            await _adminService.RequireAdminAsync(ResolveCurrentUserId());
+            var result = await _authService.GetPagedStudentAuthAsync(page, size, status);
+            return Ok(ApiResponse<PageResult<StudentAuthAdminDto>>.Success(result));
+        }
+        catch (AuthException ex)
+        {
+            return ToErrorResult(ex);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(403, ApiResponse<object>.Fail(403, ex.Message));
+        }
+        catch
+        {
+            return StatusCode(500, ApiResponse<object>.Fail(500, "服务器内部错误"));
+        }
+    }
+
     [HttpGet("student-auth/{userId:int}")]
     public async Task<IActionResult> GetStudentAuth(int userId)
     {
         try
         {
+            var currentUserId = ResolveCurrentUserId();
+            if (currentUserId != userId && !await _adminService.IsAdminAsync(currentUserId))
+            {
+                return StatusCode(403, ApiResponse<object>.Fail(403, "无权查看该认证记录"));
+            }
+
             var auth = await _authService.GetStudentAuthByUserIdAsync(userId);
             if (auth == null)
             {
@@ -124,12 +162,17 @@ public class AuthController : ControllerBase
     {
         try
         {
+            await _adminService.RequireAdminAsync(ResolveCurrentUserId());
             var auth = await _authService.UpdateStudentAuthAsync(authId, request);
             return Ok(StudentAuthHttpResponseDto.Success(auth, "认证信息已更新"));
         }
         catch (AuthException ex)
         {
             return ToErrorResult(ex);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(403, ApiResponse<object>.Fail(403, ex.Message));
         }
         catch
         {
@@ -142,6 +185,11 @@ public class AuthController : ControllerBase
     {
         try
         {
+            if (!ResolveCurrentUserId().HasValue)
+            {
+                throw new AuthException(401, "login required");
+            }
+
             var fileName = await _uploadService.UploadImageAsync(file);
             var avatarUrl = _uploadService.GetImageUrl(fileName);
 

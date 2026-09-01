@@ -140,7 +140,9 @@ public class GoodsController : ControllerBase
     {
         try
         {
-            var imageId = await _goodsService.AddImageAsync(goodsId, request.ImageUrl, request.SortOrder);
+            var currentUserId = RequireCurrentUserId();
+            var isAdmin = await _adminService.IsAdminAsync(currentUserId);
+            var imageId = await _goodsService.AddImageAsync(goodsId, request.ImageUrl, request.SortOrder, currentUserId, isAdmin);
             return Ok(ApiResponse<object>.Success(new { id = imageId }, "image uploaded"));
         }
         catch (Exception ex)
@@ -154,7 +156,9 @@ public class GoodsController : ControllerBase
     {
         try
         {
-            var success = await _goodsService.DeleteImageAsync(imageId);
+            var currentUserId = RequireCurrentUserId();
+            var isAdmin = await _adminService.IsAdminAsync(currentUserId);
+            var success = await _goodsService.DeleteImageAsync(imageId, currentUserId, isAdmin);
             if (!success)
             {
                 return NotFound(ApiResponse<object>.Fail(404, "image not found"));
@@ -256,12 +260,17 @@ public class GoodsController : ControllerBase
     {
         return ex switch
         {
-            UnauthorizedAccessException uae when uae.Message.Contains("admin", StringComparison.OrdinalIgnoreCase) =>
-                StatusCode(403, ApiResponse<object>.Fail(403, uae.Message)),
-            UnauthorizedAccessException uae => Unauthorized(ApiResponse<object>.Fail(401, uae.Message)),
+            UnauthorizedAccessException uae when IsAuthenticationFailure(uae.Message) =>
+                Unauthorized(ApiResponse<object>.Fail(401, uae.Message)),
+            UnauthorizedAccessException uae => StatusCode(403, ApiResponse<object>.Fail(403, uae.Message)),
             ArgumentException ae => BadRequest(ApiResponse<object>.Fail(400, ae.Message)),
             InvalidOperationException ioe => BadRequest(ApiResponse<object>.Fail(400, ioe.Message)),
             _ => StatusCode(500, ApiResponse<object>.Fail(500, "internal server error"))
         };
     }
+
+    private static bool IsAuthenticationFailure(string message) =>
+        message.Contains("login", StringComparison.OrdinalIgnoreCase)
+        || message.Contains("未登录", StringComparison.OrdinalIgnoreCase)
+        || message.Contains("banned", StringComparison.OrdinalIgnoreCase);
 }

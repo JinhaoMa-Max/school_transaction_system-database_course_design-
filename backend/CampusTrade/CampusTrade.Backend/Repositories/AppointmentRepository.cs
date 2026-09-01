@@ -14,6 +14,25 @@ public class AppointmentRepository : IAppointmentRepository
     private readonly IDbConnectionFactory _connectionFactory;
     public AppointmentRepository(IDbConnectionFactory connectionFactory) { _connectionFactory = connectionFactory; }
 
+    public async Task<(List<AppointmentDto> Items, int Total)> GetPagedForUserAsync(int userId, int page, int size)
+    {
+        using var c = _connectionFactory.CreateConnection();
+        const string where = "FROM appointment a JOIN trade_order o ON o.order_id = a.order_id WHERE o.buyer_id = :UserId OR o.seller_id = :UserId";
+        var total = await c.ExecuteScalarAsync<int>($"SELECT COUNT(*) {where}", new { UserId = userId });
+        var offset = (page - 1) * size;
+        var sql = $"""
+            SELECT a.appointment_id AS AppointmentId, a.order_id AS OrderId,
+                   a.meet_time AS MeetTime, a.meet_place AS MeetLocation,
+                   a.confirm_code AS ConfirmCode, a.appointment_status AS Status,
+                   a.created_at AS CreateTime
+            {where}
+            ORDER BY a.created_at DESC
+            OFFSET {offset} ROWS FETCH NEXT {size} ROWS ONLY
+            """;
+        var items = await c.QueryAsync<AppointmentDto>(sql, new { UserId = userId });
+        return (items.ToList(), total);
+    }
+
     public async Task<AppointmentDto?> GetByIdAsync(int appointmentId)
     {
         using var c = _connectionFactory.CreateConnection();

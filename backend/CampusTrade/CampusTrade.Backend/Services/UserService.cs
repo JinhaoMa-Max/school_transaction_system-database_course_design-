@@ -1,5 +1,7 @@
 using CampusTrade.Backend.Models.DTOs;
 using CampusTrade.Backend.Repositories;
+using System.Net.Mail;
+using System.Text;
 
 namespace CampusTrade.Backend.Services;
 
@@ -14,7 +16,8 @@ public class UserService : IUserService
 
     public async Task<PageResult<UserDto>> GetPagedUsersAsync(int page, int size, string? role)
     {
-        // 传递给底层的 Repository 实施 Dapper 分页查询
+        page = Math.Max(1, page);
+        size = Math.Clamp(size, 1, 100);
         return await _userRepository.GetPagedUsersAsync(page, size, role);
     }
 
@@ -39,6 +42,8 @@ public class UserService : IUserService
             throw new UnauthorizedAccessException("您没有权限修改该用户的信息");
         }
 
+        ValidateUpdate(request);
+
         // 调用底层 UserRepository 将前端传来的增量字段更新进 Oracle 数据库
         var updated = await _userRepository.UpdateUserFieldsAsync(userId, request);
         return ToDto(updated);
@@ -49,6 +54,7 @@ public class UserService : IUserService
         // 鉴权：只有管理员可以执行物理/逻辑删除
         var currentUser = operatorId.HasValue ? await _userRepository.GetByIdAsync(operatorId.Value) : null;
         if (currentUser?.Role != "admin") throw new UnauthorizedAccessException("只有管理员能删除用户");
+        if (operatorId == userId) throw new InvalidOperationException("管理员不能删除自己");
 
         return await _userRepository.DeleteUserAsync(userId);
     }
@@ -57,6 +63,7 @@ public class UserService : IUserService
     {
         var currentUser = operatorId.HasValue ? await _userRepository.GetByIdAsync(operatorId.Value) : null;
         if (currentUser?.Role != "admin") throw new UnauthorizedAccessException("admin role required");
+        if (operatorId == userId) throw new InvalidOperationException("管理员不能封禁或解封自己");
 
         var action = status.ToLowerInvariant() switch
         {
@@ -73,6 +80,7 @@ public class UserService : IUserService
         // 鉴权：修改信用分一般由系统自动或管理员进行
         var currentUser = operatorId.HasValue ? await _userRepository.GetByIdAsync(operatorId.Value) : null;
         if (currentUser?.Role != "admin") throw new UnauthorizedAccessException("无权操作信用分");
+        if (score < 0 || score > 1000) throw new ArgumentException("信用分必须在 0-1000 之间");
 
         return await _userRepository.UpdateCreditScoreAsync(userId, score);
     }
@@ -94,5 +102,36 @@ public class UserService : IUserService
             CreditScore = user.CreditScore,
             RegisterTime = user.RegisterTime
         };
+    }
+
+    private static void ValidateUpdate(PartialUserUpdateRequest request)
+    {
+        if (request.Nickname != null)
+        {
+            request.Nickname = request.Nickname.Trim();
+            if (request.Nickname.Length == 0) throw new ArgumentException("昵称不能为空");
+            if (Encoding.UTF8.GetByteCount(request.Nickname) > 50) throw new ArgumentException("昵称过长");
+        }
+
+        if (request.Phone != null)
+        {
+            request.Phone = request.Phone.Trim();
+            if (request.Phone.Length > 0 && (request.Phone.Length is < 10 or > 15 || request.Phone.Any(ch => !char.IsDigit(ch))))
+                throw new ArgumentException("手机号必须是 10-15 位数字");
+        }
+
+        if (request.Email != null)
+        {
+            request.Email = request.Email.Trim();
+            if (request.Email.Length > 100 || (request.Email.Length > 0 && !MailAddress.TryCreate(request.Email, out _)))
+                throw new ArgumentException("邮箱格式不正确");
+        }
+
+        if (request.AvatarUrl != null)
+        {
+            request.AvatarUrl = request.AvatarUrl.Trim();
+            if (request.AvatarUrl.Length == 0 || request.AvatarUrl.Length > 255)
+                throw new ArgumentException("头像地址不合法");
+        }
     }
 }

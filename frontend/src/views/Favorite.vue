@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { Message } from '@arco-design/web-vue'
 import { getFavoriteList, deleteFavorite } from '@/api'
 import type { Favorite } from '@/types'
 
@@ -17,8 +18,13 @@ const goToDetail = (goodsId: number) => {
 }
 
 const handleDelete = async (favoriteId: number) => {
-  await deleteFavorite(favoriteId)
-  favorites.value = favorites.value.filter(f => f.favoriteId !== favoriteId)
+  try {
+    await deleteFavorite(favoriteId)
+    favorites.value = favorites.value.filter(f => f.favoriteId !== favoriteId)
+    Message.success('已取消收藏')
+  } catch {
+    // The global interceptor displays the server error.
+  }
 }
 </script>
 
@@ -37,15 +43,15 @@ const handleDelete = async (favoriteId: number) => {
       >
         <div class="goods-image" @click="goToDetail(item.goodsId)">
           <img 
-            :src="item.imageUrl || 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=secondhand%20goods%20placeholder&image_size=square'" 
-            :alt="item.title || '商品图片'"
+            :src="item.coverImage || item.imageUrl || 'https://via.placeholder.com/400x300?text=No+Image'"
+            :alt="item.goodsTitle || item.title || '商品图片'"
           />
         </div>
         
         <div class="goods-info" @click="goToDetail(item.goodsId)">
-          <h3 class="goods-title">{{ item.title || `商品 ${item.goodsId}` }}</h3>
-          <p class="goods-price">¥{{ item.price || '0.00' }}</p>
-          <p class="favorite-time">收藏时间：{{ item.favoriteTime }}</p>
+          <h3 class="goods-title">{{ item.goodsTitle || item.title || `商品 ${item.goodsId}` }}</h3>
+          <p class="goods-price">¥{{ (item.goodsPrice ?? item.price ?? 0).toFixed(2) }}</p>
+          <p class="favorite-time">收藏时间：{{ item.createTime || item.favoriteTime }}</p>
         </div>
         
         <div class="actions">

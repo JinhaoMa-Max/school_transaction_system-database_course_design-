@@ -1,4 +1,6 @@
 using System.Text.RegularExpressions;
+using System.Net.Mail;
+using System.Text;
 using CampusTrade.Backend.Models;
 using CampusTrade.Backend.Models.DTOs;
 using CampusTrade.Backend.Repositories;
@@ -8,6 +10,10 @@ namespace CampusTrade.Backend.Services;
 public class AuthService : IAuthService
 {
     private static readonly Regex PureNumberPattern = new("^\\d+$", RegexOptions.Compiled);
+    private static readonly Regex StudentIdPattern = new("^\\d{6,20}$", RegexOptions.Compiled);
+    private static readonly Regex UsernamePattern = new("^[A-Za-z0-9_]{3,20}$", RegexOptions.Compiled);
+    private static readonly Regex PasswordPattern = new("^(?=.*\\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[!@#$%^&*])[A-Za-z0-9!@#$%^&*]{6,20}$", RegexOptions.Compiled);
+    private static readonly Regex PhonePattern = new("^1[3-9]\\d{9}$", RegexOptions.Compiled);
     private static readonly HashSet<string> StudentAuthStatuses = new(StringComparer.OrdinalIgnoreCase)
     {
         "pending",
@@ -115,13 +121,28 @@ public class AuthService : IAuthService
 
     public async Task<StudentAuthDto?> GetStudentAuthByUserIdAsync(int userId)
     {
-        var auth = await _userRepository.GetStudentAuthByUserIdAsync(userId);
-        return IsRegistrationPlaceholder(auth) ? null : auth;
+        return await _userRepository.GetStudentAuthByUserIdAsync(userId);
+    }
+
+    public async Task<PageResult<StudentAuthAdminDto>> GetPagedStudentAuthAsync(int page, int size, string? status)
+    {
+        if (!string.IsNullOrWhiteSpace(status) && !StudentAuthStatuses.Contains(status.Trim()))
+        {
+            throw new AuthException(400, "认证状态不合法");
+        }
+
+        return await _userRepository.GetPagedStudentAuthAsync(page, size, status);
     }
 
     public async Task<StudentAuthDto> SubmitStudentAuthAsync(StudentAuthRequestDto request, int? currentUserId)
     {
-        request.UserId = currentUserId ?? request.UserId;
+        if (!currentUserId.HasValue)
+        {
+            throw new AuthException(401, "login required");
+        }
+
+        // Never trust a user id supplied by the client for a self-service submission.
+        request.UserId = currentUserId.Value;
         ValidateStudentAuthRequest(request, requireUserId: true);
 
         var user = await _userRepository.GetByIdAsync(request.UserId!.Value);
@@ -185,6 +206,21 @@ public class AuthService : IAuthService
         {
             throw new AuthException(400, "用户名不能为纯数字");
         }
+
+        if (!StudentIdPattern.IsMatch(request.StudentId.Trim()))
+            throw new AuthException(400, "学号必须是 6-20 位数字");
+        if (!UsernamePattern.IsMatch(request.Username.Trim()))
+            throw new AuthException(400, "用户名只能包含 3-20 位字母、数字或下划线");
+        if (!PasswordPattern.IsMatch(request.Password))
+            throw new AuthException(400, "密码需包含大小写字母、数字和特殊字符，长度 6-20 位");
+        if (!PhonePattern.IsMatch(request.Phone.Trim()))
+            throw new AuthException(400, "手机号格式不正确");
+        if (!string.IsNullOrWhiteSpace(request.Nickname)
+            && Encoding.UTF8.GetByteCount(request.Nickname.Trim()) > 50)
+            throw new AuthException(400, "昵称过长");
+        if (!string.IsNullOrWhiteSpace(request.Email)
+            && (request.Email.Trim().Length > 100 || !MailAddress.TryCreate(request.Email.Trim(), out _)))
+            throw new AuthException(400, "邮箱格式不正确");
     }
 
     private static void ValidateStudentAuthRequest(StudentAuthRequestDto request, bool requireUserId)
@@ -200,13 +236,13 @@ public class AuthService : IAuthService
         {
             throw new AuthException(400, "缺少必要参数");
         }
-    }
 
-    private static bool IsRegistrationPlaceholder(StudentAuthDto? auth)
-    {
-        return auth != null
-            && string.Equals(auth.RealName, "待完善", StringComparison.Ordinal)
-            && string.Equals(auth.College, "待完善", StringComparison.Ordinal);
+        if (!StudentIdPattern.IsMatch(request.StudentId.Trim()))
+            throw new AuthException(400, "学号必须是 6-20 位数字");
+        if (Encoding.UTF8.GetByteCount(request.RealName!.Trim()) > 50)
+            throw new AuthException(400, "真实姓名过长");
+        if (Encoding.UTF8.GetByteCount(request.College!.Trim()) > 100)
+            throw new AuthException(400, "学院名称过长");
     }
 
     public async Task<UserDto> UpdateAvatarAsync(string? token, string avatarUrl)

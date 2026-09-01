@@ -18,7 +18,7 @@ public class FavoriteService : IFavoriteService
     {
         var userId = RequireUser(currentUserId);
         if (page < 1) throw new ArgumentException("page must start from 1");
-        if (size < 1) throw new ArgumentException("size must be greater than 0");
+        if (size < 1 || size > 100) throw new ArgumentException("size must be between 1 and 100");
 
         var (items, total) = await _favoriteRepository.GetPagedAsync(userId, page, size);
         return new FavoriteListResult

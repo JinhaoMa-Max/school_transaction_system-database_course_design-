@@ -16,14 +16,16 @@ public class OrderService : IOrderService
         _bargainRepository = bargainRepository;
     }
 
-    public async Task<OrderListResult> GetPagedAsync(int page, int size, string? status, int? currentUserId, string? role = null)
+    public async Task<OrderListResult> GetPagedAsync(int page, int size, string? status, int? currentUserId, string? role = null, bool includeAll = false)
     {
         var userId = RequireUser(currentUserId);
         ValidatePage(page, size);
         var normalizedStatus = NormalizeStatus(status, allowNull: true);
         var normalizedRole = role?.Trim().ToLowerInvariant();
 
-        (List<OrderDto> Items, int Total) result = normalizedRole switch
+        (List<OrderDto> Items, int Total) result = includeAll
+            ? await _orderRepository.GetPagedAsync(page, size, buyerId: null, sellerId: null, normalizedStatus)
+            : normalizedRole switch
         {
             "buy" or "buyer" => await _orderRepository.GetPagedAsync(page, size, buyerId: userId, sellerId: null, normalizedStatus),
             "sell" or "seller" => await _orderRepository.GetPagedAsync(page, size, buyerId: null, sellerId: userId, normalizedStatus),
@@ -88,9 +90,9 @@ public class OrderService : IOrderService
         EnsureParticipant(order, userId);
 
         var status = NormalizeStatus(request.Status, allowNull: false)!;
-        if (status == "completed")
+        if (status != "in_meet" || order.Status != "pending_meet")
         {
-            throw new InvalidOperationException("use the complete endpoint to complete an order");
+            throw new InvalidOperationException("use the dedicated cancel, start-meet or complete endpoint for this status transition");
         }
 
         await _orderRepository.UpdateStatusAsync(orderId, status);
@@ -123,8 +125,8 @@ public class OrderService : IOrderService
             throw new InvalidOperationException("only pending_meet or in_meet orders can be completed");
         }
 
-        var code = string.IsNullOrWhiteSpace(confirmCode) ? order.ConfirmCode : confirmCode.Trim();
-        if (string.IsNullOrWhiteSpace(code)) throw new ArgumentException("confirmCode is required");
+        if (string.IsNullOrWhiteSpace(confirmCode)) throw new ArgumentException("confirmCode is required");
+        var code = confirmCode.Trim();
         return await _orderRepository.CompleteAsync(orderId, code);
     }
 
@@ -157,7 +159,7 @@ public class OrderService : IOrderService
     private static void ValidatePage(int page, int size)
     {
         if (page < 1) throw new ArgumentException("page must start from 1");
-        if (size < 1) throw new ArgumentException("size must be greater than 0");
+        if (size < 1 || size > 100) throw new ArgumentException("size must be between 1 and 100");
     }
 
     private static int RequireUser(int? currentUserId)

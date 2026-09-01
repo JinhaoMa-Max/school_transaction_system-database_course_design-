@@ -45,6 +45,12 @@ public class UploadService : IUploadService
             throw new ArgumentException("图片大小不能超过 5MB");
         }
 
+        var allowedContentTypes = new[] { "image/jpeg", "image/png", "image/gif", "image/webp" };
+        if (!allowedContentTypes.Contains(file.ContentType, StringComparer.OrdinalIgnoreCase))
+        {
+            throw new ArgumentException("文件内容类型不是受支持的图片格式");
+        }
+
         var timestamp = DateTime.Now.Ticks.ToString();
         var hashBytes = MD5.HashData(Encoding.UTF8.GetBytes(timestamp + file.FileName));
         var fileName = BitConverter.ToString(hashBytes).Replace("-", "").ToLower() + extension;

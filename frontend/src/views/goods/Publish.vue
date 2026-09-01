@@ -7,6 +7,7 @@ import { getCategoryList, createGoods, uploadGoodsImage, uploadImage } from '@/a
 import ImageUpload from '@/components/common/ImageUpload.vue'
 import { conditionMap } from '@/constants'
 import type { Category } from '@/types'
+import { flattenCategories } from '@/utils/categories'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -78,7 +79,7 @@ const conditionOptions = Object.entries(conditionMap).map(([value, label]) => ({
 const fetchCategories = async () => {
   try {
     const res = await getCategoryList()
-    categories.value = res.data
+    categories.value = flattenCategories(res.data)
   } catch {
     // 错误已由全局拦截器处理
   }
@@ -143,8 +144,12 @@ const handleSubmit = async () => {
         }
       }
 
+      if (!imageUrl) {
+        Message.warning(`第${i + 1}张图片未上传，已跳过`)
+        continue
+      }
+
       try {
-        const imageUrl = imageList.value[i].uploadedUrl || imageList.value[i].url
         await uploadGoodsImage(goodsId, {
           imageUrl,
           sortOrder: i + 1

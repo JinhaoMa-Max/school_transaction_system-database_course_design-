@@ -2,8 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Message, Modal } from '@arco-design/web-vue'
-import { getBargainList, handleBargain, handleBargainByBuyer, closeBargain, getBargainById } from '@/api'
-import { createOrder } from '@/api'
+import { getBargainList, handleBargain, handleBargainByBuyer, closeBargain } from '@/api'
 import { useUserStore } from '@/stores'
 import { bargainStatusMap, sellerResultMap } from '@/constants'
 import type { BargainOffer } from '@/types'
@@ -97,15 +96,7 @@ const handleAccept = (bargainId: number) => {
     cancelText: '取消',
     onOk: async () => {
       try {
-        const bargainRes = await getBargainById(bargainId)
-        const bargain = bargainRes.data
-        
         await handleBargain(bargainId, { sellerResult: 'accepted' })
-        
-        await createOrder({
-          goodsId: bargain.goodsId,
-          dealPrice: bargain.counterPrice || bargain.offerPrice
-        })
         
         Message.success('议价已接受，订单已生成')
         fetchBargainList()

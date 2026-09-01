@@ -143,6 +143,7 @@ const routes: RouteRecordRaw[] = [
     path: '/admin',
     name: 'Admin',
     component: () => import('@/views/admin/Layout.vue'),
+    redirect: '/admin/dashboard',
     meta: { requiresAuth: true, roles: ['admin'] },
     children: [
       {
@@ -154,6 +155,11 @@ const routes: RouteRecordRaw[] = [
         path: 'users',
         name: 'AdminUserList',
         component: () => import('@/views/admin/UserList.vue')
+      },
+      {
+        path: 'student-auth',
+        name: 'AdminStudentAuth',
+        component: () => import('@/views/admin/StudentAuthList.vue')
       },
       {
         path: 'goods',
@@ -207,26 +213,29 @@ router.beforeEach(async (to, _from, next) => {
   }
 
     // 新增：已登录用户访问登录/注册页 → 跳首页
+  const requiresAuth = to.meta.requiresAuth
+
+  if (userStore.hasToken && !userStore.user) {
+    try {
+      await userStore.fetchCurrentUser()
+    } catch {
+      await userStore.logout().catch(() => undefined)
+    }
+  }
+
   if (userStore.isLoggedIn && (to.path === '/login' || to.path === '/register')) {
     next('/')
     return
   }
 
-  const requiresAuth = to.meta.requiresAuth
-
-  if (requiresAuth && !userStore.isLoggedIn) {
+  if (requiresAuth && !userStore.hasToken) {
      next(`/login?redirect=${encodeURIComponent(to.fullPath)}`)
     return
   }
 
-  if (requiresAuth && userStore.isLoggedIn && !userStore.user) {
-    try {
-      await userStore.fetchCurrentUser()
-    } catch {
-      userStore.logout()
-      next('/login')
-      return
-    }
+  if (requiresAuth && !userStore.user) {
+    next(`/login?redirect=${encodeURIComponent(to.fullPath)}`)
+    return
   }
 
   if (to.meta.roles && userStore.user) {

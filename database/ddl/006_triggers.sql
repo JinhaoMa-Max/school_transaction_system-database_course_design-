@@ -110,21 +110,22 @@ END;
    ========================= */
 CREATE OR REPLACE TRIGGER trg_report_threshold_alert
 AFTER INSERT ON report
-FOR EACH ROW
-DECLARE
-    v_count NUMBER;
 BEGIN
-    SELECT COUNT(*) INTO v_count
-    FROM report
-    WHERE target_user_id = :NEW.target_user_id
-      AND report_status IN ('pending', 'processing');
-
-    IF v_count >= 5 THEN
+    -- This must be a statement-level trigger. A row-level trigger cannot query
+    -- REPORT while REPORT is being changed (ORA-04091 mutating table).
+    FOR item IN (
+        SELECT target_user_id, COUNT(*) AS report_count
+        FROM report
+        WHERE target_user_id IS NOT NULL
+          AND report_status IN ('pending', 'processing')
+        GROUP BY target_user_id
+        HAVING COUNT(*) >= 5
+    ) LOOP
         DBMS_OUTPUT.PUT_LINE(
-            '⚠️ 警告：用户 ' || :NEW.target_user_id ||
-            ' 已有 ' || v_count || ' 条未处理举报！'
+            'WARNING: user ' || item.target_user_id ||
+            ' has ' || item.report_count || ' unresolved reports.'
         );
-    END IF;
+    END LOOP;
 END;
 /
 

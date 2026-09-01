@@ -1,6 +1,9 @@
 using CampusTrade.Backend.Infrastructure;
+using CampusTrade.Backend.Models;
 using CampusTrade.Backend.Repositories;
 using CampusTrade.Backend.Services;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Diagnostics;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -13,6 +16,13 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddSingleton<IDbConnectionFactory, OracleConnectionFactory>();
 builder.Services.AddSingleton<ITokenService, SignedTokenService>();
 builder.Services.AddScoped<IPasswordHasher, Sha256PasswordHasher>();
+
+builder.Services
+    .AddAuthentication(SignedTokenAuthenticationHandler.SchemeName)
+    .AddScheme<AuthenticationSchemeOptions, SignedTokenAuthenticationHandler>(
+        SignedTokenAuthenticationHandler.SchemeName,
+        _ => { });
+builder.Services.AddAuthorization();
 
 builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
 builder.Services.AddScoped<ICategoryService, CategoryService>();
@@ -51,6 +61,54 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+// Establish the Oracle pool before accepting requests. Oracle Free in Docker can
+// occasionally reject the first pooled connection while the PDB is waking up;
+// absorbing that transient failure here prevents the first user action becoming a 500.
+var databaseReady = false;
+Exception? databaseError = null;
+for (var attempt = 1; attempt <= 3; attempt++)
+{
+    try
+    {
+        using var connection = app.Services.GetRequiredService<IDbConnectionFactory>().CreateConnection();
+        connection.Open();
+        app.Logger.LogInformation("Oracle database connection is ready.");
+        databaseReady = true;
+        break;
+    }
+    catch (Exception ex)
+    {
+        databaseError = ex;
+        app.Logger.LogWarning(ex, "Oracle warm-up attempt {Attempt} failed.", attempt);
+        if (attempt < 3)
+        {
+            await Task.Delay(TimeSpan.FromSeconds(attempt));
+        }
+    }
+}
+
+if (!databaseReady)
+{
+    throw new InvalidOperationException("Oracle database is unavailable after three attempts.", databaseError);
+}
+
+app.UseExceptionHandler(errorApp =>
+{
+    errorApp.Run(async context =>
+    {
+        var feature = context.Features.Get<IExceptionHandlerFeature>();
+        var logger = context.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger("GlobalExceptionHandler");
+        if (feature?.Error != null)
+        {
+            logger.LogError(feature.Error, "Unhandled request failure for {Path}", context.Request.Path);
+        }
+
+        context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+        context.Response.ContentType = "application/json; charset=utf-8";
+        await context.Response.WriteAsJsonAsync(ApiResponse<object>.Fail(500, "internal server error"));
+    });
+});
+
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
@@ -65,6 +123,9 @@ if (app.Environment.IsDevelopment())
 app.UseStaticFiles();
 
 app.UseCors();
+
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapControllers();
 

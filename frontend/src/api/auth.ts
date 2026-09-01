@@ -1,5 +1,5 @@
 import request from '@/utils/request'
-import type { LoginParams,RegisterParams, LoginResult, User, StudentAuth } from '@/types'
+import type { LoginParams,RegisterParams, LoginResult, User, StudentAuth, StudentAuthAdmin, PageResult } from '@/types'
 
 //开发时期调用认证数据的妙妙工具#3
 import { mockStudentAuths, getMockResponse } from '@/utils/mock'
@@ -66,6 +66,10 @@ export const getStudentAuth = (userId: number) => {
   }
 
   return request.get<StudentAuth>(`/auth/student-auth/${userId}`)
+}
+
+export const getStudentAuthList = (params?: { page?: number; size?: number; status?: string }) => {
+  return request.get<PageResult<StudentAuthAdmin>>('/auth/student-auth', { params })
 }
 
 export const updateStudentAuth = (authId: number, params: Partial<StudentAuth>) => {

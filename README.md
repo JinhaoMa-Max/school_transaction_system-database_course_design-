@@ -44,7 +44,9 @@ campus-secondhand/
 │   │   ├── 005_procedures.sql              #   13个存储过程
 │   │   ├── 006_triggers.sql                #   7个业务触发器
 │   │   ├── 007_test.sql
-│   │   └── 008_data_migration.sql          #   旧数据迁移脚本
+│   │   ├── 008_data_migration.sql          #   旧数据迁移脚本
+│   │   ├── 008_fix_report_trigger.sql      #   修复举报触发器
+│   │   └── 009_drop_legacy_review_unique.sql # 兼容追加评价
 │   ├── seed/seed_data.sql                  #   种子数据
 │   └── scripts/ (docker-compose.yml, deploy_all.bat)
 │
@@ -86,10 +88,12 @@ cd database/scripts
 docker compose up -d
 ```
 
+首次创建容器时 Oracle 初始化可能需要 1～2 分钟。等待容器状态变为 `healthy` 后再启动后端。
+
 ### 第二步：部署数据库对象（首次）
 
 ```cmd
-deploy_all.bat                           # 一键全量部署
+deploy_all.bat                           # 一键全量部署（仅首次初始化）
 :: 或逐条：
 docker exec -i campus_trade_db sqlplus CAMPUS/Campus123456@FREEPDB1 < ..\ddl\001_create_tables_docker.sql
 docker exec -i campus_trade_db sqlplus CAMPUS/Campus123456@FREEPDB1 < ..\ddl\003_views.sql
@@ -97,6 +101,13 @@ docker exec -i campus_trade_db sqlplus CAMPUS/Campus123456@FREEPDB1 < ..\ddl\004
 docker exec -i campus_trade_db sqlplus CAMPUS/Campus123456@FREEPDB1 < ..\ddl\005_procedures.sql
 docker exec -i campus_trade_db sqlplus CAMPUS/Campus123456@FREEPDB1 < ..\ddl\006_triggers.sql
 docker exec -i campus_trade_db sqlplus CAMPUS/Campus123456@FREEPDB1 < ..\seed\seed_data.sql
+```
+
+如果是已经部署过的旧数据库，不要再次运行全量部署，只执行兼容修复：
+
+```cmd
+docker exec -i campus_trade_db sqlplus CAMPUS/Campus123456@FREEPDB1 < ..\ddl\008_fix_report_trigger.sql
+docker exec -i campus_trade_db sqlplus CAMPUS/Campus123456@FREEPDB1 < ..\ddl\009_drop_legacy_review_unique.sql
 ```
 
 ### 第三步：启动后端
@@ -112,10 +123,13 @@ dotnet run
 
 ```cmd
 cd frontend
-npx vite --host 0.0.0.0 --port 5173
+npm install
+npm run dev -- --host 0.0.0.0 --port 5173
 ```
 
 浏览器打开 `http://localhost:5173`
+
+后端接口调试地址：`http://localhost:5000/swagger`
 
 ### DBeaver 连接
 
@@ -136,8 +150,8 @@ npx vite --host 0.0.0.0 --port 5173
 | ----------------------- | -------------- | ----------------------------------------------------------------------------------------------- |
 | 数据库                  | **100%** | 15表 + 7视图 + 7函数 + 13存储过程 + 12触发器，全部3NF                                           |
 | 后端 Repository         | **100%** | 11个Repository，0个空壳，全部调用数据库封装对象                                                 |
-| 后端 Service+Controller | **~80%** | Auth/Goods/Category/Bargain/Order/Favorite/Chat/Review/Report/Appointment/Admin/Upload 全部就绪 |
-| 前端                    | **~70%** | 22个功能点页面齐全，部分交互待完善                                                              |
+| 后端 Service+Controller | **100%** | Auth/Goods/Category/Bargain/Order/Favorite/Chat/Review/Report/Appointment/Admin/Upload 全部就绪 |
+| 前端                    | **100%** | 用户端与管理员端主要交互均已接入真实接口并通过构建和接口回归                                    |
 
 ### ✅ 全部跑通（22个功能点）
 

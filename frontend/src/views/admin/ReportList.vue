@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { Message } from '@arco-design/web-vue'
 import { getReportList, handleReport } from '@/api'
 import type { Report } from '@/types'
 
@@ -12,6 +13,9 @@ onMounted(async () => {
 
 const handleProcess = async (reportId: number, status: 'processing' | 'resolved' | 'rejected') => {
   await handleReport(reportId, { status })
+  const item = reports.value.find(report => report.reportId === reportId)
+  if (item) item.status = status
+  Message.success('举报状态已更新')
 }
 
 const getStatusText = (status: string) => {

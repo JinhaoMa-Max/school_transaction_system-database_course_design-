@@ -1,7 +1,11 @@
 // 导入请求工具
 import request from '@/utils/request'
 // 导入预约的类型定义
-import type { Appointment } from '@/types'
+import type { Appointment, PageResult } from '@/types'
+
+export const getAppointmentList = (params?: { page?: number; size?: number }) => {
+  return request.get<PageResult<Appointment>>('/appointments', { params })
+}
 
 /**
  * 根据订单ID获取预约信息

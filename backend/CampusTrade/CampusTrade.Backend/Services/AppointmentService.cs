@@ -18,6 +18,21 @@ public class AppointmentService : IAppointmentService
         _orderRepository = orderRepository;
     }
 
+    public async Task<PageResult<AppointmentDto>> GetPagedAsync(int page, int size, int? currentUserId)
+    {
+        if (!currentUserId.HasValue) throw new UnauthorizedAccessException("login required");
+        page = Math.Max(1, page);
+        size = Math.Clamp(size, 1, 100);
+        var (items, total) = await _appointmentRepository.GetPagedForUserAsync(currentUserId.Value, page, size);
+        return new PageResult<AppointmentDto>
+        {
+            Items = items,
+            TotalCount = total,
+            Page = page,
+            Size = size
+        };
+    }
+
     public async Task<AppointmentDto?> GetByOrderIdAsync(int orderId, int? currentUserId)
     {
         if (currentUserId == null) throw new UnauthorizedAccessException("未登录");
@@ -40,8 +55,10 @@ public class AppointmentService : IAppointmentService
         if (currentUserId == null) throw new UnauthorizedAccessException("未登录");
         if (request.OrderId <= 0) throw new ArgumentException("orderId 不合法");
         if (string.IsNullOrWhiteSpace(request.MeetLocation)) throw new ArgumentException("meetLocation 不能为空");
+        if (request.MeetTime <= DateTime.Now) throw new ArgumentException("面交时间必须晚于当前时间");
 
         var meetLocation = request.MeetLocation.Trim();
+        if (meetLocation.Length > 200) throw new ArgumentException("面交地点不能超过 200 个字符");
 
         var order = await _orderRepository.GetByIdAsync(request.OrderId);
         if (order == null) throw new ArgumentException("订单不存在");

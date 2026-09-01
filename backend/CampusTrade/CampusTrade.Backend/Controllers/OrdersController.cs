@@ -12,11 +12,13 @@ public class OrdersController : ControllerBase
 {
     private readonly IOrderService _orderService;
     private readonly IAuthService _authService;
+    private readonly IAdminService _adminService;
 
-    public OrdersController(IOrderService orderService, IAuthService authService)
+    public OrdersController(IOrderService orderService, IAuthService authService, IAdminService adminService)
     {
         _orderService = orderService;
         _authService = authService;
+        _adminService = adminService;
     }
 
     [HttpGet]
@@ -29,7 +31,8 @@ public class OrdersController : ControllerBase
         try
         {
             var currentUserId = ResolveCurrentUserId();
-            var result = await _orderService.GetPagedAsync(page, size, status, currentUserId, role);
+            var isAdmin = await _adminService.IsAdminAsync(currentUserId);
+            var result = await _orderService.GetPagedAsync(page, size, status, currentUserId, role, includeAll: isAdmin);
             return Ok(ApiResponse<OrderListResult>.Success(result));
         }
         catch (Exception ex)
@@ -153,10 +156,16 @@ public class OrdersController : ControllerBase
     {
         return ex switch
         {
-            UnauthorizedAccessException uae => Unauthorized(ApiResponse<object>.Fail(401, uae.Message)),
+            UnauthorizedAccessException uae when IsAuthenticationFailure(uae.Message) => Unauthorized(ApiResponse<object>.Fail(401, uae.Message)),
+            UnauthorizedAccessException uae => StatusCode(403, ApiResponse<object>.Fail(403, uae.Message)),
             ArgumentException ae => BadRequest(ApiResponse<object>.Fail(400, ae.Message)),
             InvalidOperationException ioe => BadRequest(ApiResponse<object>.Fail(400, ioe.Message)),
             _ => StatusCode(500, ApiResponse<object>.Fail(500, "internal server error"))
         };
     }
+
+    private static bool IsAuthenticationFailure(string message) =>
+        message.Contains("login", StringComparison.OrdinalIgnoreCase)
+        || message.Contains("未登录", StringComparison.OrdinalIgnoreCase)
+        || message.Contains("banned", StringComparison.OrdinalIgnoreCase);
 }

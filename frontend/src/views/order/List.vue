@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Message, Modal } from '@arco-design/web-vue'
-import { getOrderList, cancelOrder, completeOrder, getGoodsById } from '@/api'
+import { getOrderList, cancelOrder, getGoodsById } from '@/api'
 import { verifyConfirmCode } from '@/api'
 import { useUserStore } from '@/stores'
 import { orderStatusMap } from '@/constants'
@@ -165,24 +165,6 @@ const handleVerify = async () => {
   }
 }
 
-const handleComplete = (orderId: number) => {
-  Modal.confirm({
-    title: '确认完成',
-    content: '确认交易已完成吗？确认后将无法撤销。',
-    okText: '确认完成',
-    cancelText: '取消',
-    onOk: async () => {
-      try {
-        await completeOrder(orderId)
-        Message.success('订单已完成')
-        fetchOrderList()
-      } catch {
-        // 错误已由全局拦截器处理
-      }
-    }
-  })
-}
-
 onMounted(() => {
   fetchOrderList()
 })
@@ -284,9 +266,6 @@ onMounted(() => {
                     @click="openVerify(record.orderId)"
                   >
                     核销确认码
-                  </a-button>
-                  <a-button type="primary" size="small" @click="handleComplete(record.orderId)">
-                    确认完成
                   </a-button>
                 </template>
 

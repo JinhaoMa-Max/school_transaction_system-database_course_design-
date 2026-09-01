@@ -4,7 +4,7 @@ namespace CampusTrade.Backend.Services;
 
 public interface IOrderService
 {
-    Task<OrderListResult> GetPagedAsync(int page, int size, string? status, int? currentUserId, string? role = null);
+    Task<OrderListResult> GetPagedAsync(int page, int size, string? status, int? currentUserId, string? role = null, bool includeAll = false);
     Task<OrderDto?> GetByIdAsync(int orderId, int? currentUserId);
     Task<OrderDto> CreateAsync(CreateOrderRequest request, int? currentUserId);
     Task<OrderDto> UpdateAsync(int orderId, UpdateOrderRequest request, int? currentUserId);

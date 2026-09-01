@@ -48,6 +48,12 @@ public class StudentAuthDto
     public DateTime? AuthTime { get; set; }
 }
 
+public class StudentAuthAdminDto : StudentAuthDto
+{
+    public string Username { get; set; } = string.Empty;
+    public string Nickname { get; set; } = string.Empty;
+}
+
 public class StudentAuthRequestDto
 {
     public int? UserId { get; set; }

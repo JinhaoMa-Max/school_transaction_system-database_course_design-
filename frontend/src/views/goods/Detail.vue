@@ -16,6 +16,7 @@ import {
 } from '@/api'
 import { conditionMap, goodsStatusMap } from '@/constants'
 import type { Goods, GoodsImage, Category } from '@/types'
+import { flattenCategories } from '@/utils/categories'
 
 const route = useRoute()
 const router = useRouter()
@@ -27,6 +28,7 @@ const images = ref<GoodsImage[]>([])
 const loading = ref(false)
 const isFavorite = ref(false)
 const favoriteId = ref<number | null>(null)
+const selectedImageIndex = ref(0)
 
 const bargainVisible = ref(false)
 const bargainPrice = ref(0)
@@ -41,10 +43,11 @@ const categories = ref<Category[]>([])
 // 计算分类路径（如 "数码产品 > 手机"）
 const categoryPath = computed(() => {
   if (!goods.value || categories.value.length === 0) return ''
-  const cat = categories.value.find(c => c.categoryId === goods.value!.categoryId)
+  const flatCategories = categories.value.flatMap(category => [category, ...(category.children || [])])
+  const cat = flatCategories.find(c => c.categoryId === goods.value!.categoryId)
   if (!cat) return ''
   if (cat.parentId) {
-    const parent = categories.value.find(c => c.categoryId === cat.parentId)
+    const parent = flatCategories.find(c => c.categoryId === cat.parentId)
     return parent ? `${parent.categoryName} > ${cat.categoryName}` : cat.categoryName
   }
   return cat.categoryName
@@ -52,7 +55,7 @@ const categoryPath = computed(() => {
 
 const mainImage = computed(() => {
   if (images.value.length > 0) {
-    return images.value[0].imageUrl
+    return images.value[selectedImageIndex.value]?.imageUrl || images.value[0].imageUrl
   }
   return goods.value?.imageUrl || 'https://via.placeholder.com/600x600?text=No+Image'
 })
@@ -79,10 +82,11 @@ const fetchData = async () => {
     const [goodsRes, imagesRes] = await Promise.all([
       getGoodsById(goodsId),
       getGoodsImages(goodsId).catch(() => ({ data: [] })),
-      getCategoryList().then(res => { categories.value = res.data }).catch(() => {})
+      getCategoryList().then(res => { categories.value = flattenCategories(res.data) }).catch(() => {})
     ])
     goods.value = goodsRes.data
     images.value = imagesRes.data || []
+    selectedImageIndex.value = 0
 
     incrementViewCount(goodsId).catch(() => {})
 
@@ -221,7 +225,8 @@ onMounted(fetchData)
               v-for="(img, index) in imageList"
               :key="index"
               class="thumbnail"
-              :class="{ active: index === 0 }"
+              :class="{ active: index === selectedImageIndex }"
+              @click="selectedImageIndex = index"
             >
               <img :src="img" :alt="`缩略图${index + 1}`" />
             </div>
@@ -261,10 +266,10 @@ onMounted(fetchData)
             <div class="seller-info">
               <div class="seller-name">{{ goods.sellerNickname || '卖家' }}</div>
               <div class="seller-meta">
-                <a-tag color="green" size="small">信用分 {{ userStore.user?.creditScore || 100 }}</a-tag>
+                <a-tag color="green" size="small">信用分 {{ goods.sellerCreditScore ?? '--' }}</a-tag>
               </div>
             </div>
-            <a-button type="text" @click="handleContact">
+            <a-button v-if="!isOwner" type="text" @click="handleContact">
               <icon-message />
               私信卖家
             </a-button>

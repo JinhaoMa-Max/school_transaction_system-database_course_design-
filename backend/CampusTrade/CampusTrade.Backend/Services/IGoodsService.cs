@@ -23,6 +23,6 @@ public interface IGoodsService
     Task<bool> IncrementViewCountAsync(int goodsId);
 
     Task<IEnumerable<GoodsImageDto>> GetImagesAsync(int goodsId);
-    Task<int> AddImageAsync(int goodsId, string imageUrl, int sortOrder);
-    Task<bool> DeleteImageAsync(int imageId);
+    Task<int> AddImageAsync(int goodsId, string imageUrl, int sortOrder, int currentUserId, bool isAdmin);
+    Task<bool> DeleteImageAsync(int imageId, int currentUserId, bool isAdmin);
 }

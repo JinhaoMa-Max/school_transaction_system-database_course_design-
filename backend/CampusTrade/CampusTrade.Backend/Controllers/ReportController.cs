@@ -14,12 +14,18 @@ public class ReportController : ControllerBase
     private readonly IReportService _reportService;
     private readonly IAuthService _authService;
     private readonly IAdminService _adminService;
+    private readonly ILogger<ReportController> _logger;
 
-    public ReportController(IReportService reportService, IAuthService authService, IAdminService adminService)
+    public ReportController(
+        IReportService reportService,
+        IAuthService authService,
+        IAdminService adminService,
+        ILogger<ReportController> logger)
     {
         _reportService = reportService;
         _authService = authService;
         _adminService = adminService;
+        _logger = logger;
     }
 
     /// <summary>获取举报列表（分页、可筛选类型和状态）</summary>
@@ -50,6 +56,12 @@ public class ReportController : ControllerBase
         {
             var result = await _reportService.GetReportByIdAsync(reportId);
             if (result.Code == 404) return NotFound(result);
+            var currentUserId = ResolveCurrentUserId();
+            if (!await _adminService.IsAdminAsync(currentUserId)
+                && result.Data?.ReporterId != currentUserId)
+            {
+                return StatusCode(403, ApiResponse<object>.Fail(403, "access denied"));
+            }
             return Ok(result);
         }
         catch (Exception ex)
@@ -115,7 +127,7 @@ public class ReportController : ControllerBase
 
     private IActionResult ToErrorResult(Exception ex)
     {
-        return ex switch
+        var knownResult = ex switch
         {
             UnauthorizedAccessException uae when uae.Message.Contains("admin", StringComparison.OrdinalIgnoreCase) =>
                 StatusCode(403, ApiResponse<object>.Fail(403, uae.Message)),
@@ -127,7 +139,11 @@ public class ReportController : ControllerBase
                 NotFound(ApiResponse<object>.Fail(404, ioe.Message)),
             InvalidOperationException ioe =>
                 BadRequest(ApiResponse<object>.Fail(400, ioe.Message)),
-            _ => StatusCode(500, ApiResponse<object>.Fail(500, "internal server error"))
+            _ => null
         };
+
+        if (knownResult != null) return knownResult;
+        _logger.LogError(ex, "Unexpected report API failure");
+        return StatusCode(500, ApiResponse<object>.Fail(500, "internal server error"));
     }
 }

@@ -90,7 +90,8 @@ const loadHotGoods = async () => {
 
     const res = await getGoodsList({
       page: 1,
-      size: 8
+      size: 8,
+      status: 'approved'
     } as any)
 
     const payload = (res as any).data ?? res

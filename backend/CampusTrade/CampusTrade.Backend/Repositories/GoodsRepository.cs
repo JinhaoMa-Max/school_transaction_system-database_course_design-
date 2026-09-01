@@ -132,6 +132,7 @@ public class GoodsRepository : IGoodsRepository
             SELECT goods_id       AS GoodsId,
                    seller_id      AS SellerId,
                    seller_name    AS SellerNickname,
+                   (SELECT credit_score FROM app_user u WHERE u.user_id = v_goods_list.seller_id) AS SellerCreditScore,
                    category_id    AS CategoryId,
                    category_name  AS CategoryName,
                    title          AS Title,
@@ -165,6 +166,7 @@ public class GoodsRepository : IGoodsRepository
             SELECT goods_id       AS GoodsId,
                    seller_id      AS SellerId,
                    seller_name    AS SellerNickname,
+                   (SELECT credit_score FROM app_user u WHERE u.user_id = v_goods_detail.seller_id) AS SellerCreditScore,
                    category_id    AS CategoryId,
                    category_name  AS CategoryName,
                    title          AS Title,
@@ -312,6 +314,18 @@ public class GoodsRepository : IGoodsRepository
             ORDER BY sort_order
             """;
         return await connection.QueryAsync<GoodsImageDto>(sql, new { GoodsId = goodsId });
+    }
+
+    public async Task<GoodsImageDto?> GetImageByIdAsync(int imageId)
+    {
+        using var connection = _connectionFactory.CreateConnection();
+        const string sql = """
+            SELECT image_id AS ImageId, goods_id AS GoodsId,
+                   image_url AS ImageUrl, sort_order AS SortOrder
+            FROM goods_image
+            WHERE image_id = :ImageId
+            """;
+        return await connection.QueryFirstOrDefaultAsync<GoodsImageDto>(sql, new { ImageId = imageId });
     }
 
     /// <summary>

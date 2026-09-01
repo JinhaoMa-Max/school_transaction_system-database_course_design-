@@ -90,9 +90,9 @@ public class AdminRepository : IAdminRepository
     public async Task<AdminStatsDto> GetStatsAsync()
     {
         using var connection = _connectionFactory.CreateConnection();
-        var userCount = await connection.ExecuteScalarAsync<int>("SELECT COUNT(1) FROM users");
+        var userCount = await connection.ExecuteScalarAsync<int>("SELECT COUNT(1) FROM app_user");
         var goodsCount = await connection.ExecuteScalarAsync<int>("SELECT COUNT(1) FROM goods");
-        var orderCount = await connection.ExecuteScalarAsync<int>("SELECT COUNT(1) FROM orders");
+        var orderCount = await connection.ExecuteScalarAsync<int>("SELECT COUNT(1) FROM trade_order");
         var reportCount = await connection.ExecuteScalarAsync<int>("SELECT COUNT(1) FROM report");
         return new AdminStatsDto
         {

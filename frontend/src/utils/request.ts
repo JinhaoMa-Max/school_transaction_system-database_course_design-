@@ -35,7 +35,7 @@ export interface ApiResponse<T = unknown> {
   data: T
 }
 
-const USE_MOCK_FALLBACK = import.meta.env.DEV && (import.meta.env.VITE_USE_MOCK_FALLBACK === 'true' || import.meta.env.VITE_USE_MOCK_FALLBACK === undefined)
+const USE_MOCK_FALLBACK = import.meta.env.DEV && import.meta.env.VITE_USE_MOCK_FALLBACK === 'true'
 
 const service: AxiosInstance = axios.create({
   baseURL: '/api',
@@ -535,7 +535,17 @@ service.interceptors.response.use(
       error.message?.includes('ERR_NETWORK') ||
       error.code === 'ERR_NETWORK'
 
-    const isServerError = error.response?.status >= 400
+    const status = error.response?.status
+    const isServerError = status >= 400
+
+    if (status === 401) {
+      localStorage.removeItem('accessToken')
+      sessionStorage.removeItem('accessToken')
+      if (window.location.pathname !== '/login') {
+        const redirect = `${window.location.pathname}${window.location.search}`
+        window.location.href = `/login?redirect=${encodeURIComponent(redirect)}`
+      }
+    }
 
     if (USE_MOCK_FALLBACK && (isNetworkError || isServerError)) {
       const config = error.config
@@ -561,7 +571,8 @@ service.interceptors.response.use(
       }
     }
 
-    Message.error(error.message || '网络错误')
+    const message = error.response?.data?.message || error.message || '网络错误'
+    Message.error(message)
     return Promise.reject(error)
   }
 )

@@ -11,11 +11,13 @@ public class BargainsController : ControllerBase
 {
     private readonly IBargainService _bargainService;
     private readonly IAuthService _authService;
+    private readonly IGoodsService _goodsService;
 
-    public BargainsController(IBargainService bargainService, IAuthService authService)
+    public BargainsController(IBargainService bargainService, IAuthService authService, IGoodsService goodsService)
     {
         _bargainService = bargainService;
         _authService = authService;
+        _goodsService = goodsService;
     }
 
     // GET /api/bargains
@@ -30,6 +32,15 @@ public class BargainsController : ControllerBase
     {
         try
         {
+            var currentUserId = ResolveCurrentUserId()
+                ?? throw new UnauthorizedAccessException("login required");
+            if (buyerId.HasValue && buyerId.Value != currentUserId)
+                throw new UnauthorizedAccessException("access denied");
+            if (sellerId.HasValue && sellerId.Value != currentUserId)
+                throw new UnauthorizedAccessException("access denied");
+            if (!buyerId.HasValue && !sellerId.HasValue)
+                buyerId = currentUserId;
+
             var result = await _bargainService.GetPagedAsync(page, size, goodsId, buyerId, sellerId, status);
             return Ok(ApiResponse<BargainListResult>.Success(result));
         }
@@ -48,6 +59,11 @@ public class BargainsController : ControllerBase
             var dto = await _bargainService.GetByIdAsync(bargainId);
             if (dto == null)
                 return NotFound(ApiResponse<object>.Fail(404, "议价不存在"));
+            var currentUserId = ResolveCurrentUserId()
+                ?? throw new UnauthorizedAccessException("login required");
+            var goods = await _goodsService.GetByIdAsync(dto.GoodsId);
+            if (dto.BuyerId != currentUserId && goods?.SellerId != currentUserId)
+                throw new UnauthorizedAccessException("access denied");
             return Ok(ApiResponse<BargainOfferDto>.Success(dto));
         }
         catch (Exception ex)
@@ -146,10 +162,17 @@ public class BargainsController : ControllerBase
     {
         return ex switch
         {
-            UnauthorizedAccessException uae => Unauthorized(ApiResponse<object>.Fail(401, uae.Message)),
+            UnauthorizedAccessException uae when IsAuthenticationFailure(uae.Message)
+                => Unauthorized(ApiResponse<object>.Fail(401, uae.Message)),
+            UnauthorizedAccessException uae => StatusCode(403, ApiResponse<object>.Fail(403, uae.Message)),
             ArgumentException ae => BadRequest(ApiResponse<object>.Fail(400, ae.Message)),
             InvalidOperationException ioe => BadRequest(ApiResponse<object>.Fail(400, ioe.Message)),
             _ => StatusCode(500, ApiResponse<object>.Fail(500, "服务器内部错误"))
         };
     }
+
+    private static bool IsAuthenticationFailure(string message) =>
+        message.Contains("login", StringComparison.OrdinalIgnoreCase)
+        || message.Contains("未登录", StringComparison.OrdinalIgnoreCase)
+        || message.Contains("banned", StringComparison.OrdinalIgnoreCase);
 }

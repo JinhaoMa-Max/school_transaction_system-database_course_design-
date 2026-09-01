@@ -6,14 +6,14 @@ import { useUserStore } from '@/stores'
 import {
   getOrderById,
   cancelOrder,
-  completeOrder
+  getGoodsById
 } from '@/api'
 import {
   getAppointmentByOrderId,
   verifyConfirmCode
 } from '@/api'
 import { orderStatusMap, appointmentStatusMap } from '@/constants'
-import type { TradeOrder, Appointment } from '@/types'
+import type { TradeOrder, Appointment, Goods } from '@/types'
 
 const route = useRoute()
 const router = useRouter()
@@ -23,6 +23,7 @@ const orderId = Number(route.params.id)
 const loading = ref(false)
 const order = ref<TradeOrder | null>(null)
 const appointment = ref<Appointment | null>(null)
+const goods = ref<Goods | null>(null)
 
 const verifyVisible = ref(false)
 const verifyCode = ref('')
@@ -54,12 +55,14 @@ const reviewStatusText = computed(() => {
 const fetchData = async () => {
   loading.value = true
   try {
-    const [orderRes, appRes] = await Promise.all([
-      getOrderById(orderId),
-      getAppointmentByOrderId(orderId).catch(() => ({ data: null }))
-    ])
+    const orderRes = await getOrderById(orderId)
     order.value = orderRes.data
+    const [appRes, goodsRes] = await Promise.all([
+      getAppointmentByOrderId(orderId).catch(() => ({ data: null })),
+      getGoodsById(orderRes.data.goodsId).catch(() => ({ data: null }))
+    ])
     appointment.value = appRes.data || null
+    goods.value = goodsRes.data || null
   } catch {
     // 错误已由全局拦截器处理
   } finally {
@@ -122,24 +125,6 @@ const handleVerify = async () => {
   }
 }
 
-const handleComplete = () => {
-  Modal.confirm({
-    title: '确认完成',
-    content: '确认交易已完成吗？确认后将无法撤销。',
-    okText: '确认完成',
-    cancelText: '取消',
-    onOk: async () => {
-      try {
-        await completeOrder(orderId)
-        Message.success('订单已完成')
-        fetchData()
-      } catch {
-        // 错误已由全局拦截器处理
-      }
-    }
-  })
-}
-
 onMounted(fetchData)
 </script>
 
@@ -160,10 +145,10 @@ onMounted(fetchData)
           <a-card class="goods-card" @click="goToGoods">
             <div class="goods-info">
               <div class="goods-image">
-                <img src="https://via.placeholder.com/120x120?text=Goods" alt="商品图片" />
+                <img :src="goods?.imageUrl || 'https://via.placeholder.com/120x120?text=Goods'" alt="商品图片" />
               </div>
               <div class="goods-detail">
-                <h3 class="goods-title">商品 #{{ order.goodsId }}</h3>
+                <h3 class="goods-title">{{ goods?.title || order.goodsTitle || `商品 #${order.goodsId}` }}</h3>
                 <p class="goods-price">成交价：<span class="price">¥{{ order.dealPrice.toFixed(2) }}</span></p>
                 <p class="click-hint">点击查看商品详情</p>
               </div>
@@ -220,9 +205,6 @@ onMounted(fetchData)
               <template v-else-if="order.status === 'in_meet'">
                 <a-button type="primary" long @click="openVerify">
                   核销确认码
-                </a-button>
-                <a-button type="outline" long @click="handleComplete">
-                  确认完成
                 </a-button>
               </template>
 

@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { Message } from '@arco-design/web-vue'
 import { getGoodsList, auditGoods, offlineGoods, getCategoryList } from '@/api'
 import type { Goods, Category } from '@/types'
+import { flattenCategories } from '@/utils/categories'
 
 const goods = ref<Goods[]>([])
 const categories = ref<Category[]>([])
@@ -20,17 +22,23 @@ const getCategoryPath = (categoryId: number): string => {
 onMounted(async () => {
   const [goodsRes] = await Promise.all([
     getGoodsList(),
-    getCategoryList().then(res => { categories.value = res.data }).catch(() => {})
+    getCategoryList().then(res => { categories.value = flattenCategories(res.data) }).catch(() => {})
   ])
   goods.value = goodsRes.data.list
 })
 
 const handleAudit = async (goodsId: number, status: 'approved' | 'rejected') => {
   await auditGoods(goodsId, { status })
+  const item = goods.value.find(goodsItem => goodsItem.goodsId === goodsId)
+  if (item) item.status = status
+  Message.success(status === 'approved' ? '商品已通过审核' : '商品已驳回')
 }
 
 const handleOffline = async (goodsId: number) => {
   await offlineGoods(goodsId)
+  const item = goods.value.find(goodsItem => goodsItem.goodsId === goodsId)
+  if (item) item.status = 'offline'
+  Message.success('商品已下架')
 }
 
 const getStatusText = (status: string) => {

@@ -17,6 +17,8 @@ public class ReportService : IReportService
 
     public async Task<ApiResponse<ReportListResult>> GetReportsAsync(int page, int size, string? reportType, string? status)
     {
+        page = Math.Max(1, page);
+        size = Math.Clamp(size, 1, 100);
         var (items, total) = await _reportRepository.GetPagedAsync(page, size, reportType, status);
         return ApiResponse<ReportListResult>.Success(new ReportListResult
         {
@@ -45,12 +47,16 @@ public class ReportService : IReportService
         if (!validTypes.Contains(request.ReportType))
             return ApiResponse<ReportDto>.Fail(400, "举报类型无效，只能是 goods/user/order");
 
-        var hasTarget = request.ReportedGoodsId.HasValue || request.ReportedUserId.HasValue || request.ReportedOrderId.HasValue;
-        if (!hasTarget)
-            return ApiResponse<ReportDto>.Fail(400, "必须指定举报目标");
+        var targetCount = new[] { request.ReportedGoodsId, request.ReportedUserId, request.ReportedOrderId }
+            .Count(value => value.HasValue);
+        if (targetCount != 1)
+            return ApiResponse<ReportDto>.Fail(400, "必须且只能指定一个举报目标");
 
         if (string.IsNullOrWhiteSpace(request.Reason))
             return ApiResponse<ReportDto>.Fail(400, "举报理由不能为空");
+        request.Reason = request.Reason.Trim();
+        if (request.Reason.Length > 1000)
+            return ApiResponse<ReportDto>.Fail(400, "举报理由不能超过 1000 个字符");
 
         // 2. 根据举报类型进行专项校验
         switch (request.ReportType)
@@ -107,12 +113,15 @@ public class ReportService : IReportService
         if (report == null)
             return ApiResponse<ReportDto>.Fail(404, "举报不存在");
 
-        if (report.Status != "pending")
-            return ApiResponse<ReportDto>.Fail(400, "该举报已处理");
+        if (report.Status is "resolved" or "rejected")
+            return ApiResponse<ReportDto>.Fail(400, "该举报已结束处理");
 
         var validResults = new[] { "processing", "resolved", "rejected" };
         if (!validResults.Contains(request.Status))
             return ApiResponse<ReportDto>.Fail(400, "处理结果无效，只能是 processing/resolved/rejected");
+
+        if (report.Status == request.Status)
+            return ApiResponse<ReportDto>.Fail(400, "举报状态没有变化");
 
         await _reportRepository.HandleAsync(reportId, adminId, request.Status, request.Remark);
 

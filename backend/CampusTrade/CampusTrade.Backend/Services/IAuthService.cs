@@ -9,6 +9,7 @@ public interface IAuthService
     Task<UserDto> GetCurrentUserAsync(string? token);
     int? TryGetUserIdFromToken(string? token);
     Task<StudentAuthDto?> GetStudentAuthByUserIdAsync(int userId);
+    Task<PageResult<StudentAuthAdminDto>> GetPagedStudentAuthAsync(int page, int size, string? status);
     Task<StudentAuthDto> SubmitStudentAuthAsync(StudentAuthRequestDto request, int? currentUserId);
     Task<StudentAuthDto> UpdateStudentAuthAsync(int authId, StudentAuthRequestDto request);
     Task<UserDto> UpdateAvatarAsync(string? token, string avatarUrl);

@@ -159,14 +159,12 @@ export const incrementViewCount = (goodsId: number) => {
  * 上传图片文件（标准 FormData 流式上传）
  * @param file 图片文件
  * @returns 上传后的图片信息，包含 imageUrl
- * @note 此处使用占位URL，实际开发中替换为真实上传接口
  */
 export const uploadImageFile = async (file: File): Promise<{ imageUrl: string }> => {
   const formData = new FormData()
   formData.append('file', file)
   
-  // TODO: 替换为真实的文件上传URL，当前使用占位接口
-  const res = await request.post<{ imageUrl: string }>(
+  const res = await request.post<{ fileName: string; url: string }>(
     '/upload/image',
     formData,
     {
@@ -175,5 +173,5 @@ export const uploadImageFile = async (file: File): Promise<{ imageUrl: string }>
       }
     }
   )
-  return res.data
+  return { imageUrl: res.data.url }
 }

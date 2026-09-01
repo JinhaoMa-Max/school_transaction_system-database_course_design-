@@ -5,13 +5,23 @@ namespace CampusTrade.Backend.Services;
 
 public class GoodsService : IGoodsService
 {
+    private static readonly HashSet<string> AllowedConditions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "new", "like_new", "slight_use", "obvious_trace"
+    };
+
     private readonly IGoodsRepository _goodsRepository;
     private readonly IAdminRepository _adminRepository;
+    private readonly ICategoryRepository _categoryRepository;
 
-    public GoodsService(IGoodsRepository goodsRepository, IAdminRepository adminRepository)
+    public GoodsService(
+        IGoodsRepository goodsRepository,
+        IAdminRepository adminRepository,
+        ICategoryRepository categoryRepository)
     {
         _goodsRepository = goodsRepository;
         _adminRepository = adminRepository;
+        _categoryRepository = categoryRepository;
     }
 
     public async Task<GoodsListResult> GetPagedAsync(
@@ -50,6 +60,10 @@ public class GoodsService : IGoodsService
         }
 
         ValidateCreateRequest(request);
+        if (await _categoryRepository.GetByIdAsync(request.CategoryId) == null)
+        {
+            throw new ArgumentException("category does not exist");
+        }
         return await _goodsRepository.CreateAsync(request, sellerId);
     }
 
@@ -69,6 +83,13 @@ public class GoodsService : IGoodsService
         if (existing.Status == "approved" && !isAdmin)
         {
             throw new InvalidOperationException("approved goods cannot be edited by seller");
+        }
+
+        ValidateUpdateRequest(request);
+        if (request.CategoryId.HasValue
+            && await _categoryRepository.GetByIdAsync(request.CategoryId.Value) == null)
+        {
+            throw new ArgumentException("category does not exist");
         }
 
         return await _goodsRepository.UpdateAsync(goodsId, request);
@@ -144,12 +165,17 @@ public class GoodsService : IGoodsService
         return await _goodsRepository.GetImagesAsync(goodsId);
     }
 
-    public async Task<int> AddImageAsync(int goodsId, string imageUrl, int sortOrder)
+    public async Task<int> AddImageAsync(int goodsId, string imageUrl, int sortOrder, int currentUserId, bool isAdmin)
     {
         var goods = await _goodsRepository.GetByIdAsync(goodsId);
         if (goods == null)
         {
             throw new ArgumentException("goods not found");
+        }
+
+        if (!isAdmin && goods.SellerId != currentUserId)
+        {
+            throw new UnauthorizedAccessException("only the seller or an admin can add goods images");
         }
 
         if (string.IsNullOrWhiteSpace(imageUrl))
@@ -160,8 +186,17 @@ public class GoodsService : IGoodsService
         return await _goodsRepository.AddImageAsync(goodsId, imageUrl.Trim(), sortOrder);
     }
 
-    public async Task<bool> DeleteImageAsync(int imageId)
+    public async Task<bool> DeleteImageAsync(int imageId, int currentUserId, bool isAdmin)
     {
+        var image = await _goodsRepository.GetImageByIdAsync(imageId);
+        if (image == null) return false;
+        var goods = await _goodsRepository.GetByIdAsync(image.GoodsId);
+        if (goods == null) return false;
+        if (!isAdmin && goods.SellerId != currentUserId)
+        {
+            throw new UnauthorizedAccessException("only the seller or an admin can delete goods images");
+        }
+
         return await _goodsRepository.DeleteImageAsync(imageId);
     }
 
@@ -177,14 +212,41 @@ public class GoodsService : IGoodsService
             throw new ArgumentException("title is required");
         }
 
-        if (request.Price < 0)
+        if (request.Price <= 0 || request.Price > 999999)
         {
-            throw new ArgumentException("price cannot be negative");
+            throw new ArgumentException("price must be between 0 and 999999");
         }
 
-        if (string.IsNullOrWhiteSpace(request.Condition))
+        if (request.Title.Trim().Length > 100)
         {
-            throw new ArgumentException("condition is required");
+            throw new ArgumentException("title cannot exceed 100 characters");
         }
+
+        if (!AllowedConditions.Contains(request.Condition?.Trim() ?? string.Empty))
+        {
+            throw new ArgumentException("condition is invalid");
+        }
+
+        request.Title = request.Title.Trim();
+        request.Description = request.Description?.Trim();
+        request.Condition = request.Condition!.Trim();
+    }
+
+    private static void ValidateUpdateRequest(UpdateGoodsRequest request)
+    {
+        if (request.CategoryId.HasValue && request.CategoryId <= 0)
+            throw new ArgumentException("categoryId is invalid");
+        if (request.Title != null && string.IsNullOrWhiteSpace(request.Title))
+            throw new ArgumentException("title cannot be empty");
+        if (request.Title?.Trim().Length > 100)
+            throw new ArgumentException("title cannot exceed 100 characters");
+        if (request.Price.HasValue && (request.Price <= 0 || request.Price > 999999))
+            throw new ArgumentException("price must be between 0 and 999999");
+        if (request.Condition != null && !AllowedConditions.Contains(request.Condition.Trim()))
+            throw new ArgumentException("condition is invalid");
+
+        request.Title = request.Title?.Trim();
+        request.Description = request.Description?.Trim();
+        request.Condition = request.Condition?.Trim();
     }
 }

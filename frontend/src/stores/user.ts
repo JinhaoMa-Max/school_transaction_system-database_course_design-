@@ -22,6 +22,7 @@ const token = ref(
 
   // 计算属性：判断用户是否已登录（同时存在token和user）
   const isLoggedIn = computed(() => !!token.value && !!user.value)
+  const hasToken = computed(() => !!token.value)
   // 计算属性：判断当前用户是否为管理员
   const isAdmin = computed(() => user.value?.role === 'admin')
   // 计算属性：判断当前用户是否为普通用户
@@ -38,11 +39,14 @@ const login = async (account: string, password: string, rememberMe = true) => {
 
 // 登出方法，同上
   const logout = async () => {
-  await logoutApi()
-  token.value = ''
-  user.value = null
-  localStorage.removeItem('accessToken')
-  sessionStorage.removeItem('accessToken')
+    try {
+      await logoutApi()
+    } finally {
+      token.value = ''
+      user.value = null
+      localStorage.removeItem('accessToken')
+      sessionStorage.removeItem('accessToken')
+    }
 }
 
   /**
@@ -69,6 +73,7 @@ const login = async (account: string, password: string, rememberMe = true) => {
     user,
     token,
     isLoggedIn,
+    hasToken,
     isAdmin,
     isUser,
     login,

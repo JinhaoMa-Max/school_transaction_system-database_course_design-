@@ -5,6 +5,7 @@ public class GoodsDto
     public int GoodsId { get; set; }
     public int SellerId { get; set; }
     public string SellerNickname { get; set; } = string.Empty;
+    public int SellerCreditScore { get; set; }
     public int CategoryId { get; set; }
     public string CategoryName { get; set; } = string.Empty;
     public string Title { get; set; } = string.Empty;

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref,reactive, onMounted, watch } from 'vue'
+import { ref, reactive, onMounted, watch, computed } from 'vue'
 import { useUserStore } from '@/stores'
 import { submitStudentAuth, getStudentAuth } from '@/api'
 import type { StudentAuth } from '@/types'
@@ -10,6 +10,9 @@ const userStore = useUserStore()
 const formRef = ref()
 const auth = ref<StudentAuth | null>(null)
 const loading = ref(false)
+const isIncomplete = computed(() =>
+  auth.value?.realName === '待完善' || auth.value?.college === '待完善'
+)
 
   //用表单表示各个值
 const form = reactive({
@@ -106,7 +109,7 @@ const goToProfile = () => {
     <a-card class = "student-auth-card">
 
       <!-- 已提交显示的页面 -->
-      <template v-if = "auth && auth.authStatus !== 'rejected'">
+      <template v-if = "auth && !isIncomplete && auth.authStatus !== 'rejected'">
       <div class ="auth-result">
         <a-result
           :status="auth.authStatus === 'approved' ? 'success' : 'warning'"

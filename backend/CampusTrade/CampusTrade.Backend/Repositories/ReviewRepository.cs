@@ -55,7 +55,7 @@ public async Task<(List<ReviewDto> Items, int Total)> GetPagedAsync(int page, in
                        CASE WHEN ROW_NUMBER() OVER (PARTITION BY order_id, reviewer_id ORDER BY created_at) = 2
                             THEN 1 ELSE 0 END AS IsFollowUp
                 FROM v_review_detail
-            ) WHERE review_id = :Id
+            ) WHERE ReviewId = :Id
             """;
         return await connection.QueryFirstOrDefaultAsync<ReviewDto>(sql, new { Id = reviewId });
     }
@@ -112,7 +112,12 @@ public async Task<(List<ReviewDto> Items, int Total)> GetPagedAsync(int page, in
     public async Task<int> RecalcCreditAsync(int userId)
 {
     using var connection = _connectionFactory.CreateConnection();
-    return await connection.ExecuteScalarAsync<int>("SELECT fn_calc_credit(:u) FROM DUAL", new { u = userId });
+    await connection.ExecuteAsync(
+        "UPDATE app_user SET credit_score = fn_calc_credit(:u), updated_at = SYSTIMESTAMP WHERE user_id = :u",
+        new { u = userId });
+    return await connection.ExecuteScalarAsync<int>(
+        "SELECT credit_score FROM app_user WHERE user_id = :u",
+        new { u = userId });
 }
 
 public async Task<bool> UpdateAsync(int reviewId, int rating, string? content)

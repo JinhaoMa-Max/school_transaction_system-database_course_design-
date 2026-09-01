@@ -13,6 +13,7 @@ import {
 } from '@/api'
 import { conditionMap, goodsStatusMap } from '@/constants'
 import type { Category, GoodsImage, Goods } from '@/types'
+import { flattenCategories } from '@/utils/categories'
 
 const route = useRoute()
 const router = useRouter()
@@ -23,7 +24,7 @@ const loading = ref(false)
 const pageLoading = ref(true)
 const categories = ref<Category[]>([])
 const existingImages = ref<GoodsImage[]>([])
-const newImageList = ref<{ url: string; uploadedUrl?: string }[]>([])
+const newImageList = ref<{ url: string; uploadedUrl?: string; file?: File }[]>([])
 
 const selectedParentId = ref<number | undefined>(undefined)
 
@@ -98,7 +99,7 @@ const conditionOptions = Object.entries(conditionMap).map(([value, label]) => ({
 const fetchCategories = async () => {
   try {
     const res = await getCategoryList()
-    categories.value = res.data
+    categories.value = flattenCategories(res.data)
   } catch {
     // 错误已由全局拦截器处理
   }
@@ -173,7 +174,7 @@ const handleImageUpload = async (fileList: File[]) => {
     const reader = new FileReader()
     reader.onload = async (e) => {
       const base64Url = e.target?.result as string
-      newImageList.value.push({ url: base64Url })
+      newImageList.value.push({ url: base64Url, file })
       
       try {
         const uploadRes = await uploadImageFile(file)
@@ -233,8 +234,21 @@ const handleSubmit = async () => {
 
     let currentSortOrder = existingImages.value.length
     for (let i = 0; i < newImageList.value.length; i++) {
+      const item = newImageList.value[i]
+      let imageUrl = item.uploadedUrl
+      if (!imageUrl && item.file) {
+        try {
+          const uploadRes = await uploadImageFile(item.file)
+          imageUrl = uploadRes.imageUrl
+          item.uploadedUrl = imageUrl
+        } catch {
+          Message.warning(`第${i + 1}张新图片上传失败，已跳过`)
+          continue
+        }
+      }
+      if (!imageUrl) continue
+
       try {
-        const imageUrl = newImageList.value[i].uploadedUrl || newImageList.value[i].url
         await uploadGoodsImage(goodsId, {
           imageUrl,
           sortOrder: currentSortOrder + i + 1

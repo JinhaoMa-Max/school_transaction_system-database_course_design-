@@ -65,7 +65,7 @@ confirmPassword: [
   ],
 
   email: [
-     {message: '请输入正确的邮箱格式' }
+     { match: /^$|^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: '请输入正确的邮箱格式' }
   ],
 
   phone: [

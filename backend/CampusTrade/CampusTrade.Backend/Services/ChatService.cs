@@ -7,10 +7,12 @@ namespace CampusTrade.Backend.Services;
 public class ChatService : IChatService
 {
     private readonly IChatRepository _chatRepository;
+    private readonly IGoodsRepository _goodsRepository;
 
-    public ChatService(IChatRepository chatRepository)
+    public ChatService(IChatRepository chatRepository, IGoodsRepository goodsRepository)
     {
         _chatRepository = chatRepository;
+        _goodsRepository = goodsRepository;
     }
 
     public async Task<ApiResponse<List<ChatSessionDto>>> GetSessionsAsync(int? userId)
@@ -42,6 +44,14 @@ public class ChatService : IChatService
         if (!userId.HasValue)
             return ApiResponse<ChatSessionDto>.Fail(401, "未登录");
 
+        var goods = await _goodsRepository.GetByIdAsync(request.GoodsId);
+        if (goods == null)
+            return ApiResponse<ChatSessionDto>.Fail(404, "商品不存在");
+        if (goods.SellerId != request.SellerId)
+            return ApiResponse<ChatSessionDto>.Fail(400, "卖家与商品不匹配");
+        if (request.SellerId == userId.Value)
+            return ApiResponse<ChatSessionDto>.Fail(400, "不能与自己创建会话");
+
         var sessionId = await _chatRepository.GetOrCreateSessionAsync(
             request.GoodsId,
             userId.Value,
@@ -58,6 +68,8 @@ public class ChatService : IChatService
     {
         if (!userId.HasValue)
             return ApiResponse<ChatMessageListResult>.Fail(401, "未登录");
+        if (page < 1 || size < 1 || size > 100)
+            return ApiResponse<ChatMessageListResult>.Fail(400, "分页参数不合法");
 
         var session = await _chatRepository.GetSessionByIdAsync(sessionId);
         if (session == null)
@@ -87,6 +99,12 @@ public class ChatService : IChatService
 
         if (session.BuyerId != userId.Value && session.SellerId != userId.Value)
             return ApiResponse<int>.Fail(403, "无权发送消息");
+
+        request.Content = request.Content?.Trim() ?? string.Empty;
+        if (request.Content.Length == 0)
+            return ApiResponse<int>.Fail(400, "消息内容不能为空");
+        if (request.Content.Length > 2000)
+            return ApiResponse<int>.Fail(400, "消息内容不能超过2000字");
 
         var messageId = await _chatRepository.SendMessageAsync(request.SessionId, userId.Value, request.Content);
         return ApiResponse<int>.Success(messageId, "消息发送成功");

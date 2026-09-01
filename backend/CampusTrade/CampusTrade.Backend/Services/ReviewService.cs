@@ -15,6 +15,8 @@ public class ReviewService : IReviewService
 
     public async Task<ApiResponse<ReviewListResult>> GetReviewsAsync(int page, int size, int? reviewerId, int? reviewedUserId, int? orderId)
     {
+        page = Math.Max(1, page);
+        size = Math.Clamp(size, 1, 100);
         var (items, total) = await _reviewRepository.GetPagedAsync(page, size, reviewerId, reviewedUserId, orderId);
         return ApiResponse<ReviewListResult>.Success(new ReviewListResult
         {
@@ -37,6 +39,9 @@ public class ReviewService : IReviewService
     {
         if (rating < 1 || rating > 5)
             return ApiResponse<ReviewDto>.Fail(400, "评分必须在1-5之间");
+        content = content?.Trim();
+        if (content?.Length > 1000)
+            return ApiResponse<ReviewDto>.Fail(400, "评价内容不能超过 1000 个字符");
 
         // 检查是否已达上限（首评+追评各一次，共2条）
         var reviewCount = await _reviewRepository.GetReviewCountAsync(orderId, currentUserId);
@@ -65,6 +70,9 @@ public class ReviewService : IReviewService
     {
         if (rating < 1 || rating > 5)
             return ApiResponse<ReviewDto>.Fail(400, "评分必须在1-5之间");
+        content = content?.Trim();
+        if (content?.Length > 1000)
+            return ApiResponse<ReviewDto>.Fail(400, "评价内容不能超过 1000 个字符");
 
         var review = await _reviewRepository.GetByIdAsync(reviewId);
         if (review == null)
@@ -76,6 +84,8 @@ public class ReviewService : IReviewService
         var success = await _reviewRepository.UpdateAsync(reviewId, rating, content);
         if (!success)
             return ApiResponse<ReviewDto>.Fail(500, "评价更新失败");
+
+        await _reviewRepository.RecalcCreditAsync(review.ReviewedUserId);
 
         var updatedReview = await _reviewRepository.GetByIdAsync(reviewId);
         return ApiResponse<ReviewDto>.Success(updatedReview!, "评价更新成功");
@@ -93,6 +103,8 @@ public class ReviewService : IReviewService
         var success = await _reviewRepository.DeleteAsync(reviewId);
         if (!success)
             return ApiResponse<bool>.Fail(500, "评价删除失败");
+
+        await _reviewRepository.RecalcCreditAsync(review.ReviewedUserId);
 
         return ApiResponse<bool>.Success(true, "评价删除成功");
     }

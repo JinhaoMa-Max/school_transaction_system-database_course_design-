@@ -1,8 +1,31 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { getAppointmentList } from '@/api'
 import type { Appointment } from '@/types'
 
+const router = useRouter()
 const appointments = ref<Appointment[]>([])
+const loading = ref(false)
+const page = ref(1)
+const pageSize = ref(20)
+const total = ref(0)
+
+const fetchAppointments = async () => {
+  loading.value = true
+  try {
+    const res = await getAppointmentList({ page: page.value, size: pageSize.value })
+    appointments.value = res.data.list
+    total.value = res.data.total
+  } finally {
+    loading.value = false
+  }
+}
+
+const handlePageChange = (value: number) => {
+  page.value = value
+  fetchAppointments()
+}
 
 const getStatusText = (status: string) => {
   const map: Record<string, string> = {
@@ -13,16 +36,20 @@ const getStatusText = (status: string) => {
   }
   return map[status] || status
 }
+
+onMounted(fetchAppointments)
 </script>
 
 <template>
   <div class="appointment-page">
     <h2>我的预约</h2>
+    <a-spin :loading="loading" style="width: 100%">
     <div class="appointment-list">
       <div 
         v-for="item in appointments" 
         :key="item.appointmentId" 
         class="appointment-item"
+        @click="router.push(`/orders/${item.orderId}`)"
       >
         <div class="appointment-info">
           <h3>预约ID: {{ item.appointmentId }}</h3>
@@ -35,9 +62,17 @@ const getStatusText = (status: string) => {
         </div>
       </div>
     </div>
-    <div v-if="appointments.length === 0" class="empty">
+    <div v-if="!loading && appointments.length === 0" class="empty">
       <p>暂无预约记录</p>
     </div>
+    <a-pagination
+      v-if="total > pageSize"
+      :current="page"
+      :page-size="pageSize"
+      :total="total"
+      @change="handlePageChange"
+    />
+    </a-spin>
   </div>
 </template>
 
@@ -57,6 +92,7 @@ const getStatusText = (status: string) => {
   background: white;
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  cursor: pointer;
 }
 
 .appointment-info h3 {
