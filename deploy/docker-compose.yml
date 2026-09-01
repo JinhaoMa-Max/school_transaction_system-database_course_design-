@@ -1,0 +1,54 @@
+name: campus-trade
+
+services:
+  oracle:
+    image: gvenzl/oracle-free:23-slim-faststart
+    restart: unless-stopped
+    environment:
+      ORACLE_PASSWORD: ${ORACLE_PASSWORD:?set ORACLE_PASSWORD in deploy/.env}
+      APP_USER: CAMPUS
+      APP_USER_PASSWORD: ${CAMPUS_DB_PASSWORD:?set CAMPUS_DB_PASSWORD in deploy/.env}
+    volumes:
+      - oracle-data:/opt/oracle/oradata
+      - ../database/init:/container-entrypoint-initdb.d:ro
+      - ../database/ddl:/opt/campus-trade/ddl:ro
+      - ../database/seed:/opt/campus-trade/seed:ro
+    mem_limit: 3g
+    memswap_limit: 4g
+    healthcheck:
+      test: ["CMD-SHELL", "echo 'SELECT 1 FROM DUAL;' | sqlplus -L -s \"system/$${ORACLE_PASSWORD}@//localhost:1521/FREEPDB1 as sysdba\" | grep -q 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 120s
+
+  backend:
+    build:
+      context: ../backend/CampusTrade
+      dockerfile: CampusTrade.Backend/Dockerfile
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__OracleDb: "User Id=CAMPUS;Password=${CAMPUS_DB_PASSWORD};Data Source=oracle:1521/FREEPDB1"
+      Auth__TokenSigningKey: ${TOKEN_SIGNING_KEY:?set TOKEN_SIGNING_KEY in deploy/.env}
+      Auth__TokenExpirationMinutes: 1440
+    volumes:
+      - uploads-data:/app/wwwroot/uploads
+    depends_on:
+      oracle:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
+volumes:
+  oracle-data:
+  uploads-data:
