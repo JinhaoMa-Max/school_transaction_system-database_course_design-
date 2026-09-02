@@ -65,6 +65,23 @@ public class AppointmentRepository : IAppointmentRepository
         return (await GetByOrderIdAsync(orderId))!;
     }
 
+    public async Task<AppointmentDto> RescheduleAsync(int appointmentId, DateTime meetTime, string meetLocation, string confirmCode)
+    {
+        using var c = _connectionFactory.CreateConnection();
+        var affected = await c.ExecuteAsync("""
+            UPDATE appointment
+            SET meet_time = :MeetTime,
+                meet_place = :MeetLocation,
+                confirm_code = :Code,
+                appointment_status = 'pending',
+                created_at = SYSTIMESTAMP
+            WHERE appointment_id = :AppointmentId
+              AND appointment_status = 'cancelled'
+            """, new { AppointmentId = appointmentId, MeetTime = meetTime, MeetLocation = meetLocation, Code = confirmCode });
+        if (affected == 0) throw new InvalidOperationException("仅已取消的预约可以重新预约");
+        return (await GetByIdAsync(appointmentId))!;
+    }
+
     public async Task<bool> UpdateStatusAsync(int appointmentId, string status)
     {
         using var c = _connectionFactory.CreateConnection();

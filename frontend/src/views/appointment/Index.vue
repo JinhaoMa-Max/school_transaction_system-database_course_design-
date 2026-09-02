@@ -1,8 +1,16 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Message } from '@arco-design/web-vue'
-import { getAppointmentByOrderId, createAppointment, getOrderById, getGoodsById } from '@/api'
+import { Message, Modal } from '@arco-design/web-vue'
+import {
+  getAppointmentByOrderId,
+  createAppointment,
+  confirmAppointment,
+  cancelAppointment,
+  startMeet,
+  getOrderById,
+  getGoodsById
+} from '@/api'
 import type { Appointment, TradeOrder, Goods } from '@/types'
 
 const route = useRoute()
@@ -15,6 +23,7 @@ const order = ref<TradeOrder | null>(null)
 const goods = ref<Goods | null>(null)
 const loading = ref(false)
 const submitLoading = ref(false)
+const actionLoading = ref(false)
 
 const form = reactive({
   meetTime: '',
@@ -85,6 +94,50 @@ const handleBack = () => {
   router.push(`/orders/${orderId}`)
 }
 
+const handleConfirm = async () => {
+  if (!appointment.value) return
+  actionLoading.value = true
+  try {
+    await confirmAppointment(appointment.value.appointmentId)
+    Message.success('预约已确认')
+    await fetchData()
+  } finally {
+    actionLoading.value = false
+  }
+}
+
+const handleStartMeet = async () => {
+  actionLoading.value = true
+  try {
+    await startMeet(orderId)
+    Message.success('已开始面交，请完成后核销确认码')
+    await fetchData()
+  } finally {
+    actionLoading.value = false
+  }
+}
+
+const handleCancelAppointment = () => {
+  if (!appointment.value) return
+  const appointmentId = appointment.value.appointmentId
+  Modal.confirm({
+    title: '取消预约',
+    content: '确定取消本次面交预约吗？取消后仍可重新预约。',
+    okText: '确认取消',
+    cancelText: '返回',
+    onOk: async () => {
+      actionLoading.value = true
+      try {
+        await cancelAppointment(appointmentId)
+        Message.success('预约已取消，可以重新选择时间和地点')
+        await fetchData()
+      } finally {
+        actionLoading.value = false
+      }
+    }
+  })
+}
+
 onMounted(fetchData)
 </script>
 
@@ -100,7 +153,7 @@ onMounted(fetchData)
           <h2 class="page-title">面交预约</h2>
         </div>
 
-        <div v-if="appointment" class="appointment-detail">
+        <div v-if="appointment && appointment.status !== 'cancelled'" class="appointment-detail">
           <a-card>
             <template #title>
               <div class="card-title">
@@ -137,11 +190,48 @@ onMounted(fetchData)
                 <p>请妥善保管确认码，面交时需向对方出示此确认码进行核销。</p>
               </template>
             </a-alert>
+
+            <div class="detail-actions">
+              <a-button
+                v-if="appointment.status === 'pending'"
+                type="primary"
+                :loading="actionLoading"
+                @click="handleConfirm"
+              >
+                确认预约
+              </a-button>
+              <a-button
+                v-if="appointment.status === 'confirmed' && order?.status === 'pending_meet'"
+                type="primary"
+                :loading="actionLoading"
+                @click="handleStartMeet"
+              >
+                开始面交
+              </a-button>
+              <a-button
+                v-if="appointment.status === 'confirmed' && order?.status === 'in_meet'"
+                type="primary"
+                @click="handleBack"
+              >
+                返回订单核销
+              </a-button>
+              <a-button
+                v-if="appointment.status === 'pending' || appointment.status === 'confirmed'"
+                status="danger"
+                :disabled="actionLoading"
+                @click="handleCancelAppointment"
+              >
+                取消预约
+              </a-button>
+            </div>
           </a-card>
         </div>
 
         <div v-else class="appointment-form">
-          <a-card title="预约面交">
+          <a-card :title="appointment?.status === 'cancelled' ? '重新预约面交' : '预约面交'">
+            <a-alert v-if="appointment?.status === 'cancelled'" type="warning" style="margin-bottom: 16px">
+              上一次预约已取消，请重新选择面交时间和地点。
+            </a-alert>
             <div v-if="goods" class="goods-info">
               <div class="goods-image">
                 <img :src="goods.imageUrl || 'https://via.placeholder.com/80x80?text=No+Image'" :alt="goods.title" />
@@ -227,6 +317,13 @@ onMounted(fetchData)
   margin: 16px 0 0 0;
   font-size: 24px;
   font-weight: 600;
+}
+
+.detail-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 20px;
 }
 
 .card-title {

@@ -44,6 +44,9 @@ public interface IAppointmentRepository
     /// </remarks>
     Task<AppointmentDto> CreateAsync(int orderId, DateTime meetTime, string meetLocation, string confirmCode);
 
+    /// <summary>重新启用已取消的预约，并生成新的确认码。</summary>
+    Task<AppointmentDto> RescheduleAsync(int appointmentId, DateTime meetTime, string meetLocation, string confirmCode);
+
     /// <summary>
     /// 更新预约状态（pending/confirmed/completed/cancelled）
     /// </summary>

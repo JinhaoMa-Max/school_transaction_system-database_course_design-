@@ -74,11 +74,15 @@ public class AppointmentService : IAppointmentService
             throw new InvalidOperationException("当前订单状态不允许创建预约");
         }
 
-        // 一单一约：已存在预约时不允许重复创建
+        // 一单一约：已取消的预约复用原记录，避免唯一约束阻止重新预约。
         var existing = await _appointmentRepository.GetByOrderIdAsync(request.OrderId);
-        if (existing != null) throw new InvalidOperationException("该订单已存在预约");
-
         var confirmCode = GenerateConfirmCode();
+        if (existing != null)
+        {
+            if (existing.Status != "cancelled") throw new InvalidOperationException("该订单已存在有效预约");
+            return await _appointmentRepository.RescheduleAsync(existing.AppointmentId, request.MeetTime, meetLocation, confirmCode);
+        }
+
         return await _appointmentRepository.CreateAsync(request.OrderId, request.MeetTime, meetLocation, confirmCode);
     }
 

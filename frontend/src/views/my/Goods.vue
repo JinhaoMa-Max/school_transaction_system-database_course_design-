@@ -5,7 +5,7 @@ import { Message, Modal } from '@arco-design/web-vue'
 import { getGoodsList, offlineGoods } from '@/api'
 import { useUserStore } from '@/stores'
 import { conditionMap, goodsStatusMap } from '@/constants'
-import type { Goods } from '@/types'
+import type { Goods, GoodsQuery } from '@/types'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -29,14 +29,14 @@ const tabOptions = [
 
 
 const columns = [
-  { title: '商品图片', dataIndex: 'imageUrl', width: 100 },
-  { title: '标题', dataIndex: 'title' },
-  { title: '价格', dataIndex: 'price', width: 120 },
-  { title: '成色', dataIndex: 'condition', width: 100 },
-  { title: '状态', dataIndex: 'status', width: 100 },
-  { title: '浏览量', dataIndex: 'viewCount', width: 90 },
-  { title: '发布时间', dataIndex: 'publishTime', width: 170 },
-  { title: '操作', dataIndex: 'actions', width: 200 }
+  { title: '商品图片', dataIndex: 'imageUrl', slotName: 'imageUrl', width: 100 },
+  { title: '标题', dataIndex: 'title', slotName: 'title' },
+  { title: '价格', dataIndex: 'price', slotName: 'price', width: 120 },
+  { title: '成色', dataIndex: 'condition', slotName: 'condition', width: 100 },
+  { title: '状态', dataIndex: 'status', slotName: 'status', width: 100 },
+  { title: '浏览量', dataIndex: 'viewCount', slotName: 'viewCount', width: 90 },
+  { title: '发布时间', dataIndex: 'publishTime', slotName: 'publishTime', width: 170 },
+  { title: '操作', dataIndex: 'actions', slotName: 'actions', width: 200 }
 ]
 
 const fetchGoodsList = async () => {
@@ -44,7 +44,7 @@ const fetchGoodsList = async () => {
 
   loading.value = true
   try {
-    const params: Record<string, any> = {
+    const params: GoodsQuery = {
       sellerId: userStore.user.userId,
       page: page.value,
       size: pageSize.value

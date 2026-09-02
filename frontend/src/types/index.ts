@@ -216,6 +216,7 @@ export interface PageResult<T> {
 
 export interface GoodsQuery {
   keyword?: string
+  sellerId?: number
   categoryId?: number
   categoryIds?: string
   minPrice?: number
@@ -230,6 +231,7 @@ export interface GoodsQuery {
 
 export interface OrderQuery {
   status?: string
+  role?: 'buy' | 'sell'
   page?: number
   size?: number
 }

@@ -6,7 +6,7 @@ import { getOrderList, cancelOrder, getGoodsById } from '@/api'
 import { verifyConfirmCode } from '@/api'
 import { useUserStore } from '@/stores'
 import { orderStatusMap } from '@/constants'
-import type { TradeOrder, Goods } from '@/types'
+import type { TradeOrder, Goods, OrderQuery } from '@/types'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -16,7 +16,7 @@ const orderList = ref<TradeOrder[]>([])
 const total = ref(0)
 const page = ref(1)
 const pageSize = ref(10)
-const activeTab = ref('buy')
+const activeTab = ref<'buy' | 'sell'>('buy')
 const statusFilter = ref('')
 const goodsMap = ref<Record<number, Goods>>({})
 
@@ -36,12 +36,12 @@ const statusOptions = [
 
 
 const columns = [
-  { title: '商品信息', dataIndex: 'goodsId', width: 280 },
-  { title: '成交价', dataIndex: 'dealPrice', width: 120 },
-  { title: '订单状态', dataIndex: 'status', width: 100 },
-  { title: '对方', dataIndex: 'counterpart', width: 120 },
-  { title: '下单时间', dataIndex: 'createTime', width: 170 },
-  { title: '操作', dataIndex: 'actions', width: 240 }
+  { title: '商品信息', dataIndex: 'goodsId', slotName: 'goodsId', width: 280 },
+  { title: '成交价', dataIndex: 'dealPrice', slotName: 'dealPrice', width: 120 },
+  { title: '订单状态', dataIndex: 'status', slotName: 'status', width: 100 },
+  { title: '对方', dataIndex: 'counterpart', slotName: 'counterpart', width: 120 },
+  { title: '下单时间', dataIndex: 'createTime', slotName: 'createTime', width: 170 },
+  { title: '操作', dataIndex: 'actions', slotName: 'actions', width: 240 }
 ]
 
 const fetchOrderList = async () => {
@@ -49,18 +49,15 @@ const fetchOrderList = async () => {
 
   loading.value = true
   try {
-    const params: Record<string, any> = {
+    const params: OrderQuery = {
       page: page.value,
       size: pageSize.value
     }
     if (statusFilter.value) {
       params.status = statusFilter.value
     }
-    if (activeTab.value === 'buy') {
-      params.buyerId = userStore.user.userId
-    } else {
-      params.sellerId = userStore.user.userId
-    }
+    // 后端根据登录用户和 role 过滤订单，不能信任客户端传入的用户 ID。
+    params.role = activeTab.value
     const res = await getOrderList(params)
     orderList.value = res.data.list
     total.value = res.data.total
@@ -82,7 +79,7 @@ const fetchOrderList = async () => {
 }
 
 const handleTabChange = (key: string | number) => {
-  activeTab.value = String(key)
+  activeTab.value = key === 'sell' ? 'sell' : 'buy'
   page.value = 1
   fetchOrderList()
 }
