@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
-import { useUserStore } from '@/stores'
 import { getGoodsList } from '@/api/goods'
 import { getCategoryList } from '@/api/category'
 import type { Goods, Category } from '@/types'
@@ -8,7 +7,6 @@ import {ref,onMounted} from 'vue'
 import{Message} from '@arco-design/web-vue'
 
 const router = useRouter()
-const userStore = useUserStore()
 
   //商品数据
 const hotGoods = ref<Goods[]>([])
@@ -45,37 +43,6 @@ const getCategoryNameById = (categoryId?: number | null) => {
 //进入商品广场
 const goToGoods = () => {
   router.push('/goods')
-}
-
-//进入商品发布页面
-const goToPublish = () => {
-  router.push('/goods/publish')
-}
-
-//进入我的订单
-const goToOrders = () => {
-  router.push('/orders')
-}
-
-//进入个人中心
-const goToProfile = () => {
-  router.push('/profile')
-}
-
-const goToFavorites = () => {
-  router.push('/favorites')
-}
-
-const goToBargains = () => {
-  router.push('/bargains')
-}
-
-const goToChat = () => {
-  router.push('/chat')
-}
-
-const goToMyGoods = () => {
-  router.push('/my/goods')
 }
 
 //进入商品页面
@@ -135,62 +102,6 @@ onMounted(() => {
 
 <template>
   <div class="home-page">
-
-    <!--顶部导航页-->
-    <a-card class="home-header-card" :bordered="false">
-
-  <div class="home-header">
-        <!-- 标题 -->
-        <div class ="home-title">
-          校园二手交易平台
-        </div>
-        <a-space class = "home-nav">
-
-        <a-button type="text" @click="goToGoods">
-          商品广场
-        </a-button>
-
-        <a-button v-if="userStore.isLoggedIn"  type="text" @click="goToPublish">
-          发布商品
-        </a-button>
-
-        <a-button v-if="userStore.isLoggedIn" type="text" @click="goToMyGoods">
-          我的商品
-        </a-button>
-
-        <a-button v-if="userStore.isLoggedIn" type="text" @click="goToOrders">
-          我的订单
-        </a-button>
-
-        <a-button v-if="userStore.isLoggedIn" type="text" @click="goToFavorites">
-          我的收藏
-        </a-button>
-
-        <a-button v-if="userStore.isLoggedIn" type="text" @click="goToBargains">
-          议价管理
-        </a-button>
-
-        <a-button v-if="userStore.isLoggedIn" type="text" @click="goToChat">
-          聊天
-        </a-button>
-
-        <a-button v-if="userStore.isLoggedIn" type="text" @click="goToProfile">
-          个人中心
-        </a-button>
-
-        <a-button v-if="userStore.isLoggedIn" type="text" status="danger" @click="userStore.logout">
-          退出登录
-        </a-button>
-        
-        <a-button v-else type="primary" @click="router.push('/login')">
-          登录
-        </a-button>
-
-        </a-space>
-
-  </div>
-
-    </a-card>
 
     <main class="home-main">
 
@@ -305,96 +216,6 @@ onMounted(() => {
     "Helvetica Neue",
     Arial,
     sans-serif;
-}
-
-.home-header-card {
-  max-width: 1180px;
-  margin: 0 auto 20px;
-  border-radius: 20px;
-  box-shadow: 0 8px 24px rgba(45, 54, 142, 0.06);
-  animation: fadeUp 0.6s ease both;
-}
-
-.home-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.home-title {
-  font-family:
-    "PingFang SC",
-    "Microsoft YaHei",
-    sans-serif;
-  font-size: 35px;
-  font-weight: 800;
-  letter-spacing: 1.5px;
-  color: #253554;
-}
-
-
-.home-nav {
-  display: flex;
-  gap: 8px;
-  align-items:flex-end;
-}
-
-.home-nav :deep(.arco-btn) {
-  font-size: 15px;
-  font-weight: 650;
-  letter-spacing: 0.04em;
-  color: #253554;
-  padding: 6px 12px;
-  border-radius: 999px;
-  transition:
-    color 0.2s ease,
-    background-color 0.2s ease,
-    transform 0.2s ease;
-}
-
-.home-nav :deep(.arco-btn-text:hover) {
-  color: #684993;
-  background-color: rgba(104, 73, 147, 0.1);
-  transform: translateY(-1px);
-}
-
-.home-nav :deep(.arco-btn-status-danger) {
-  color: #cc5c5d;
-}
-
-.home-nav :deep(.arco-btn-status-danger:hover) {
-  color: #b83f48;
-  background-color: rgba(204, 92, 93, 0.1);
-}
-
-.home-nav :deep(.arco-btn-primary) {
-  font-weight: 700;
-  color: #fff;
-  background: linear-gradient(135deg, #253554 0%, #684993 100%);
-  border: none;
-  box-shadow: 0 6px 14px rgba(104, 73, 147, 0.22);
-}
-
-.home-nav :deep(.arco-btn-text) {
-  position: relative;
-}
-
-.home-nav :deep(.arco-btn-text::after) {
-  content: "";
-  position: absolute;
-  left: 14px;
-  right: 14px;
-  bottom: 4px;
-  height: 2px;
-  border-radius: 999px;
-  background: linear-gradient(90deg, #253554, #684993);
-  transform: scaleX(0);
-  transform-origin: center;
-  transition: transform 0.2s ease;
-}
-
-.home-nav :deep(.arco-btn-text:hover::after) {
-  transform: scaleX(1);
 }
 
 .home-main {
