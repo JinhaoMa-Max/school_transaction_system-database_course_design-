@@ -142,6 +142,41 @@ npm run dev -- --host 0.0.0.0 --port 5173
 
 ---
 
+## AI 助手（DeepSeek）
+
+页面右下角的悬浮 AI 助手，可回答平台使用相关的简要问题（流式输出，无需登录）。
+
+- 前端：[AiChatWidget.vue](frontend/src/components/AiChatWidget.vue)，挂载于 App.vue，所有页面可用
+- 后端：`POST /api/ai/chat`，匿名，SSE 透传 DeepSeek 流式响应
+- 模型：deepseek-v4-flash（OpenAI 兼容 API）
+- 知识库：关键词检索 RAG，回答基于 [使用手册](backend/CampusTrade/CampusTrade.Backend/Knowledge/使用手册.md)（用户向内容，不含实现细节），答案末尾标注「📚 依据：《文档名》·章节名」，文档未覆盖时不编造
+- 安全：AI 无任何用户数据访问能力，系统提示词禁止其冒充查询用户数据、透露系统内部实现（数据库/代码/接口）、响应提示注入；知识库仅加载使用手册，开发文档不入检索
+- 帮助中心：`/help` 页面直接渲染使用手册（后端 `GET /api/help/manual` 提供原文，单一来源与 AI 知识库同步），AI 助手面板头部有入口
+
+**使用前需在 [appsettings.json](backend/CampusTrade/CampusTrade.Backend/appsettings.json) 的 `DeepSeek:ApiKey` 填入真实 key**（在 platform.deepseek.com 申请）。appsettings.json 不入库，新成员可复制 [appsettings.example.json](backend/CampusTrade/CampusTrade.Backend/appsettings.example.json) 为 appsettings.json 后填写。相关配置项：
+
+```json
+"DeepSeek": {
+  "ApiKey": "sk-你的key",
+  "BaseUrl": "https://api.deepseek.com/v1",
+  "Model": "deepseek-v4-flash",
+  "TimeoutSeconds": 120,
+  "MaxMessages": 20
+},
+"AiKnowledge": {
+  "Path": "Knowledge",
+  "ExtraFiles": [
+    "../../../docs/页面转换逻辑表.md",
+    "../../../docs/评价模块修改说明.md"
+  ],
+  "ChunkSize": 600,
+  "MaxChunks": 4,
+  "MaxContextChars": 2500
+}
+```
+
+---
+
 ## 当前状态
 
 ### 整体进度

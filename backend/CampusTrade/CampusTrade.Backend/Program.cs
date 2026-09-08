@@ -4,6 +4,7 @@ using CampusTrade.Backend.Repositories;
 using CampusTrade.Backend.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Diagnostics;
+using System.Net.Http.Headers;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -48,6 +49,19 @@ builder.Services.AddScoped<IReviewRepository, ReviewRepository>();
 builder.Services.AddScoped<IReviewService, ReviewService>();
 builder.Services.AddScoped<IReportRepository, ReportRepository>();
 builder.Services.AddScoped<IReportService, ReportService>();
+builder.Services.AddScoped<IAiChatService, AiChatService>();
+builder.Services.AddSingleton<IAiKnowledgeService, AiKnowledgeService>();
+
+builder.Services.AddHttpClient("DeepSeek", client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["DeepSeek:BaseUrl"] ?? "https://api.deepseek.com/v1");
+    client.Timeout = TimeSpan.FromSeconds(builder.Configuration.GetValue("DeepSeek:TimeoutSeconds", 120));
+    var apiKey = builder.Configuration["DeepSeek:ApiKey"] ?? "";
+    if (!string.IsNullOrWhiteSpace(apiKey))
+    {
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+    }
+});
 
 builder.Services.AddCors(options =>
 {

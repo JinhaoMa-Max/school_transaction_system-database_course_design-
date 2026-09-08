@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { RouterView, useRoute } from 'vue-router'
 import AppHeader from '@/components/common/AppHeader.vue'
+import AiChatWidget from '@/components/AiChatWidget.vue'
 
 const route = useRoute()
 
@@ -16,4 +17,5 @@ const showGlobalHeader = computed(() =>
 <template>
   <AppHeader v-if="showGlobalHeader" />
   <RouterView />
+  <AiChatWidget />
 </template>

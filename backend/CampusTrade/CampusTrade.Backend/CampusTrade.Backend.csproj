@@ -17,4 +17,8 @@
 
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Include="Knowledge\**\*.md" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>
