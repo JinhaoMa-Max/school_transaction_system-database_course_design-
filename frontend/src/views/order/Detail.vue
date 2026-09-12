@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import ProductImage from '@/components/common/GoodsImage.vue'
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Message, Modal } from '@arco-design/web-vue'
@@ -145,10 +146,10 @@ onMounted(fetchData)
           <a-card class="goods-card" @click="goToGoods">
             <div class="goods-info">
               <div class="goods-image">
-                <img :src="goods?.imageUrl || 'https://via.placeholder.com/120x120?text=Goods'" alt="商品图片" />
+                <ProductImage :src="order.imageUrl || goods?.imageUrl" alt="商品图片" />
               </div>
               <div class="goods-detail">
-                <h3 class="goods-title">{{ goods?.title || order.goodsTitle || `商品 #${order.goodsId}` }}</h3>
+                <h3 class="goods-title">{{ goods?.title || order.goodsTitle || '商品信息暂不可用' }}</h3>
                 <p class="goods-price">成交价：<span class="price">¥{{ order.dealPrice.toFixed(2) }}</span></p>
                 <p class="click-hint">点击查看商品详情</p>
               </div>
@@ -163,12 +164,12 @@ onMounted(fetchData)
                   {{ orderStatusMap[order.status]?.text || order.status }}
                 </a-tag>
               </a-descriptions-item>
-              <a-descriptions-item label="商品ID">{{ order.goodsId }}</a-descriptions-item>
+              <a-descriptions-item label="商品名称">{{ order.goodsTitle || goods?.title || '商品信息暂不可用' }}</a-descriptions-item>
               <a-descriptions-item label="成交价格">
                 <span class="price-text">¥{{ order.dealPrice.toFixed(2) }}</span>
               </a-descriptions-item>
-              <a-descriptions-item label="买家ID">{{ order.buyerId }}</a-descriptions-item>
-              <a-descriptions-item label="卖家ID">{{ order.sellerId }}</a-descriptions-item>
+              <a-descriptions-item label="买家">{{ order.buyerName || '用户信息暂不可用' }}</a-descriptions-item>
+              <a-descriptions-item label="卖家">{{ order.sellerName || '用户信息暂不可用' }}</a-descriptions-item>
               <a-descriptions-item label="下单时间" :span="2">{{ order.createTime }}</a-descriptions-item>
             </a-descriptions>
           </a-card>
@@ -283,9 +284,9 @@ onMounted(fetchData)
               </a-avatar>
               <div class="user-detail">
                 <div class="user-name">
-                  {{ isBuyer ? '卖家' : '买家' }} #{{ isBuyer ? order.sellerId : order.buyerId }}
+                  {{ (isBuyer ? order.sellerName : order.buyerName) || '用户信息暂不可用' }}
                 </div>
-                <a-tag color="green" size="small">信用分 100</a-tag>
+                <a-tag color="blue" size="small">{{ isBuyer ? '卖家' : '买家' }}</a-tag>
               </div>
             </div>
           </a-card>
@@ -379,7 +380,7 @@ onMounted(fetchData)
   flex-shrink: 0;
 }
 
-.goods-image img {
+.goods-image :deep(.goods-image-frame) {
   width: 100%;
   height: 100%;
   object-fit: cover;

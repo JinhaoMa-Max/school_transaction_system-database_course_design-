@@ -14,6 +14,12 @@ const USE_MOCK_USER =
 
 const routes: RouteRecordRaw[] = [
   {
+    path: '/notices',
+    name: 'Notices',
+    component: () => import('@/views/Notices.vue'),
+    meta: { requiresAuth: false }
+  },
+  {
     path: '/login',
     name: 'Login',
     component: () => import('@/views/Login.vue'),

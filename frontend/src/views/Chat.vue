@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref, onMounted,nextTick,computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { getSessionList, getMessages, sendMessage, getUserById, createSession } from '@/api'
+import { getSessionList, getMessages, sendMessage, createSession } from '@/api'
+import ProductImage from '@/components/common/GoodsImage.vue'
 import type { ChatSession, ChatMessage } from '@/types'
 import router from '@/router'
 import{Message} from '@arco-design/web-vue'
@@ -17,7 +18,6 @@ const sending = ref(false)
 const messageListRef = ref<HTMLElement| null>(null)
 const userStore = useUserStore()
 const route = useRoute()
-const userMap = ref<Record<number, any>>({})
 
 //跳转回上一页（无历史记录时回首页）
 const goBack=()=>{
@@ -38,37 +38,19 @@ const currentUserId = computed(() =>{
   return userStore.user?.userId
 })
 
-//加载消息发送者信息
-const loadMessageUsers = async (list: ChatMessage[]) => {
-  const ids = Array.from(
-    new Set(list.map(msg => Number(msg.senderId)).filter(Boolean))
-  )
+// 会话和消息接口直接返回展示信息，无需逐个请求用户资料。
+const counterpartName = (session: ChatSession) =>
+  (session.buyerId === currentUserId.value ? session.sellerName : session.buyerName) || '用户信息暂不可用'
 
-  const needLoadIds = ids.filter(id => !userMap.value[id])
+const getUserAvatar = (msg: ChatMessage) => msg.senderAvatarUrl || (
+  msg.senderId === currentUserId.value ? userStore.user?.avatarUrl :
+  msg.senderId === selectedSession.value?.buyerId ? selectedSession.value?.buyerAvatarUrl : selectedSession.value?.sellerAvatarUrl
+) || ''
 
-  await Promise.all(
-    needLoadIds.map(async id => {
-      try {
-        const res = await getUserById(id)
-
-        userMap.value[id] = res.data ?? res
-      } catch (error) {
-        console.log(`用户 ${id} 信息加载失败`, error)
-      }
-    })
-  )
-}
-
-const getUserAvatar = (userId: number) => {
-  const user = userMap.value[Number(userId)]
-  return user?.avatar || user?.avatarUrl ||''
-}
-
-const getUserName = (userId: number) => {
-  const user = userMap.value[Number(userId)]
-  return user?.nickname || user?.username || `用户${userId}`
-}
-
+const getUserName = (msg: ChatMessage) => msg.senderName || (
+  msg.senderId === currentUserId.value ? (userStore.user?.nickname || userStore.user?.username || '我') :
+  selectedSession.value ? counterpartName(selectedSession.value) : '用户信息暂不可用'
+)
 
 //加载聊天列表
 const loadsessions = async () =>{
@@ -106,18 +88,19 @@ onMounted(async () => {
 //加载消息
 const selectSession = async (session: ChatSession) => {
   selectedSession.value = session
+  messages.value = []
+  messageContent.value = ''
   try{
     messageLoading.value = true
     const res = await getMessages(session.sessionId)
+    if (selectedSession.value?.sessionId !== session.sessionId) return
     messages.value = res.data.list
-
-     await loadMessageUsers(messages.value)
-     await scrollToBottom()
+    await scrollToBottom()
   }
   catch(error){
-    Message.error('消息加载失败')
+    if (selectedSession.value?.sessionId === session.sessionId) Message.error('消息加载失败')
   }finally{
-    messageLoading.value =false
+    if (selectedSession.value?.sessionId === session.sessionId) messageLoading.value = false
   }
 }
 
@@ -138,14 +121,14 @@ const handleSend = async () => {
     Message.warning("请输入消息内容")
     return
   }
+  const session = selectedSession.value
   try{
     sending.value = true
-    await sendMessage({ sessionId: selectedSession.value.sessionId, content,senderId:currentUserId.value ?? undefined })
+    await sendMessage({ sessionId: session.sessionId, content,senderId:currentUserId.value ?? undefined })
+    const res = await getMessages(session.sessionId)
+    if (selectedSession.value?.sessionId !== session.sessionId) return
     messageContent.value = ''
-    const res = await getMessages(selectedSession.value.sessionId)
     messages.value = res.data.list
-
-    await loadMessageUsers(messages.value)
     await scrollToBottom()
     
   }catch(error){
@@ -212,13 +195,12 @@ const scrollToBottom = async () =>{
           :class="{active:selectedSession?.sessionId==item.sessionId}"
           @click="selectSession(item)"
           >
-            <div>
-              对话
-              {{ item.sessionId }}
-            </div>
-            <div class ="session-subtitle">
-              商品 ID:
-              "{{ item.goodsId }}"
+            <div class="session-summary">
+              <ProductImage :src="item.imageUrl" :alt="item.goodsTitle" class="session-image" />
+              <div class="session-text">
+                <div>{{ counterpartName(item) }}</div>
+                <div class="session-subtitle">{{ item.goodsTitle || '商品信息暂不可用' }}</div>
+              </div>
             </div>
           </a-list-item>
 
@@ -233,7 +215,7 @@ const scrollToBottom = async () =>{
 
       <template #title>
          <div class ="chat-content-title">
-          {{ selectedSession ? `会话${selectedSession.sessionId}`:'聊天窗口'}}
+          {{ selectedSession ? counterpartName(selectedSession) : '聊天窗口' }}
         </div>
       </template>
 
@@ -241,6 +223,9 @@ const scrollToBottom = async () =>{
 
       <template v-else>
 
+        <a-button type="text" class="chat-goods-link" @click="router.push(`/goods/${selectedSession.goodsId}`)">
+          {{ selectedSession.goodsTitle || '商品信息暂不可用' }} · 查看商品
+        </a-button>
         <!--消息区-->
         <div class = "chat-messages" ref="messageListRef">
 
@@ -264,18 +249,18 @@ const scrollToBottom = async () =>{
                 class="message-avatar"
               >
                 <img
-                  v-if="getUserAvatar(msg.senderId)"
-                  :src="getUserAvatar(msg.senderId)"
+                  v-if="getUserAvatar(msg)"
+                  :src="getUserAvatar(msg)"
                 />
                 <span v-else>
-                  {{ getUserName(msg.senderId).slice(0, 1) }}
+                  {{ getUserName(msg).slice(0, 1) }}
                 </span>
               </a-avatar>
 
               <div class = "message-bubble">
 
                 <div class = "message-meta">
-                  {{ getUserName(msg.senderId) }} · {{ msg.sendTime }}
+                  {{ getUserName(msg) }} · {{ msg.sendTime }}
                 </div>
 
                 <div class = "message-content">
@@ -291,11 +276,11 @@ const scrollToBottom = async () =>{
                 class="message-avatar"
               >
                 <img
-                  v-if="getUserAvatar(msg.senderId)"
-                  :src="getUserAvatar(msg.senderId)"
+                  v-if="getUserAvatar(msg)"
+                  :src="getUserAvatar(msg)"
                 />
                 <span v-else>
-                  {{ getUserName(msg.senderId).slice(0, 1) }}
+                  {{ getUserName(msg).slice(0, 1) }}
                 </span>
               </a-avatar>
 
@@ -334,6 +319,11 @@ const scrollToBottom = async () =>{
 </template>
 
 <style scoped>
+.session-summary { display: flex; align-items: center; gap: 12px; width: 100%; }
+.session-image { width: 52px; height: 52px; border-radius: 6px; flex-shrink: 0; }
+.session-text { min-width: 0; overflow-wrap: anywhere; }
+.chat-goods-link { justify-content: flex-start; white-space: normal; height: auto; margin-bottom: 12px; }
+
 
 
 .chat-page {

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import ProductImage from '@/components/common/GoodsImage.vue'
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Message } from '@arco-design/web-vue'
@@ -42,14 +43,14 @@ const handleDelete = async (favoriteId: number) => {
         class="favorite-card"
       >
         <div class="goods-image" @click="goToDetail(item.goodsId)">
-          <img 
-            :src="item.coverImage || item.imageUrl || 'https://via.placeholder.com/400x300?text=No+Image'"
+          <ProductImage
+            :src="item.coverImage || item.imageUrl"
             :alt="item.goodsTitle || item.title || '商品图片'"
           />
         </div>
         
         <div class="goods-info" @click="goToDetail(item.goodsId)">
-          <h3 class="goods-title">{{ item.goodsTitle || item.title || `商品 ${item.goodsId}` }}</h3>
+          <h3 class="goods-title">{{ item.goodsTitle || item.title || '商品信息暂不可用' }}</h3>
           <p class="goods-price">¥{{ (item.goodsPrice ?? item.price ?? 0).toFixed(2) }}</p>
           <p class="favorite-time">收藏时间：{{ item.createTime || item.favoriteTime }}</p>
         </div>
@@ -128,7 +129,7 @@ const handleDelete = async (favoriteId: number) => {
   background: #f8f8f8;
 }
 
-.goods-image img {
+.goods-image :deep(.goods-image-frame) {
   width: 100%;
   height: 100%;
   object-fit: cover;

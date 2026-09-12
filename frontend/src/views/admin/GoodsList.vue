@@ -9,9 +9,9 @@ const goods = ref<Goods[]>([])
 const categories = ref<Category[]>([])
 
 const getCategoryPath = (categoryId: number): string => {
-  if (categories.value.length === 0) return String(categoryId)
+  if (categories.value.length === 0) return '未分类'
   const cat = categories.value.find(c => c.categoryId === categoryId)
-  if (!cat) return String(categoryId)
+  if (!cat) return '未分类'
   if (cat.parentId) {
     const parent = categories.value.find(c => c.categoryId === cat.parentId)
     return parent ? `${parent.categoryName} / ${cat.categoryName}` : cat.categoryName
@@ -62,8 +62,8 @@ const getStatusText = (status: string) => {
         <tr>
           <th>商品ID</th>
           <th>标题</th>
-          <th>卖家ID</th>
-          <th>分类ID</th>
+          <th>卖家</th>
+          <th>分类</th>
           <th>价格</th>
           <th>状态</th>
           <th>浏览次数</th>
@@ -75,7 +75,7 @@ const getStatusText = (status: string) => {
         <tr v-for="item in goods" :key="item.goodsId">
           <td>{{ item.goodsId }}</td>
           <td>{{ item.title }}</td>
-          <td>{{ item.sellerId }}</td>
+          <td>{{ item.sellerNickname || '用户信息暂不可用' }}</td>
           <td>{{ getCategoryPath(item.categoryId) }}</td>
           <td>¥{{ item.price }}</td>
           <td>{{ getStatusText(item.status) }}</td>

@@ -7,15 +7,24 @@ namespace CampusTrade.Backend.Repositories;
 
 /// <summary>
 /// 议价数据访问层（F12-F13）
-/// 查询: v_active_bargains 视图  事务: sp_create_bargain / sp_respond_bargain
+/// 查询: bargain_offer 联查商品视图和用户  事务: sp_create_bargain / sp_respond_bargain
 /// 触发器: trg_bargain_price_check（报价≤原价，自动生效）
 /// </summary>
 public class BargainRepository : IBargainRepository
 {
+    private const string BargainSource = """
+        (SELECT b.*, g.seller_id, g.title AS goods_title, g.cover_image,
+                COALESCE(bu.nickname, bu.username) AS buyer_name,
+                COALESCE(su.nickname, su.username) AS seller_name
+         FROM bargain_offer b
+         JOIN v_goods_list g ON g.goods_id = b.goods_id
+         JOIN app_user bu ON bu.user_id = b.buyer_id
+         JOIN app_user su ON su.user_id = g.seller_id)
+        """;
     private readonly IDbConnectionFactory _connectionFactory;
     public BargainRepository(IDbConnectionFactory connectionFactory) { _connectionFactory = connectionFactory; }
 
-    /// <summary>议价列表 — 查 v_active_bargains 视图（含商品名、买家名、原价、卖家ID）</summary>
+    /// <summary>议价列表 — 联查商品与双方名称，保留所有状态的议价历史</summary>
     public async Task<(List<BargainOfferDto> Items, int Total)> GetPagedAsync(int page, int size, int? goodsId, int? buyerId, int? sellerId, string? status)
     {
         using var connection = _connectionFactory.CreateConnection();
@@ -26,13 +35,15 @@ public class BargainRepository : IBargainRepository
         if (sellerId.HasValue) { where.Add("seller_id = :Sid"); p.Add(":Sid", sellerId.Value); }
         if (!string.IsNullOrWhiteSpace(status)) { where.Add("offer_status = :St"); p.Add(":St", status); }
         var w = where.Count > 0 ? "WHERE " + string.Join(" AND ", where) : "";
-        var total = await connection.ExecuteScalarAsync<int>($"SELECT COUNT(*) FROM v_active_bargains {w}", p);
+        var total = await connection.ExecuteScalarAsync<int>($"SELECT COUNT(*) FROM {BargainSource} {w}", p);
         var off = (page - 1) * size;
         var sql = $"""
             SELECT offer_id AS BargainId, goods_id AS GoodsId, buyer_id AS BuyerId,
+                   goods_title AS GoodsTitle, cover_image AS ImageUrl, buyer_name AS BuyerName,
+                   seller_id AS SellerId, seller_name AS SellerName,
                    offer_price AS OfferPrice, seller_response AS SellerResult,
                    counter_price AS CounterPrice, offer_status AS Status, created_at AS CreateTime
-            FROM v_active_bargains {w} ORDER BY created_at DESC
+            FROM {BargainSource} {w} ORDER BY created_at DESC
             OFFSET {off} ROWS FETCH NEXT {size} ROWS ONLY
             """;
         var items = await connection.QueryAsync<BargainOfferDto>(sql, p);
@@ -42,11 +53,13 @@ public class BargainRepository : IBargainRepository
     public async Task<BargainOfferDto?> GetByIdAsync(int bargainId)
     {
         using var connection = _connectionFactory.CreateConnection();
-        const string sql = """
+        var sql = $"""
             SELECT offer_id AS BargainId, goods_id AS GoodsId, buyer_id AS BuyerId,
+                   goods_title AS GoodsTitle, cover_image AS ImageUrl, buyer_name AS BuyerName,
+                   seller_id AS SellerId, seller_name AS SellerName,
                    offer_price AS OfferPrice, seller_response AS SellerResult,
                    counter_price AS CounterPrice, offer_status AS Status, created_at AS CreateTime
-            FROM bargain_offer WHERE offer_id = :Id
+            FROM {BargainSource} WHERE offer_id = :Id
             """;
         return await connection.QueryFirstOrDefaultAsync<BargainOfferDto>(sql, new { Id = bargainId });
     }

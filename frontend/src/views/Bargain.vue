@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import GoodsImage from '@/components/common/GoodsImage.vue'
 import { useRouter } from 'vue-router'
 import { Message, Modal } from '@arco-design/web-vue'
 import { getBargainList, handleBargain, handleBargainByBuyer, closeBargain } from '@/api'
@@ -263,8 +264,12 @@ onMounted(() => {
           >
             <template #goodsId="{ record }">
               <div class="goods-info" @click="goToGoodsDetail(record.goodsId)">
-                <div class="goods-name">商品 #{{ record.goodsId }}</div>
-                <div class="goods-hint">点击查看详情</div>
+                <GoodsImage :src="record.imageUrl" :alt="record.goodsTitle" class="bargain-image" />
+                <div>
+                  <div class="goods-name">{{ record.goodsTitle || '商品信息暂不可用' }}</div>
+                  <div class="goods-hint">{{ activeTab === 'buyer' ? '卖家：' : '买家：' }}{{ (activeTab === 'buyer' ? record.sellerName : record.buyerName) || '用户信息暂不可用' }}</div>
+                  <div class="goods-hint">点击查看详情</div>
+                </div>
               </div>
             </template>
 
@@ -401,6 +406,9 @@ onMounted(() => {
 </template>
 
 <style scoped>
+.bargain-image { width: 60px; height: 60px; flex-shrink: 0; border-radius: 6px; }
+.goods-info { display: flex; align-items: center; gap: 12px; }
+
 .bargain-page {
   padding: 24px;
   max-width: 1200px;

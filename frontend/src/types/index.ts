@@ -76,6 +76,11 @@ export interface Favorite {
 }
 
 export interface BargainOffer {
+  goodsTitle?: string
+  imageUrl?: string
+  buyerName?: string
+  sellerId?: number
+  sellerName?: string
   bargainId: number
   goodsId: number
   buyerId: number
@@ -89,6 +94,7 @@ export interface BargainOffer {
 }
 
 export interface TradeOrder {
+  imageUrl?: string
   orderId: number
   goodsId: number
   goodsTitle?: string
@@ -109,6 +115,10 @@ export interface TradeOrder {
 }
 
 export interface Appointment {
+  goodsTitle?: string
+  imageUrl?: string
+  buyerName?: string
+  sellerName?: string
   appointmentId: number
   orderId: number
   meetTime: string
@@ -119,6 +129,11 @@ export interface Appointment {
 }
 
 export interface ChatSession {
+  imageUrl?: string
+  buyerName?: string
+  sellerName?: string
+  buyerAvatarUrl?: string
+  sellerAvatarUrl?: string
   sessionId: number
   goodsId: number
   goodsTitle?: string
@@ -129,6 +144,8 @@ export interface ChatSession {
 }
 
 export interface ChatMessage {
+  senderName?: string
+  senderAvatarUrl?: string
   messageId: number
   sessionId: number
   senderId: number
@@ -154,6 +171,10 @@ export interface Review {
 }
 
 export interface Report {
+  reporterName?: string
+  reportedGoodsTitle?: string
+  reportedUserName?: string
+  reportedOrderTitle?: string
   reportId: number
   reporterId: number
   reportType: 'goods' | 'user' | 'order'
@@ -166,6 +187,8 @@ export interface Report {
 }
 
 export interface AuditLog {
+  adminName?: string
+  targetName?: string
   logId: number
   adminId: number
   auditType: 'goods_audit' | 'report_handle' | 'user_ban' | 'goods_offline'
@@ -177,6 +200,7 @@ export interface AuditLog {
 }
 
 export interface Notice {
+  publisherName?: string
   noticeId: number
   title: string
   content: string

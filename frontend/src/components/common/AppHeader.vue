@@ -9,6 +9,7 @@ const userStore = useUserStore()
 
 const navItems = [
   { label: '商品广场', path: '/goods' },
+  { label: '平台公告', path: '/notices' },
   { label: '发布商品', path: '/goods/publish', requiresAuth: true },
   { label: '我的商品', path: '/my/goods', requiresAuth: true },
   { label: '我的订单', path: '/orders', requiresAuth: true },
@@ -146,6 +147,7 @@ const handleLogout = async () => {
 
 .app-nav {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: flex-end;
   gap: 4px;

@@ -6,6 +6,11 @@ public class ChatSessionDto
     public int SessionId { get; set; }
     public int GoodsId { get; set; }
     public string? GoodsTitle { get; set; }
+    public string? ImageUrl { get; set; }
+    public string? BuyerName { get; set; }
+    public string? SellerName { get; set; }
+    public string? BuyerAvatarUrl { get; set; }
+    public string? SellerAvatarUrl { get; set; }
     public int BuyerId { get; set; }
     public int SellerId { get; set; }
     public DateTime CreateTime { get; set; }
@@ -19,6 +24,7 @@ public class ChatMessageDto
     public int SessionId { get; set; }
     public int SenderId { get; set; }
     public string? SenderName { get; set; }
+    public string? SenderAvatarUrl { get; set; }
     public string Content { get; set; } = string.Empty;     // CLOB
     public int ReadStatus { get; set; }                     // 0=未读 1=已读 → 前端 isRead
     public DateTime SendTime { get; set; }                  // created_at

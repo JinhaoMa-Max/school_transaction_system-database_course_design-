@@ -5,6 +5,10 @@ public class AppointmentDto
 {
     public int AppointmentId { get; set; }
     public int OrderId { get; set; }
+    public string? GoodsTitle { get; set; }
+    public string? ImageUrl { get; set; }
+    public string? BuyerName { get; set; }
+    public string? SellerName { get; set; }
     public DateTime MeetTime { get; set; }
     public string MeetLocation { get; set; } = string.Empty;
     public string ConfirmCode { get; set; } = string.Empty;

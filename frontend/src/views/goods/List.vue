@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import ProductImage from '@/components/common/GoodsImage.vue'
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getGoodsList, getCategoryList } from '@/api'
@@ -321,8 +322,8 @@ onMounted(async () => {
           >
             <template #cover>
               <div class="card-image">
-                <img
-                  :src="item.imageUrl || 'https://via.placeholder.com/300x300?text=No+Image'"
+                <ProductImage
+                  :src="item.imageUrl"
                   :alt="item.title"
                 />
                 <a-tag class="condition-tag" :color="item.condition === 'new' ? 'green' : 'blue'">
@@ -441,7 +442,7 @@ onMounted(async () => {
   overflow: hidden;
 }
 
-.card-image img {
+.card-image :deep(.goods-image-frame) {
   width: 100%;
   height: 100%;
   object-fit: cover;

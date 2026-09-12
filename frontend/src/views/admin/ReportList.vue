@@ -46,7 +46,7 @@ const getTypeText = (type: string) => {
         <tr>
           <th>举报ID</th>
           <th>举报类型</th>
-          <th>举报人ID</th>
+          <th>举报人</th>
           <th>被举报对象</th>
           <th>举报原因</th>
           <th>状态</th>
@@ -58,11 +58,11 @@ const getTypeText = (type: string) => {
         <tr v-for="item in reports" :key="item.reportId">
           <td>{{ item.reportId }}</td>
           <td>{{ getTypeText(item.reportType) }}</td>
-          <td>{{ item.reporterId }}</td>
+          <td>{{ item.reporterName || '用户信息暂不可用' }}</td>
           <td>
-            <span v-if="item.reportedGoodsId">商品ID: {{ item.reportedGoodsId }}</span>
-            <span v-else-if="item.reportedUserId">用户ID: {{ item.reportedUserId }}</span>
-            <span v-else-if="item.reportedOrderId">订单ID: {{ item.reportedOrderId }}</span>
+            <span v-if="item.reportedGoodsId">商品：{{ item.reportedGoodsTitle || '商品信息暂不可用' }}</span>
+            <span v-else-if="item.reportedUserId">用户：{{ item.reportedUserName || '用户信息暂不可用' }}</span>
+            <span v-else-if="item.reportedOrderId">订单：{{ item.reportedOrderTitle || '商品信息暂不可用' }}（订单编号 {{ item.reportedOrderId }}）</span>
           </td>
           <td>{{ item.reason }}</td>
           <td>{{ getStatusText(item.status) }}</td>

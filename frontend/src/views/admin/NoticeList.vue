@@ -106,7 +106,7 @@ const getTypeText = (type: string) => {
           <th>公告ID</th>
           <th>标题</th>
           <th>类型</th>
-          <th>发布者ID</th>
+          <th>发布者</th>
           <th>发布时间</th>
           <th>操作</th>
         </tr>
@@ -123,7 +123,7 @@ const getTypeText = (type: string) => {
                 <option value="violation">违规提醒</option>
               </select>
             </td>
-            <td>{{ item.publisherId }}</td>
+            <td>{{ item.publisherName || '平台管理员' }}</td>
             <td>{{ item.publishTime }}</td>
             <td>
               <button @click="handleUpdate(item.noticeId)">保存</button>
@@ -134,7 +134,7 @@ const getTypeText = (type: string) => {
             <td>{{ item.noticeId }}</td>
             <td>{{ item.title }}</td>
             <td>{{ getTypeText(item.noticeType) }}</td>
-            <td>{{ item.publisherId }}</td>
+            <td>{{ item.publisherName || '平台管理员' }}</td>
             <td>{{ item.publishTime }}</td>
             <td>
               <button @click="startEdit(item)">编辑</button>

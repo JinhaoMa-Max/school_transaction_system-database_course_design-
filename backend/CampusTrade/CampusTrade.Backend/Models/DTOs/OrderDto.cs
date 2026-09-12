@@ -5,6 +5,7 @@ public class OrderDto
     public int OrderId { get; set; }
     public int GoodsId { get; set; }
     public string? GoodsTitle { get; set; }
+    public string? ImageUrl { get; set; }
     public int BuyerId { get; set; }
     public string? BuyerName { get; set; }
     public int SellerId { get; set; }

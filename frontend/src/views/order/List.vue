@@ -1,12 +1,13 @@
 <script setup lang="ts">
+import ProductImage from '@/components/common/GoodsImage.vue'
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Message, Modal } from '@arco-design/web-vue'
-import { getOrderList, cancelOrder, getGoodsById } from '@/api'
+import { getOrderList, cancelOrder } from '@/api'
 import { verifyConfirmCode } from '@/api'
 import { useUserStore } from '@/stores'
 import { orderStatusMap } from '@/constants'
-import type { TradeOrder, Goods, OrderQuery } from '@/types'
+import type { TradeOrder, OrderQuery } from '@/types'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -18,7 +19,6 @@ const page = ref(1)
 const pageSize = ref(10)
 const activeTab = ref<'buy' | 'sell'>('buy')
 const statusFilter = ref('')
-const goodsMap = ref<Record<number, Goods>>({})
 
 const verifyVisible = ref(false)
 const verifyCode = ref('')
@@ -62,15 +62,6 @@ const fetchOrderList = async () => {
     orderList.value = res.data.list
     total.value = res.data.total
 
-    const goodsIds = [...new Set(orderList.value.map(order => order.goodsId))]
-    goodsMap.value = {}
-    for (const goodsId of goodsIds) {
-      try {
-        const goodsRes = await getGoodsById(goodsId)
-        goodsMap.value[goodsId] = goodsRes.data
-      } catch {
-      }
-    }
   } catch (error: any) {
     Message.error(error?.response?.data?.message || error?.message || '获取订单列表失败')
   } finally {
@@ -205,13 +196,13 @@ onMounted(() => {
             <template #goodsId="{ record }">
               <div class="goods-info" @click="goToGoodsDetail(record.goodsId)">
                 <div class="goods-image">
-                  <img
-                    :src="goodsMap[record.goodsId]?.imageUrl || 'https://via.placeholder.com/60x60?text=No+Image'"
-                    :alt="goodsMap[record.goodsId]?.title || '商品图片'"
+                  <ProductImage
+                    :src="record.imageUrl"
+                    :alt="record.goodsTitle || '商品图片'"
                   />
                 </div>
                 <div class="goods-detail">
-                  <div class="goods-name">{{ goodsMap[record.goodsId]?.title || `商品 #${record.goodsId}` }}</div>
+                  <div class="goods-name">{{ record.goodsTitle || '商品信息暂不可用' }}</div>
                   <div class="goods-hint">点击查看商品</div>
                 </div>
               </div>
@@ -228,8 +219,8 @@ onMounted(() => {
             </template>
 
             <template #counterpart="{ record }">
-              <span v-if="activeTab === 'buy'">卖家 #{{ record.sellerId }}</span>
-              <span v-else>买家 #{{ record.buyerId }}</span>
+              <span v-if="activeTab === 'buy'">卖家：{{ record.sellerName || '用户信息暂不可用' }}</span>
+              <span v-else>买家：{{ record.buyerName || '用户信息暂不可用' }}</span>
             </template>
 
             <template #createTime="{ record }">
@@ -402,7 +393,7 @@ onMounted(() => {
   background: #f2f3f5;
 }
 
-.goods-image img {
+.goods-image :deep(.goods-image-frame) {
   width: 100%;
   height: 100%;
   object-fit: cover;

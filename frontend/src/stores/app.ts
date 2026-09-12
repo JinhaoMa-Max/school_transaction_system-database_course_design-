@@ -5,7 +5,8 @@ import { ref, computed } from 'vue'
 // 导入分类和通知的类型定义
 import type { Category, Notice } from '@/types'
 // 导入分类和通知相关的API接口
-import { getCategoryList, getNoticeList } from '@/api'
+import { getCategoryList } from '@/api'
+import { getPublicNoticeList as getNoticeList } from '@/api/notice'
 
 /**
  * 应用全局状态管理Store

@@ -5,6 +5,10 @@ public class ReportDto
 {
     public int ReportId { get; set; }
     public int ReporterId { get; set; }
+    public string? ReporterName { get; set; }
+    public string? ReportedGoodsTitle { get; set; }
+    public string? ReportedUserName { get; set; }
+    public string? ReportedOrderTitle { get; set; }
     public string ReportType { get; set; } = string.Empty;   // 'goods' | 'user' | 'order'
     public int? ReportedGoodsId { get; set; }
     public int? ReportedUserId { get; set; }

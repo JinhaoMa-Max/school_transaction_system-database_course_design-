@@ -38,9 +38,9 @@ const getActionText = (action: string) => {
       <thead>
         <tr>
           <th>日志ID</th>
-          <th>管理员ID</th>
+          <th>管理员</th>
           <th>审核类型</th>
-          <th>目标ID</th>
+          <th>处理对象</th>
           <th>处理动作</th>
           <th>处理结果</th>
           <th>备注</th>
@@ -50,9 +50,9 @@ const getActionText = (action: string) => {
       <tbody>
         <tr v-for="item in logs" :key="item.logId">
           <td>{{ item.logId }}</td>
-          <td>{{ item.adminId }}</td>
+          <td>{{ item.adminName || '用户信息暂不可用' }}</td>
           <td>{{ getAuditTypeText(item.auditType) }}</td>
-          <td>{{ item.targetId }}</td>
+          <td>{{ item.targetName || '对象信息暂不可用' }}（编号 {{ item.targetId }}）</td>
           <td>{{ getActionText(item.action) }}</td>
           <td>{{ item.result }}</td>
           <td>{{ item.remark || '-' }}</td>

@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, watch, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Message } from '@arco-design/web-vue'
-import { createReport } from '@/api'
+import { createReport, getGoodsById, getUserById, getOrderById } from '@/api'
 
 const route = useRoute()
 const router = useRouter()
@@ -19,6 +19,34 @@ const form = reactive({
 })
 
 const formRef = ref()
+const targetName = ref('')
+const targetLoading = ref(false)
+const targetId = computed(() => form.reportType === 'goods' ? form.reportedGoodsId : form.reportType === 'user' ? form.reportedUserId : form.reportedOrderId)
+const fromContext = computed(() => route.query.type === form.reportType && Number(route.query.id) === targetId.value)
+let targetVersion = 0
+watch([() => form.reportType, targetId], async ([type, id]) => {
+  const version = ++targetVersion
+  targetName.value = ''
+  targetLoading.value = false
+  if (!id || !Number.isInteger(id) || id <= 0) return
+  targetLoading.value = true
+  try {
+    let name = ''
+    if (type === 'goods') name = (await getGoodsById(id)).data.title
+    else if (type === 'user') {
+      const user = (await getUserById(id)).data
+      name = user.nickname || user.username
+    } else {
+      const order = (await getOrderById(id)).data
+      name = `${order.goodsTitle || '商品信息暂不可用'}（订单编号 ${order.orderId}）`
+    }
+    if (version === targetVersion) targetName.value = name
+  } catch {
+    // 请求失败时由全局拦截器提示，不能把未验证的目标展示为有效对象。
+  } finally {
+    if (version === targetVersion) targetLoading.value = false
+  }
+})
 
 const reportTypeOptions = [
   { label: '商品', value: 'goods' },
@@ -27,9 +55,9 @@ const reportTypeOptions = [
 ]
 
 const typeLabelMap: Record<string, string> = {
-  goods: '商品ID',
-  user: '用户ID',
-  order: '订单ID'
+  goods: '商品编号',
+  user: '用户编号',
+  order: '订单编号'
 }
 
 const initFormFromQuery = () => {
@@ -64,7 +92,11 @@ const handleTypeChange = () => {
   form.reportedOrderId = undefined
 }
 
-const handleSubmit = async ({ values }: { values: Record<string, any> }) => {
+const handleSubmit = async ({ errors }: { errors?: Record<string, any> }) => {
+  if (errors || targetLoading.value || !targetName.value) {
+    if (!errors) Message.warning('请先确认有效的举报对象')
+    return
+  }
   submitLoading.value = true
   try {
     const params: {
@@ -74,19 +106,19 @@ const handleSubmit = async ({ values }: { values: Record<string, any> }) => {
       reportedOrderId?: number
       reason: string
     } = {
-      reportType: values.reportType,
-      reason: values.reason
+      reportType: form.reportType,
+      reason: form.reason
     }
 
-    switch (values.reportType) {
+    switch (form.reportType) {
       case 'goods':
-        params.reportedGoodsId = values.reportedGoodsId
+        params.reportedGoodsId = form.reportedGoodsId
         break
       case 'user':
-        params.reportedUserId = values.reportedUserId
+        params.reportedUserId = form.reportedUserId
         break
       case 'order':
-        params.reportedOrderId = values.reportedOrderId
+        params.reportedOrderId = form.reportedOrderId
         break
     }
 
@@ -113,8 +145,8 @@ const handleBack = () => {
 const validateReportedId = (value: any, callback: (error?: string) => void) => {
   if (value === undefined || value === null || isNaN(value)) {
     callback(`请输入${typeLabelMap[form.reportType]}`)
-  } else if (value <= 0) {
-    callback('ID必须大于0')
+  } else if (!Number.isInteger(value) || value <= 0) {
+    callback('请输入有效的正整数编号')
   } else {
     callback()
   }
@@ -172,7 +204,7 @@ onMounted(() => {
             </a-form-item>
 
             <a-form-item
-              v-if="form.reportType === 'goods'"
+              v-if="!fromContext && form.reportType === 'goods'"
               field="reportedGoodsId"
               :label="typeLabelMap[form.reportType]"
               :rules="[{ validator: validateReportedId }]"
@@ -187,7 +219,7 @@ onMounted(() => {
             </a-form-item>
 
             <a-form-item
-              v-if="form.reportType === 'user'"
+              v-if="!fromContext && form.reportType === 'user'"
               field="reportedUserId"
               :label="typeLabelMap[form.reportType]"
               :rules="[{ validator: validateReportedId }]"
@@ -202,7 +234,7 @@ onMounted(() => {
             </a-form-item>
 
             <a-form-item
-              v-if="form.reportType === 'order'"
+              v-if="!fromContext && form.reportType === 'order'"
               field="reportedOrderId"
               :label="typeLabelMap[form.reportType]"
               :rules="[{ validator: validateReportedId }]"
@@ -214,6 +246,12 @@ onMounted(() => {
                 :min="1"
                 size="large"
               />
+            </a-form-item>
+
+            <a-form-item label="举报对象">
+              <a-spin :loading="targetLoading">
+                <span>{{ targetName || '请选择举报对象；从商品详情进入可自动带入商品名称' }}</span>
+              </a-spin>
             </a-form-item>
 
             <a-form-item

@@ -39,11 +39,15 @@ public class ChatRepository : IChatRepository
     {
         using var connection = _connectionFactory.CreateConnection();
         const string sql = """
-            SELECT cs.session_id AS SessionId, cs.goods_id AS GoodsId, g.title AS GoodsTitle,
+            SELECT cs.session_id AS SessionId, cs.goods_id AS GoodsId, g.title AS GoodsTitle, g.cover_image AS ImageUrl,
+                   COALESCE(bu.nickname, bu.username) AS BuyerName, bu.avatar AS BuyerAvatarUrl,
+                   COALESCE(su.nickname, su.username) AS SellerName, su.avatar AS SellerAvatarUrl,
                    cs.buyer_id AS BuyerId, cs.seller_id AS SellerId, cs.created_at AS CreateTime,
                    (SELECT COUNT(*) FROM chat_message cm WHERE cm.session_id = cs.session_id
                     AND cm.is_read = 0 AND cm.sender_id != :UserId) AS UnreadCount
-            FROM chat_session cs JOIN goods g ON cs.goods_id = g.goods_id
+            FROM chat_session cs JOIN v_goods_list g ON cs.goods_id = g.goods_id
+            JOIN app_user bu ON bu.user_id = cs.buyer_id
+            JOIN app_user su ON su.user_id = cs.seller_id
             WHERE cs.buyer_id = :UserId OR cs.seller_id = :UserId
             ORDER BY cs.created_at DESC
             """;
@@ -55,9 +59,13 @@ public class ChatRepository : IChatRepository
     {
         using var connection = _connectionFactory.CreateConnection();
         const string sql = """
-            SELECT cs.session_id AS SessionId, cs.goods_id AS GoodsId, g.title AS GoodsTitle,
+            SELECT cs.session_id AS SessionId, cs.goods_id AS GoodsId, g.title AS GoodsTitle, g.cover_image AS ImageUrl,
+                   COALESCE(bu.nickname, bu.username) AS BuyerName, bu.avatar AS BuyerAvatarUrl,
+                   COALESCE(su.nickname, su.username) AS SellerName, su.avatar AS SellerAvatarUrl,
                    cs.buyer_id AS BuyerId, cs.seller_id AS SellerId, cs.created_at AS CreateTime, 0 AS UnreadCount
-            FROM chat_session cs JOIN goods g ON cs.goods_id = g.goods_id
+            FROM chat_session cs JOIN v_goods_list g ON cs.goods_id = g.goods_id
+            JOIN app_user bu ON bu.user_id = cs.buyer_id
+            JOIN app_user su ON su.user_id = cs.seller_id
             WHERE cs.session_id = :Id
             """;
         return await connection.QueryFirstOrDefaultAsync<ChatSessionDto>(sql, new { Id = sessionId });
@@ -70,7 +78,7 @@ public class ChatRepository : IChatRepository
         var off = (page - 1) * size;
         var sql = $"""
             SELECT cm.message_id AS MessageId, cm.session_id AS SessionId, cm.sender_id AS SenderId,
-                   u.nickname AS SenderName, cm.content AS Content, cm.is_read AS ReadStatus,
+                   COALESCE(u.nickname, u.username) AS SenderName, u.avatar AS SenderAvatarUrl, cm.content AS Content, cm.is_read AS ReadStatus,
                    cm.created_at AS SendTime
             FROM chat_message cm LEFT JOIN app_user u ON cm.sender_id = u.user_id
             WHERE cm.session_id = :Sid

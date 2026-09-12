@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import ProductImage from '@/components/common/GoodsImage.vue'
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Message, Modal } from '@arco-design/web-vue'
@@ -147,7 +148,7 @@ onMounted(() => {
           >
             <template #imageUrl="{ record }">
               <div class="image-cell">
-                <img
+                <ProductImage
                   v-if="record.imageUrl"
                   :src="record.imageUrl"
                   :alt="record.title"

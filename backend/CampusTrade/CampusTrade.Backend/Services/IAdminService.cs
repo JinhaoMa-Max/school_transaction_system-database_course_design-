@@ -13,6 +13,8 @@ public interface IAdminService
     Task<AuditLogDto?> GetAuditLogByIdAsync(int? currentUserId, int logId);
     Task<AuditLogDto> CreateAuditLogAsync(int? currentUserId, CreateAuditLogRequest request);
 
+    Task<NoticeListResult> GetPublicNoticesAsync(int page, int size, string? noticeType);
+    Task<NoticeDto?> GetPublicNoticeByIdAsync(int noticeId);
     Task<NoticeListResult> GetNoticesAsync(int? currentUserId, int page, int size, string? noticeType);
     Task<NoticeDto?> GetNoticeByIdAsync(int? currentUserId, int noticeId);
     Task<NoticeDto> CreateNoticeAsync(int? currentUserId, CreateNoticeRequest request);

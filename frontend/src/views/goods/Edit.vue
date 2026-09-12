@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import ProductImage from '@/components/common/GoodsImage.vue'
 import { ref, reactive, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Message } from '@arco-design/web-vue'
@@ -388,7 +389,7 @@ onMounted(async () => {
                   :key="img.imageId"
                   class="image-item"
                 >
-                  <img :src="img.imageUrl" :alt="`商品图片${img.sortOrder}`" />
+                  <ProductImage :src="img.imageUrl" :alt="`商品图片${img.sortOrder}`" />
                   <button
                     v-if="canEdit"
                     class="remove-btn"
@@ -402,7 +403,7 @@ onMounted(async () => {
                   :key="'new-' + index"
                   class="image-item"
                 >
-                  <img :src="img.url" :alt="`新图片${index + 1}`" />
+                  <ProductImage :src="img.url" :alt="`新图片${index + 1}`" />
                   <button
                     v-if="canEdit"
                     class="remove-btn"
@@ -500,7 +501,7 @@ onMounted(async () => {
   border: 1px solid #e5e6eb;
 }
 
-.image-item img {
+.image-item :deep(.goods-image-frame) {
   width: 100%;
   height: 100%;
   object-fit: cover;

@@ -24,7 +24,11 @@ public class AppointmentRepository : IAppointmentRepository
             SELECT a.appointment_id AS AppointmentId, a.order_id AS OrderId,
                    a.meet_time AS MeetTime, a.meet_place AS MeetLocation,
                    a.confirm_code AS ConfirmCode, a.appointment_status AS Status,
-                   a.created_at AS CreateTime
+                   a.created_at AS CreateTime,
+                   (SELECT title FROM goods WHERE goods_id = o.goods_id) AS GoodsTitle,
+                   (SELECT cover_image FROM v_goods_list WHERE goods_id = o.goods_id) AS ImageUrl,
+                   (SELECT COALESCE(nickname, username) FROM app_user WHERE user_id = o.buyer_id) AS BuyerName,
+                   (SELECT COALESCE(nickname, username) FROM app_user WHERE user_id = o.seller_id) AS SellerName
             {where}
             ORDER BY a.created_at DESC
             OFFSET {offset} ROWS FETCH NEXT {size} ROWS ONLY

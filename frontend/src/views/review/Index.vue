@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import ProductImage from '@/components/common/GoodsImage.vue'
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Message } from '@arco-design/web-vue'
@@ -157,7 +158,7 @@ onMounted(fetchData)
           <div class="order-info">
             <div v-if="goods" class="goods-info">
               <div class="goods-image">
-                <img :src="goods.imageUrl || 'https://via.placeholder.com/80x80?text=No+Image'" :alt="goods.title" />
+                <ProductImage :src="goods.imageUrl" :alt="goods.title" />
               </div>
               <div class="goods-detail">
                 <div class="goods-title">{{ goods.title }}</div>
@@ -268,7 +269,7 @@ onMounted(fetchData)
   flex-shrink: 0;
 }
 
-.goods-image img {
+.goods-image :deep(.goods-image-frame) {
   width: 100%;
   height: 100%;
   object-fit: cover;

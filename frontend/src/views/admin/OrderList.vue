@@ -28,9 +28,9 @@ const getStatusText = (status: string) => {
       <thead>
         <tr>
           <th>订单ID</th>
-          <th>商品ID</th>
-          <th>买家ID</th>
-          <th>卖家ID</th>
+          <th>商品</th>
+          <th>买家</th>
+          <th>卖家</th>
           <th>成交价</th>
           <th>状态</th>
           <th>下单时间</th>
@@ -39,9 +39,9 @@ const getStatusText = (status: string) => {
       <tbody>
         <tr v-for="item in orders" :key="item.orderId">
           <td>{{ item.orderId }}</td>
-          <td>{{ item.goodsId }}</td>
-          <td>{{ item.buyerId }}</td>
-          <td>{{ item.sellerId }}</td>
+          <td>{{ item.goodsTitle || '信息暂不可用' }}</td>
+          <td>{{ item.buyerName || '信息暂不可用' }}</td>
+          <td>{{ item.sellerName || '信息暂不可用' }}</td>
           <td>¥{{ item.dealPrice }}</td>
           <td>{{ getStatusText(item.status) }}</td>
           <td>{{ item.createTime }}</td>

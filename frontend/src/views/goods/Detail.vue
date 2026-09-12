@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import ProductImage from '@/components/common/GoodsImage.vue'
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Message } from '@arco-design/web-vue'
@@ -57,14 +58,14 @@ const mainImage = computed(() => {
   if (images.value.length > 0) {
     return images.value[selectedImageIndex.value]?.imageUrl || images.value[0].imageUrl
   }
-  return goods.value?.imageUrl || 'https://via.placeholder.com/600x600?text=No+Image'
+  return goods.value?.imageUrl || ''
 })
 
 const imageList = computed(() => {
   if (images.value.length > 0) {
     return images.value.map(img => img.imageUrl)
   }
-  return [goods.value?.imageUrl || 'https://via.placeholder.com/600x600?text=No+Image']
+  return [goods.value?.imageUrl || '']
 })
 
 const isOwner = computed(() => {
@@ -218,7 +219,7 @@ onMounted(fetchData)
       <div v-if="goods" class="detail-container">
         <div class="image-section">
           <div class="main-image">
-            <img :src="mainImage" :alt="goods.title" />
+            <ProductImage :src="mainImage" :alt="goods.title" />
           </div>
           <div v-if="imageList.length > 1" class="thumbnail-list">
             <div
@@ -228,7 +229,7 @@ onMounted(fetchData)
               :class="{ active: index === selectedImageIndex }"
               @click="selectedImageIndex = index"
             >
-              <img :src="img" :alt="`缩略图${index + 1}`" />
+              <ProductImage :src="img" :alt="`缩略图${index + 1}`" />
             </div>
           </div>
         </div>
@@ -254,7 +255,7 @@ onMounted(fetchData)
             </a-descriptions-item>
             <a-descriptions-item label="浏览量">{{ goods.viewCount }}</a-descriptions-item>
             <a-descriptions-item label="发布时间">{{ goods.publishTime }}</a-descriptions-item>
-            <a-descriptions-item label="商品分类">{{ categoryPath || goods.categoryId }}</a-descriptions-item>
+            <a-descriptions-item label="商品分类">{{ categoryPath || goods.categoryName || '未分类' }}</a-descriptions-item>
           </a-descriptions>
 
           <div class="seller-card">
@@ -398,7 +399,7 @@ onMounted(fetchData)
   background: #f5f5f5;
 }
 
-.main-image img {
+.main-image :deep(.goods-image-frame) {
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -424,7 +425,7 @@ onMounted(fetchData)
   border-color: #165dff;
 }
 
-.thumbnail img {
+.thumbnail :deep(.goods-image-frame) {
   width: 100%;
   height: 100%;
   object-fit: cover;

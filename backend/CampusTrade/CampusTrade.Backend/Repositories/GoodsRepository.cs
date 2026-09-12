@@ -175,7 +175,8 @@ public class GoodsRepository : IGoodsRepository
                    goods_condition AS Condition,
                    goods_status   AS Status,
                    view_count     AS ViewCount,
-                   created_at     AS CreatedAt
+                   created_at     AS CreatedAt,
+                   (SELECT cover_image FROM v_goods_list gl WHERE gl.goods_id = v_goods_detail.goods_id) AS ImageUrl
             FROM v_goods_detail
             WHERE goods_id = :GoodsId
             """;

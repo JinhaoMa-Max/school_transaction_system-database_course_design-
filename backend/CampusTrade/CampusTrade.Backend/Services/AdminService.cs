@@ -110,6 +110,11 @@ public class AdminService : IAdminService
     public async Task<NoticeListResult> GetNoticesAsync(int? currentUserId, int page, int size, string? noticeType)
     {
         await RequireAdminAsync(currentUserId);
+        return await GetPublicNoticesAsync(page, size, noticeType);
+    }
+
+    public async Task<NoticeListResult> GetPublicNoticesAsync(int page, int size, string? noticeType)
+    {
         (page, size) = NormalizePaging(page, size);
         ValidateOptionalNoticeType(noticeType);
 
@@ -128,6 +133,9 @@ public class AdminService : IAdminService
         await RequireAdminAsync(currentUserId);
         return await _adminRepository.GetNoticeByIdAsync(noticeId);
     }
+
+    public Task<NoticeDto?> GetPublicNoticeByIdAsync(int noticeId)
+        => _adminRepository.GetNoticeByIdAsync(noticeId);
 
     public async Task<NoticeDto> CreateNoticeAsync(int? currentUserId, CreateNoticeRequest request)
     {

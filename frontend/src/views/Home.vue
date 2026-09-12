@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import ProductImage from '@/components/common/GoodsImage.vue'
 import { useRouter } from 'vue-router'
 import { getGoodsList } from '@/api/goods'
 import { getCategoryList } from '@/api/category'
@@ -122,6 +123,11 @@ onMounted(() => {
 
       </section>
 
+      <a-card class="section-card" :bordered="false" title="平台公告">
+        <template #extra><a-button type="text" @click="router.push('/notices')">查看全部公告</a-button></template>
+        <p>平台消息、交易提醒和违规通报，请到公告中心查看。</p>
+      </a-card>
+
       <!--分类导航-->
       <a-card class = "section-card" :bordered="false">
 
@@ -172,8 +178,7 @@ onMounted(() => {
               @click="goToGoodsDetail(item.goodsId)"
               >
               <div class = "goods-image">
-                <img v-if="item.imageUrl" :src="item.imageUrl" :alt="item.title" />
-                <span v-else>暂无图片</span>
+                <ProductImage :src="item.imageUrl" :alt="item.title" />
               </div>
 
               <div class = "goods-title">
@@ -325,7 +330,7 @@ onMounted(() => {
   color: var(--color-text-3);
 }
 
-.goods-image img {
+.goods-image :deep(.goods-image-frame) {
   width: 100%;
   height: 100%;
   object-fit: cover;

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import GoodsImage from '@/components/common/GoodsImage.vue'
 import { useRouter } from 'vue-router'
 import { getAppointmentList } from '@/api'
 import type { Appointment } from '@/types'
@@ -52,8 +53,10 @@ onMounted(fetchAppointments)
         @click="router.push(`/orders/${item.orderId}`)"
       >
         <div class="appointment-info">
-          <h3>预约ID: {{ item.appointmentId }}</h3>
-          <p>订单ID: {{ item.orderId }}</p>
+          <GoodsImage :src="item.imageUrl" :alt="item.goodsTitle" style="width: 80px; height: 80px; border-radius: 8px" />
+          <h3>{{ item.goodsTitle || '商品信息暂不可用' }}</h3>
+          <p>买家：{{ item.buyerName || '用户信息暂不可用' }} · 卖家：{{ item.sellerName || '用户信息暂不可用' }}</p>
+          <p>订单编号: {{ item.orderId }}</p>
           <p>面交时间: {{ item.meetTime }}</p>
           <p>面交地点: {{ item.meetLocation }}</p>
           <p>确认码: {{ item.confirmCode }}</p>

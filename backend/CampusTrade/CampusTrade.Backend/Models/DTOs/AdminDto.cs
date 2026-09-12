@@ -4,6 +4,8 @@ public class AuditLogDto
 {
     public int LogId { get; set; }
     public int AdminId { get; set; }
+    public string? AdminName { get; set; }
+    public string? TargetName { get; set; }
     public string AuditType { get; set; } = string.Empty;
     public int TargetId { get; set; }
     public string Action { get; set; } = string.Empty;
@@ -37,6 +39,7 @@ public class NoticeDto
     public string Content { get; set; } = string.Empty;
     public string NoticeType { get; set; } = string.Empty;
     public int PublisherId { get; set; }
+    public string? PublisherName { get; set; }
     public DateTime PublishTime { get; set; }
 }
 

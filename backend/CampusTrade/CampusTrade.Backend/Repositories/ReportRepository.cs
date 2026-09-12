@@ -29,6 +29,11 @@ public class ReportRepository : IReportRepository
             SELECT report_id AS ReportId, reporter_id AS ReporterId, report_type AS ReportType,
                    target_goods_id AS ReportedGoodsId, target_user_id AS ReportedUserId,
                    target_order_id AS ReportedOrderId, reason AS Reason,
+                   (SELECT COALESCE(nickname, username) FROM app_user WHERE user_id = report.reporter_id) AS ReporterName,
+                   (SELECT title FROM goods WHERE goods_id = report.target_goods_id) AS ReportedGoodsTitle,
+                   (SELECT COALESCE(nickname, username) FROM app_user WHERE user_id = report.target_user_id) AS ReportedUserName,
+                   (SELECT g.title FROM trade_order o JOIN goods g ON g.goods_id = o.goods_id
+                    WHERE o.order_id = report.target_order_id) AS ReportedOrderTitle,
                    report_status AS Status, created_at AS CreateTime
             FROM report {w} ORDER BY created_at DESC
             OFFSET {off} ROWS FETCH NEXT {size} ROWS ONLY
@@ -44,6 +49,11 @@ public class ReportRepository : IReportRepository
             SELECT report_id AS ReportId, reporter_id AS ReporterId, report_type AS ReportType,
                    target_goods_id AS ReportedGoodsId, target_user_id AS ReportedUserId,
                    target_order_id AS ReportedOrderId, reason AS Reason,
+                   (SELECT COALESCE(nickname, username) FROM app_user WHERE user_id = report.reporter_id) AS ReporterName,
+                   (SELECT title FROM goods WHERE goods_id = report.target_goods_id) AS ReportedGoodsTitle,
+                   (SELECT COALESCE(nickname, username) FROM app_user WHERE user_id = report.target_user_id) AS ReportedUserName,
+                   (SELECT g.title FROM trade_order o JOIN goods g ON g.goods_id = o.goods_id
+                    WHERE o.order_id = report.target_order_id) AS ReportedOrderTitle,
                    report_status AS Status, created_at AS CreateTime
             FROM report WHERE report_id = :Id
             """;

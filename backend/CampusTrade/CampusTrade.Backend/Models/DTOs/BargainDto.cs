@@ -5,6 +5,11 @@ public class BargainOfferDto
 {
     public int BargainId { get; set; }
     public int GoodsId { get; set; }
+    public string? GoodsTitle { get; set; }
+    public string? ImageUrl { get; set; }
+    public string? BuyerName { get; set; }
+    public int SellerId { get; set; }
+    public string? SellerName { get; set; }
     public int BuyerId { get; set; }
     public decimal OfferPrice { get; set; }
     public string SellerResult { get; set; } = string.Empty;

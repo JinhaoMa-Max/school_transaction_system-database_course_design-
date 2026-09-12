@@ -44,8 +44,9 @@ public class OrderRepository : IOrderRepository
         using var connection = _connectionFactory.CreateConnection();
         const string sql = """
             SELECT order_id AS OrderId, goods_id AS GoodsId, goods_title AS GoodsTitle,
-                   buyer_id AS BuyerId, buyer_name AS BuyerName, seller_id AS SellerId,
-                   seller_name AS SellerName, final_price AS DealPrice, order_status AS Status,
+                   (SELECT cover_image FROM v_goods_list gl WHERE gl.goods_id = v_order_list.goods_id) AS ImageUrl,
+                   buyer_id AS BuyerId, COALESCE(buyer_name, (SELECT username FROM app_user WHERE user_id = v_order_list.buyer_id)) AS BuyerName, seller_id AS SellerId,
+                   COALESCE(seller_name, (SELECT username FROM app_user WHERE user_id = v_order_list.seller_id)) AS SellerName, final_price AS DealPrice, order_status AS Status,
                    created_at AS CreateTime, meet_time AS MeetTime, meet_place AS MeetLocation,
                    confirm_code AS ConfirmCode, buyer_reviewed AS BuyerReviewed,
                    seller_reviewed AS SellerReviewed
@@ -179,8 +180,9 @@ public class OrderRepository : IOrderRepository
         var offset = (page - 1) * size;
         var sql = $"""
             SELECT order_id AS OrderId, goods_id AS GoodsId, goods_title AS GoodsTitle,
-                   buyer_id AS BuyerId, buyer_name AS BuyerName, seller_id AS SellerId,
-                   seller_name AS SellerName, final_price AS DealPrice, order_status AS Status,
+                   (SELECT cover_image FROM v_goods_list gl WHERE gl.goods_id = v_order_list.goods_id) AS ImageUrl,
+                   buyer_id AS BuyerId, COALESCE(buyer_name, (SELECT username FROM app_user WHERE user_id = v_order_list.buyer_id)) AS BuyerName, seller_id AS SellerId,
+                   COALESCE(seller_name, (SELECT username FROM app_user WHERE user_id = v_order_list.seller_id)) AS SellerName, final_price AS DealPrice, order_status AS Status,
                    created_at AS CreateTime, meet_time AS MeetTime, meet_place AS MeetLocation,
                    confirm_code AS ConfirmCode, buyer_reviewed AS BuyerReviewed,
                    seller_reviewed AS SellerReviewed

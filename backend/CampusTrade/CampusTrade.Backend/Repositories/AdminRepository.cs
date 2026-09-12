@@ -12,6 +12,19 @@ public class AdminRepository : IAdminRepository
     private const string AuditLogColumns = """
         log_id AS LogId,
         admin_id AS AdminId,
+        (SELECT COALESCE(nickname, username) FROM app_user WHERE user_id = audit_log.admin_id) AS AdminName,
+        CASE
+            WHEN audit_type IN ('goods_audit', 'goods_offline') THEN
+                (SELECT title FROM goods WHERE goods_id = audit_log.target_id)
+            WHEN audit_type = 'user_ban' THEN
+                (SELECT COALESCE(nickname, username) FROM app_user WHERE user_id = audit_log.target_id)
+            WHEN audit_type = 'report_handle' THEN
+                (SELECT COALESCE(
+                    (SELECT title FROM goods WHERE goods_id = r.target_goods_id),
+                    (SELECT COALESCE(nickname, username) FROM app_user WHERE user_id = r.target_user_id),
+                    (SELECT g.title FROM trade_order o JOIN goods g ON g.goods_id = o.goods_id WHERE o.order_id = r.target_order_id)
+                ) FROM report r WHERE r.report_id = audit_log.target_id)
+        END AS TargetName,
         audit_type AS AuditType,
         target_id AS TargetId,
         action AS Action,
@@ -26,6 +39,7 @@ public class AdminRepository : IAdminRepository
         content AS Content,
         notice_type AS NoticeType,
         publisher_id AS PublisherId,
+        (SELECT COALESCE(nickname, username) FROM app_user WHERE user_id = notice.publisher_id) AS PublisherName,
         created_at AS PublishTime
         """;
 
