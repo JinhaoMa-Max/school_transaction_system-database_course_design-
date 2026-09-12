@@ -311,7 +311,7 @@ onMounted(async () => {
     </div>
 
     <div class="goods-section">
-      <a-spin :loading="loading" dot>
+      <a-spin :loading="loading" dot style="width: 100%">
         <div v-if="goodsList.length > 0" class="goods-grid">
           <a-card
             v-for="item in goodsList"

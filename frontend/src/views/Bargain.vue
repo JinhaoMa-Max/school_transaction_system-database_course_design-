@@ -356,6 +356,7 @@ onMounted(() => {
     <a-modal
       v-model:visible="counterVisible"
       title="发起还价"
+      width="min(520px, 92vw)"
       @ok="handleCounter"
       @cancel="counterVisible = false"
       :confirm-loading="counterLoading"
@@ -381,6 +382,7 @@ onMounted(() => {
     <a-modal
       v-model:visible="buyerCounterVisible"
       title="继续还价"
+      width="min(520px, 92vw)"
       @ok="handleBuyerCounter"
       @cancel="buyerCounterVisible = false"
       :confirm-loading="buyerCounterLoading"

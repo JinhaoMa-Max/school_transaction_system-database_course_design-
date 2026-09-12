@@ -215,7 +215,7 @@ onMounted(fetchData)
 
 <template>
   <div class="goods-detail-page">
-    <a-spin :loading="loading" dot>
+    <a-spin :loading="loading" dot style="width: 100%">
       <div v-if="goods" class="detail-container">
         <div class="image-section">
           <div class="main-image">
@@ -332,6 +332,7 @@ onMounted(fetchData)
     <a-modal
       v-model:visible="bargainVisible"
       title="发起议价"
+      width="min(520px, 92vw)"
       @ok="handleBargain"
       @cancel="bargainVisible = false"
       :confirm-loading="bargainLoading"
@@ -356,6 +357,7 @@ onMounted(fetchData)
     <a-modal
       v-model:visible="buyVisible"
       title="确认购买"
+      width="min(520px, 92vw)"
       @ok="handleBuy"
       @cancel="buyVisible = false"
       :confirm-loading="buyLoading"
@@ -433,6 +435,7 @@ onMounted(fetchData)
 
 .info-section {
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
 }

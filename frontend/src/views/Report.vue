@@ -159,7 +159,7 @@ onMounted(() => {
 
 <template>
   <div class="report-page">
-    <a-spin :loading="loading" dot>
+    <a-spin :loading="loading" dot style="width: 100%">
       <div class="report-container">
         <div class="page-header">
           <a-button type="text" @click="handleBack">
@@ -285,7 +285,9 @@ onMounted(() => {
 
 <style scoped>
 .report-page {
-  max-width: 640px;
+  width: 100%;
+  max-width: 768px;
+  box-sizing: border-box;
   margin: 0 auto;
   padding: 24px;
 }
@@ -305,5 +307,11 @@ onMounted(() => {
   justify-content: flex-end;
   gap: 12px;
   margin-top: 24px;
+}
+
+@media (max-width: 640px) {
+  .report-page {
+    padding: 16px;
+  }
 }
 </style>

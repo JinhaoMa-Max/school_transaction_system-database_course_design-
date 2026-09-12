@@ -135,7 +135,7 @@ onMounted(() => {
           分类导航
         </template>
 
-        <a-spin :loading="categoryLoading">
+        <a-spin :loading="categoryLoading" style="width: 100%">
         <div class="category-list">
           <a-button
           v-for="item in categories"
@@ -157,7 +157,7 @@ onMounted(() => {
           热门商品
         </template>
 
-         <a-spin :loading="goodsLoading">
+         <a-spin :loading="goodsLoading" style="width: 100%">
             <a-empty
               v-if="hotGoods.length === 0"
               description="暂无商品"

@@ -297,6 +297,7 @@ onMounted(fetchData)
     <a-modal
       v-model:visible="verifyVisible"
       title="核销确认码"
+      width="min(520px, 92vw)"
       @ok="handleVerify"
       @cancel="verifyVisible = false"
       :confirm-loading="verifyLoading"

@@ -46,7 +46,7 @@ onMounted(fetchRecords)
       </select>
     </div>
 
-    <a-spin :loading="loading">
+    <a-spin :loading="loading" style="width: 100%">
       <table>
         <thead>
           <tr>

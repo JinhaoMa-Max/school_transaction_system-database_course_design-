@@ -129,7 +129,7 @@ onMounted(fetchData)
 
 <template>
   <div class="review-page">
-    <a-spin :loading="loading" dot>
+    <a-spin :loading="loading" dot style="width: 100%">
       <div class="review-container">
         <div class="page-header">
           <a-button type="text" @click="handleBack">
@@ -233,7 +233,9 @@ onMounted(fetchData)
 
 <style scoped>
 .review-page {
-  max-width: 640px;
+  width: 100%;
+  max-width: 768px;
+  box-sizing: border-box;
   margin: 0 auto;
   padding: 24px;
 }
@@ -277,6 +279,7 @@ onMounted(fetchData)
 
 .goods-detail {
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -332,5 +335,11 @@ onMounted(fetchData)
   justify-content: flex-end;
   gap: 12px;
   margin-top: 24px;
+}
+
+@media (max-width: 640px) {
+  .review-page {
+    padding: 16px;
+  }
 }
 </style>

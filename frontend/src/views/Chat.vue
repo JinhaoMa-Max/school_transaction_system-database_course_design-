@@ -184,7 +184,7 @@ const scrollToBottom = async () =>{
         </div>
        </template>
 
-       <a-spin :loading="sessionLoading">
+       <a-spin :loading="sessionLoading" style="width: 100%">
 
         <a-list :bordered="false"  >
 

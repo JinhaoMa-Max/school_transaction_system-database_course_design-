@@ -334,7 +334,7 @@ onMounted(() => {
         </div>
       </template>
 
-      <a-spin :loading="reviewLoading">
+      <a-spin :loading="reviewLoading" style="width: 100%">
         <a-empty v-if="!reviewLoading && receivedReviews.length === 0" description="暂无评价" />
 
         <div v-else class="review-items">
